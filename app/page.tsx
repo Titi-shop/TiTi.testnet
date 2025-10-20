@@ -15,9 +15,10 @@ export default function HomePage() {
     fetch("/api/products")
       .then((res) => res.json())
       .then((data) => {
-        setProducts(data);
-        setLoading(false);
-      })
+      if (Array.isArray(data)) setProducts(data);
+      else setProducts([]);
+      setLoading(false);
+       })
       .catch((err) => {
         console.error("❌ Lỗi tải sản phẩm:", err);
         setLoading(false);
