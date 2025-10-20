@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useLanguage } from "../context/LanguageContext";
+import { useLanguage } from "../../../context/LanguageContext";
 
 export default function EditProductPage() {
   const { id } = useParams();
