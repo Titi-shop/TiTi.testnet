@@ -1,6 +1,6 @@
 "use client";
 
-import { useLanguage } from "../context/LanguageContext";
+import { useLanguage } from "../app/context/LanguageContext";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
