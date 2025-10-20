@@ -8,6 +8,7 @@ import {
   ClipboardList,
   RefreshCcw,
   Truck,
+  Wallet,
 } from "lucide-react";
 
 export default function SellerDashboard() {
@@ -27,7 +28,9 @@ export default function SellerDashboard() {
           className="bg-amber-500 hover:bg-amber-600 text-white p-6 rounded-lg shadow flex flex-col items-center transition transform hover:scale-105"
         >
           <PackagePlus size={36} />
-          <span className="mt-2 font-semibold">📦 {translate("post_product")}</span>
+          <span className="mt-2 font-semibold">
+            📦 {translate("post_product")}
+          </span>
         </Link>
 
         <Link
@@ -35,7 +38,9 @@ export default function SellerDashboard() {
           className="bg-blue-500 hover:bg-blue-600 text-white p-6 rounded-lg shadow flex flex-col items-center transition transform hover:scale-105"
         >
           <Package size={36} />
-          <span className="mt-2 font-semibold">🏬 {translate("manage_stock")}</span>
+          <span className="mt-2 font-semibold">
+            🏬 {translate("manage_stock")}
+          </span>
         </Link>
 
         <Link
@@ -43,7 +48,9 @@ export default function SellerDashboard() {
           className="bg-green-500 hover:bg-green-600 text-white p-6 rounded-lg shadow flex flex-col items-center transition transform hover:scale-105"
         >
           <ClipboardList size={36} />
-          <span className="mt-2 font-semibold">🧾 {translate("process_orders")}</span>
+          <span className="mt-2 font-semibold">
+            🧾 {translate("process_orders")}
+          </span>
         </Link>
 
         <Link
@@ -51,7 +58,9 @@ export default function SellerDashboard() {
           className="bg-purple-500 hover:bg-purple-600 text-white p-6 rounded-lg shadow flex flex-col items-center transition transform hover:scale-105"
         >
           <RefreshCcw size={36} />
-          <span className="mt-2 font-semibold">📊 {translate("update_status")}</span>
+          <span className="mt-2 font-semibold">
+            📊 {translate("update_status")}
+          </span>
         </Link>
 
         <Link
@@ -59,7 +68,20 @@ export default function SellerDashboard() {
           className="bg-orange-500 hover:bg-orange-600 text-white p-6 rounded-lg shadow flex flex-col items-center transition transform hover:scale-105"
         >
           <Truck size={36} />
-          <span className="mt-2 font-semibold">🚚 {translate("delivery")}</span>
+          <span className="mt-2 font-semibold">
+            🚚 {translate("delivery")}
+          </span>
+        </Link>
+
+        {/* ===== Nút ví Wallet ===== */}
+        <Link
+          href="/seller/wallet"
+          className="bg-emerald-500 hover:bg-emerald-600 text-white p-6 rounded-lg shadow flex flex-col items-center transition transform hover:scale-105"
+        >
+          <Wallet size={36} />
+          <span className="mt-2 font-semibold">
+            💰 {translate("wallet")}
+          </span>
         </Link>
       </div>
     </main>
