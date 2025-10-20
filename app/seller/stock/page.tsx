@@ -6,11 +6,11 @@ import { useRouter } from "next/navigation";
 import { useLanguage } from "../../context/LanguageContext";
 
 interface Product {
-  id: string;
+  id: number;
   name: string;
   price: number;
-  description: string;
-  images: string[];
+  description?: string;
+  images?: string[];
 }
 
 export default function SellerStockPage() {
@@ -19,39 +19,50 @@ export default function SellerStockPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
 
   // 🧾 Lấy danh sách sản phẩm
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch("/api/products", { cache: "no-store" });
+      if (!res.ok) throw new Error("Fetch failed");
+      const data = await res.json();
+      setProducts(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("❌ Lỗi tải sản phẩm:", err);
+      setMessage(translate("load_error") || "Không thể tải sản phẩm.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const res = await fetch("/api/products");
-        const data = await res.json();
-        setProducts(data);
-      } catch (err) {
-        console.error(err);
-        setMessage(translate("load_error") || "Không thể tải sản phẩm.");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchProducts();
-  }, [translate]);
+  }, []);
 
   // ❌ Xoá sản phẩm
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
     const confirmDelete = window.confirm(
       translate("confirm_delete") || "Bạn có chắc muốn xóa sản phẩm này?"
     );
     if (!confirmDelete) return;
 
     try {
-      const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Delete failed");
-      setProducts((prev) => prev.filter((p) => p.id !== id));
-      setMessage(translate("delete_success") || "Đã xóa sản phẩm.");
+      setRefreshing(true);
+      const res = await fetch(`/api/products?id=${id}`, { method: "DELETE" });
+      const result = await res.json();
+
+      if (result.success) {
+        setMessage(translate("delete_success") || "Đã xóa sản phẩm.");
+        await fetchProducts();
+      } else {
+        setMessage(result.message || "Không thể xóa sản phẩm.");
+      }
     } catch (err) {
-      console.error(err);
+      console.error("❌ DELETE Error:", err);
       setMessage(translate("delete_error") || "Lỗi khi xóa sản phẩm.");
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -64,7 +75,9 @@ export default function SellerStockPage() {
       {message && (
         <p
           className={`text-center mb-3 font-medium ${
-            message.includes("xóa") ? "text-red-600" : "text-green-600"
+            message.includes("xóa") || message.includes("Lỗi")
+              ? "text-red-600"
+              : "text-green-600"
           }`}
         >
           {message}
@@ -81,46 +94,55 @@ export default function SellerStockPage() {
         </p>
       ) : (
         <div className="grid gap-4">
-          {products.map((product) => (
-            <div
-              key={product.id}
-              className="bg-white shadow-md rounded-lg p-4 border"
-            >
-              {product.images?.[0] && (
-                <Image
-                  src={product.images[0]}
-                  alt={product.name}
-                  width={400}
-                  height={300}
-                  className="w-full h-48 object-cover rounded-md mb-3"
-                />
-              )}
+          {products.map((product) => {
+            const img = product.images?.[0] || "";
 
-              <h2 className="text-lg font-semibold">{product.name}</h2>
-              <p className="text-yellow-600 font-medium">
-                💰 {product.price} Pi
-              </p>
-              <p className="text-gray-500">{product.description}</p>
+            return (
+              <div
+                key={product.id}
+                className="bg-white shadow-md rounded-lg p-4 border border-gray-200"
+              >
+                {img ? (
+                  <Image
+                    src={img}
+                    alt={product.name}
+                    width={400}
+                    height={300}
+                    className="w-full h-48 object-cover rounded-md mb-3"
+                  />
+                ) : (
+                  <div className="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-400 rounded-md mb-3">
+                    {translate("no_image") || "Không có ảnh"}
+                  </div>
+                )}
 
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={() =>
-                    router.push(`/seller/edit/${product.id}`)
-                  }
-                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded"
-                >
-                  ✏️ {translate("edit") || "Sửa"}
-                </button>
+                <h2 className="text-lg font-semibold text-gray-800">{product.name}</h2>
+                <p className="text-orange-600 font-bold mt-1">
+                  💰 {product.price} Pi
+                </p>
+                {product.description && (
+                  <p className="text-gray-500 mt-1">{product.description}</p>
+                )}
 
-                <button
-                  onClick={() => handleDelete(product.id)}
-                  className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded"
-                >
-                  ❌ {translate("delete") || "Xóa"}
-                </button>
+                <div className="flex gap-2 mt-4">
+                  <button
+                    onClick={() => router.push(`/seller/edit/${product.id}`)}
+                    className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md font-medium transition"
+                  >
+                    ✏️ {translate("edit") || "Sửa"}
+                  </button>
+
+                  <button
+                    onClick={() => handleDelete(product.id)}
+                    disabled={refreshing}
+                    className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-md font-medium transition"
+                  >
+                    {refreshing ? "⏳ Đang xóa..." : "❌ " + (translate("delete") || "Xóa")}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </main>
