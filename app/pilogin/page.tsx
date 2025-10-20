@@ -66,7 +66,7 @@ export default function PiLoginPage() {
           marginTop: "20px",
         }}
       >
-        Đăng nhập với Pi
+        Đăng Nhập
       </button>
     </main>
   );
