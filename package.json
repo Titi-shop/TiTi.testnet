@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-   "clean": "rm -rf .next || node -e \"import('fs').then(fs => fs.rmSync('.next', { recursive: true, force: true }))\""
+    "clean": "rmdir /s /q .next 2>nul || rm -rf .next",
     "dev": "npm run clean && next dev",
     "build": "npm run clean && next build",
     "start": "next start"
