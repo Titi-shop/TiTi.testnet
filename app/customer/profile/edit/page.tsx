@@ -16,7 +16,6 @@ export default function EditProfilePage() {
   });
   const [saving, setSaving] = useState(false);
 
-  // 🧠 Lấy thông tin hiện có
   useEffect(() => {
     const stored = localStorage.getItem("user_info");
     if (stored) {
@@ -28,7 +27,6 @@ export default function EditProfilePage() {
         address: parsed.address || "",
       });
 
-      // 🔄 Lấy dữ liệu thật từ Upstash KV
       fetch(`/api/profile?username=${parsed.username}`)
         .then((res) => res.json())
         .then((data) => {
@@ -38,7 +36,6 @@ export default function EditProfilePage() {
     }
   }, []);
 
-  // 💾 Lưu thông tin thật vào KV
   const handleSave = async () => {
     setSaving(true);
     const res = await fetch("/api/profile", {
@@ -52,10 +49,10 @@ export default function EditProfilePage() {
 
     if (data.success) {
       localStorage.setItem("user_info", JSON.stringify(info));
-      alert("✅ " + translate("profile_saved") || "Đã lưu hồ sơ thành công!");
+      alert("✅ " + (translate("profile_saved") || "Đã lưu hồ sơ thành công!"));
       router.push("/customer/profile");
     } else {
-      alert("❌ " + translate("save_failed") || "Lưu thất bại!");
+      alert("❌ " + (translate("save_failed") || "Lưu thất bại!"));
     }
   };
 
@@ -73,4 +70,45 @@ export default function EditProfilePage() {
           ["address", translate("address")],
         ].map(([field, label]) => (
           <div key={field}>
-            <label className="block text-sm
+            <label className="block text-sm text-gray-700">{label}</label>
+            {field === "address" ? (
+              <textarea
+                value={info[field as keyof typeof info]}
+                onChange={(e) =>
+                  setInfo({ ...info, [field]: e.target.value })
+                }
+                className="w-full border px-3 py-2 rounded h-20"
+              />
+            ) : (
+              <input
+                type="text"
+                value={info[field as keyof typeof info]}
+                onChange={(e) =>
+                  setInfo({ ...info, [field]: e.target.value })
+                }
+                className="w-full border px-3 py-2 rounded"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="flex justify-between mt-6">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded"
+        >
+          {saving ? "Đang lưu..." : `💾 ${translate("save")}`}
+        </button>
+
+        <button
+          onClick={() => router.push("/customer/profile")}
+          className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-5 py-2 rounded"
+        >
+          ← {translate("back")}
+        </button>
+      </div>
+    </main>
+  );
+}
