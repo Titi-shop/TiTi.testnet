@@ -18,7 +18,7 @@ export default function EditProductPage() {
   useEffect(() => {
     if (!id) return;
 
-    fetch("/api/products")
+    fetch("/api/products", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         const found = data.find((p: any) => String(p.id) === String(id));
@@ -33,15 +33,24 @@ export default function EditProductPage() {
   }, [id]);
 
   // 🧩 Hàm lưu sản phẩm
-  async function handleSave(e: React.FormEvent) {
+  async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
     setError("");
 
     try {
-      const formData = new FormData(e.target as HTMLFormElement);
+      const form = e.currentTarget;
+      const formData = new FormData(form);
+
+      // ✅ Bổ sung id để backend nhận đúng
       formData.append("id", String(product.id));
 
+      // ✅ Xử lý ảnh: tách chuỗi URL thành mảng
+      const rawImages = (formData.get("images") as string)?.split(",").map(s => s.trim()).filter(Boolean);
+      formData.delete("images");
+      rawImages.forEach(img => formData.append("images", img));
+
+      // ✅ Gửi PUT request đúng format
       const res = await fetch("/api/products", {
         method: "PUT",
         body: formData,
@@ -53,7 +62,7 @@ export default function EditProductPage() {
         alert("✅ Cập nhật sản phẩm thành công!");
         router.push("/seller/stock");
       } else {
-        setError(result.message || "Lỗi khi cập nhật sản phẩm");
+        setError(result.message || "Không thể cập nhật sản phẩm.");
       }
     } catch (err) {
       console.error("❌ PUT error:", err);
@@ -62,6 +71,8 @@ export default function EditProductPage() {
       setSaving(false);
     }
   }
+
+  // ============================== UI ==============================
 
   if (loading)
     return <p className="text-center mt-10 text-gray-600">Đang tải dữ liệu...</p>;
@@ -108,7 +119,9 @@ export default function EditProductPage() {
         </div>
 
         <div>
-          <label className="block font-medium text-gray-700 mb-1">Ảnh (URL, cách nhau bởi dấu phẩy)</label>
+          <label className="block font-medium text-gray-700 mb-1">
+            Ảnh (URL, cách nhau bởi dấu phẩy)
+          </label>
           <input
             name="images"
             defaultValue={product.images?.join(", ")}
@@ -116,7 +129,9 @@ export default function EditProductPage() {
           />
         </div>
 
-        {error && <p className="text-red-500 text-center">{error}</p>}
+        {error && (
+          <p className="text-red-500 text-center font-medium">{error}</p>
+        )}
 
         <button
           type="submit"
