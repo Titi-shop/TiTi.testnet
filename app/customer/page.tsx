@@ -15,11 +15,14 @@ export default function CustomerDashboard() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const info = localStorage.getItem("pi_user") || localStorage.getItem("user_info");
+      const info =
+        localStorage.getItem("pi_user") || localStorage.getItem("user_info");
       if (info) {
         try {
           const parsed = JSON.parse(info);
-          setUsername(parsed?.user?.username || parsed?.username || "guest_user");
+          setUsername(
+            parsed?.user?.username || parsed?.username || "guest_user"
+          );
         } catch {
           setUsername("guest_user");
         }
@@ -35,7 +38,11 @@ export default function CustomerDashboard() {
 
   const handleLogoutPi = async () => {
     try {
-      if (typeof window !== "undefined" && window.Pi && typeof window.Pi.logout === "function") {
+      if (
+        typeof window !== "undefined" &&
+        window.Pi &&
+        typeof window.Pi.logout === "function"
+      ) {
         await window.Pi.logout();
         console.log("Đã đăng xuất khỏi Pi Network session");
       }
@@ -65,17 +72,20 @@ export default function CustomerDashboard() {
             {username.charAt(0).toUpperCase()}
           </div>
           <h1 className="text-xl font-semibold">{username}</h1>
-          <p className="text-sm opacity-90 mt-1">{translate("customer_title")}</p>
+          <p className="text-sm opacity-90 mt-1">
+            {translate("customer_title")}
+          </p>
 
+          {/* 🔸 Đổi nút “Tài khoản” → “Đăng nhập” */}
           <button
             onClick={(e) => {
               e.stopPropagation();
-              router.push("/customer/profile");
+              router.push("/pilogin");
             }}
             className="mt-3 bg-white text-orange-600 text-sm px-4 py-1 rounded-full flex items-center gap-1 hover:bg-gray-100 transition"
           >
             <User size={16} />
-            {translate("account")}
+            Đăng nhập
           </button>
         </div>
       </div>
@@ -83,7 +93,9 @@ export default function CustomerDashboard() {
       {/* ===== Thanh công cụ đơn hàng ===== */}
       <div className="bg-white mt-4 rounded-lg shadow mx-3">
         <div className="flex items-center justify-between px-6 py-3 border-b">
-          <h2 className="font-semibold text-gray-800 text-lg">{translate("my_orders")}</h2>
+          <h2 className="font-semibold text-gray-800 text-lg">
+            {translate("my_orders")}
+          </h2>
           <button
             onClick={() => router.push("/customer/orders")}
             className="text-blue-600 text-sm hover:underline"
@@ -139,7 +151,8 @@ export default function CustomerDashboard() {
       {/* ===== Ví người dùng ===== */}
       <div className="bg-white mx-3 mt-4 p-4 rounded-lg shadow text-center">
         <p className="text-gray-700">
-          💰 {translate("wallet_label")}: <b>{user?.wallet ?? "CUSTOMER-MOCK"}</b>
+          💰 {translate("wallet_label")}:{" "}
+          <b>{user?.wallet ?? "CUSTOMER-MOCK"}</b>
         </p>
       </div>
     </div>
