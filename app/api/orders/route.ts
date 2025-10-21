@@ -57,10 +57,13 @@ export async function POST(req: Request) {
     const orders = await readOrders();
 
     const newOrder = {
-      ...order,
       id: order.id ?? Date.now(),
-      status: order.status ?? "Chờ xác nhận",
-      createdAt: new Date().toISOString(),
+      buyer: order.buyer || "unknown",          // ✅ giữ buyer
+      items: order.items ?? [],                 // ✅ giữ items
+      total: order.total ?? 0,                  // ✅ giữ tổng tiền
+      status: order.status ?? "Chờ xác nhận",   // ✅ chuẩn hoá status
+      note: order.note ?? "",                   // tuỳ chọn
+      createdAt: order.createdAt ?? new Date().toISOString(),
     };
 
     orders.unshift(newOrder);
