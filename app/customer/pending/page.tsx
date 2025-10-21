@@ -30,10 +30,7 @@ export default function PendingOrdersPage() {
   useEffect(() => {
     try {
       const info = localStorage.getItem("user_info");
-      if (!info) {
-        console.warn("⚠️ Không tìm thấy user_info trong localStorage.");
-        return;
-      }
+      if (!info) return;
       const parsed = JSON.parse(info);
       setCurrentUser(parsed.username || "");
     } catch (err) {
@@ -41,24 +38,27 @@ export default function PendingOrdersPage() {
     }
   }, []);
 
-  // 🧩 Tải danh sách đơn hàng "Chờ xác nhận" của người dùng hiện tại
+  // 🧩 Tải danh sách đơn hàng "Chờ xác nhận" từ KV
   useEffect(() => {
     const fetchOrders = async () => {
-      setLoading(true);
+      if (!currentUser) {
+        console.warn("⚠️ Chưa đăng nhập — không thể lọc đơn hàng.");
+        setLoading(false);
+        return;
+      }
+
       try {
-        const res = await fetch("/api/orders", { cache: "no-store" });
+        setLoading(true);
+        const res = await fetch("/api/orders", {
+          method: "GET",
+          cache: "no-store",
+        });
         if (!res.ok) throw new Error("Không thể tải dữ liệu đơn hàng.");
 
         const data: Order[] = await res.json();
         if (!Array.isArray(data)) throw new Error("Dữ liệu đơn hàng không hợp lệ.");
 
-        if (!currentUser) {
-          console.warn("⚠️ Chưa đăng nhập — không thể lọc đơn hàng.");
-          setOrders([]);
-          return;
-        }
-
-        // ✅ Lọc đơn của người dùng hiện tại và đang chờ xác nhận
+        // ✅ Lọc đơn của người dùng hiện tại và trạng thái "chờ xác nhận"
         const filtered = data.filter(
           (o) =>
             o.buyer?.toLowerCase() === currentUser.toLowerCase() &&
@@ -104,7 +104,8 @@ export default function PendingOrdersPage() {
           {translate("no_products") || "Chưa có đơn hàng chờ xác nhận."}
         </p>
         <p className="text-gray-400 text-sm">
-          👤 Người dùng hiện tại: {currentUser || "Chưa đăng nhập"}
+          👤 {translate("current_user") || "Người dùng hiện tại"}:{" "}
+          <b>{currentUser || translate("guest") || "Chưa đăng nhập"}</b>
         </p>
       </main>
     );
@@ -117,7 +118,8 @@ export default function PendingOrdersPage() {
       </h1>
 
       <p className="text-center text-gray-500 mb-4">
-        👤 Người dùng hiện tại: {currentUser || "Chưa đăng nhập"}
+        👤 {translate("current_user") || "Người dùng hiện tại"}:{" "}
+        <b>{currentUser}</b>
       </p>
 
       <div className="space-y-5">
@@ -127,11 +129,10 @@ export default function PendingOrdersPage() {
             className="border border-gray-200 rounded-lg p-4 bg-white shadow hover:shadow-lg transition"
           >
             <h2 className="font-semibold text-lg mb-1">
-              🧾 Mã đơn: #{order.id}
+              🧾 {translate("order_id") || "Mã đơn"}: #{order.id}
             </h2>
-            <p>👤 Người mua: <b>{order.buyer}</b></p>
-            <p>💰 Tổng tiền: <b>{order.total}</b> Pi</p>
-            <p>📅 Ngày tạo: {new Date(order.createdAt).toLocaleString()}</p>
+            <p>💰 {translate("total_amount") || "Tổng tiền"}: <b>{order.total}</b> Pi</p>
+            <p>📅 {translate("created_at") || "Ngày tạo"}: {new Date(order.createdAt).toLocaleString()}</p>
 
             {order.items?.length > 0 && (
               <ul className="list-disc ml-6 mt-2 text-gray-700">
@@ -144,7 +145,7 @@ export default function PendingOrdersPage() {
             )}
 
             <p className="mt-3 text-yellow-600 font-medium">
-              Trạng thái: {order.status}
+              {translate("status") || "Trạng thái"}: {order.status}
             </p>
 
             {order.note && (
