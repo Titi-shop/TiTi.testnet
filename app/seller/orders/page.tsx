@@ -23,34 +23,68 @@ export default function SellerOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState<string | null>(null);
 
+  // 🔹 Lấy danh sách đơn hàng từ Vercel Blogs
   useEffect(() => {
     const fetchOrders = async () => {
-      const res = await fetch("/api/orders");
-      const data = await res.json();
-      setOrders(data);
-      setLoading(false);
+      try {
+        const res = await fetch("/api/orders", { cache: "no-store" });
+        const data = await res.json();
+        setOrders(data);
+      } catch (err) {
+        console.error("❌ Lỗi tải đơn hàng:", err);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchOrders();
   }, []);
 
+  // 🔹 Hàm cập nhật trạng thái đơn hàng
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    setUpdating(orderId);
+    try {
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!res.ok) throw new Error("Cập nhật thất bại");
+
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
+      );
+      alert("✅ Đã cập nhật trạng thái đơn hàng!");
+    } catch (err) {
+      console.error("❌ Lỗi cập nhật:", err);
+      alert("❌ Lỗi khi cập nhật đơn hàng!");
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  // 🔹 Lọc đơn theo trạng thái
   const filteredOrders =
     filter === "all" ? orders : orders.filter((o) => o.status === filter);
 
   const tabs = [
     { key: "all", label: translate("all") || "Tất cả" },
-    { key: "pending", label: translate("pending") || "Chờ xử lý" },
-    { key: "shipping", label: translate("shipping") || "Đang giao" },
-    { key: "completed", label: translate("completed") || "Hoàn tất" },
-    { key: "cancelled", label: translate("cancelled") || "Đã hủy" },
+    { key: "Chờ xác nhận", label: translate("pending") || "Chờ xử lý" },
+    { key: "Đang giao", label: translate("shipping") || "Đang giao" },
+    { key: "Hoàn tất", label: translate("completed") || "Hoàn tất" },
+    { key: "Đã hủy", label: translate("cancelled") || "Đã hủy" },
   ];
 
+  // 🔹 Giao diện
   return (
     <main className="p-4 max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold text-center mb-4 text-blue-600">
         📦 {translate("order_manager_title") || "Quản lý đơn hàng"}
       </h1>
 
+      {/* Tabs lọc trạng thái */}
       <div className="flex flex-wrap justify-center gap-2 mb-4">
         {tabs.map((tab) => (
           <button
@@ -85,9 +119,16 @@ export default function SellerOrdersPage() {
               <p>
                 🧾 <b>{translate("order_id") || "Mã đơn"}:</b> #{order.id}
               </p>
-              <p>👤 {translate("buyer") || "Người mua"}: {order.buyer}</p>
-              <p>🕒 {translate("created_at") || "Thời gian tạo"}: {order.createdAt}</p>
-              <p>💰 {translate("total_amount") || "Tổng tiền"}: {order.total} Pi</p>
+              <p>
+                👤 {translate("buyer") || "Người mua"}: {order.buyer}
+              </p>
+              <p>
+                🕒 {translate("created_at") || "Thời gian tạo"}:{" "}
+                {new Date(order.createdAt).toLocaleString()}
+              </p>
+              <p>
+                💰 {translate("total_amount") || "Tổng tiền"}: {order.total} Pi
+              </p>
               <p>🧺 {translate("items") || "Sản phẩm"}:</p>
               <ul className="ml-6 list-disc">
                 {order.items.map((it, i) => (
@@ -97,18 +138,42 @@ export default function SellerOrdersPage() {
                 ))}
               </ul>
 
-              <div className="text-right mt-2">
+              {/* ✅ Trạng thái + nút thao tác */}
+              <div className="flex justify-between items-center mt-3">
                 <span
                   className={`inline-block px-3 py-1 rounded text-sm font-semibold ${
-                    order.status === "completed"
+                    order.status === "Hoàn tất"
                       ? "bg-green-100 text-green-700"
-                      : order.status === "shipping"
+                      : order.status === "Đang giao"
                       ? "bg-yellow-100 text-yellow-700"
+                      : order.status === "Đã hủy"
+                      ? "bg-red-100 text-red-700"
                       : "bg-gray-100 text-gray-600"
                   }`}
                 >
-                  {translate(order.status) || order.status}
+                  {order.status}
                 </span>
+
+                {/* 🟡 Nút thao tác theo trạng thái */}
+                {order.status === "Chờ xác nhận" && (
+                  <button
+                    onClick={() => updateOrderStatus(order.id, "Đang giao")}
+                    disabled={updating === order.id}
+                    className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
+                  >
+                    {updating === order.id ? "⏳ Đang xử lý..." : "✅ Xác nhận"}
+                  </button>
+                )}
+
+                {order.status === "Đang giao" && (
+                  <button
+                    onClick={() => updateOrderStatus(order.id, "Hoàn tất")}
+                    disabled={updating === order.id}
+                    className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
+                  >
+                    {updating === order.id ? "⏳ ..." : "📦 Hoàn tất"}
+                  </button>
+                )}
               </div>
             </div>
           ))}
