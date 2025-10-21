@@ -96,7 +96,11 @@ export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const id = Number(searchParams.get("id"));
-    if (!id) return NextResponse.json({ success: false, message: "Thiếu ID" }, { status: 400 });
+    if (!id)
+      return NextResponse.json(
+        { success: false, message: "Thiếu ID" },
+        { status: 400 }
+      );
 
     const products = await readProducts();
     const updated = products.filter((p) => p.id !== id);
@@ -107,6 +111,59 @@ export async function DELETE(req: Request) {
     console.error("❌ DELETE error:", err);
     return NextResponse.json(
       { success: false, message: "Lỗi khi xóa sản phẩm" },
+      { status: 500 }
+    );
+  }
+}
+
+// ==============================
+// 🔹 PUT — Cập nhật sản phẩm
+// ==============================
+export async function PUT(req: Request) {
+  try {
+    const formData = await req.formData();
+
+    const id = Number(formData.get("id"));
+    const name = formData.get("name") as string;
+    const price = Number(formData.get("price"));
+    const description = formData.get("description") as string;
+    const images = formData.getAll("images") as string[];
+
+    if (!id || !name || !price) {
+      return NextResponse.json(
+        { success: false, message: "Thiếu dữ liệu sản phẩm" },
+        { status: 400 }
+      );
+    }
+
+    const products = await readProducts();
+    const index = products.findIndex((p: any) => p.id === id);
+
+    if (index === -1) {
+      return NextResponse.json(
+        { success: false, message: "Không tìm thấy sản phẩm để cập nhật" },
+        { status: 404 }
+      );
+    }
+
+    const updatedProduct = {
+      ...products[index],
+      name,
+      price,
+      description,
+      images,
+      updatedAt: new Date().toISOString(),
+    };
+
+    products[index] = updatedProduct;
+    await writeProducts(products);
+
+    console.log("✅ Đã cập nhật sản phẩm:", updatedProduct);
+    return NextResponse.json({ success: true, product: updatedProduct });
+  } catch (err) {
+    console.error("❌ PUT error:", err);
+    return NextResponse.json(
+      { success: false, message: "Không thể cập nhật sản phẩm" },
       { status: 500 }
     );
   }
