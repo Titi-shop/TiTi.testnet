@@ -20,7 +20,7 @@ export default function PendingOrdersPage() {
     }
   };
 
-  // 🧩 Lấy danh sách đơn hàng từ API
+  // ✅ Lấy danh sách đơn hàng từ API
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -30,15 +30,13 @@ export default function PendingOrdersPage() {
         const data = await res.json();
         const currentUser = getCurrentUser();
 
-        // ✅ Hỗ trợ cả dữ liệu cũ và mới
+        // ✅ Lọc các đơn có "người mua" là user hiện tại + status = "Chờ xác nhận"
         const filtered = data.filter((o: any) => {
-          const buyerName = o.buyer || o["người mua"] || "";
-          const status = (o.status || "").toLowerCase();
+          const buyerName = o["người mua"]?.trim() || "";
+          const status = o.status?.toLowerCase() || "";
           return (
             buyerName === currentUser &&
-            (status.includes("chờ") ||
-              status.includes("pending") ||
-              status.includes("wait"))
+            (status.includes("chờ xác nhận") || status.includes("pending"))
           );
         });
 
@@ -54,7 +52,7 @@ export default function PendingOrdersPage() {
     fetchOrders();
   }, []);
 
-  // 🕓 Loading
+  // 🕓 Đang tải
   if (loading)
     return (
       <p className="text-center mt-10 text-gray-500">
@@ -70,15 +68,15 @@ export default function PendingOrdersPage() {
       </p>
     );
 
-  // 🚫 Không có đơn
+  // 🚫 Không có đơn nào
   if (orders.length === 0)
     return (
       <p className="text-center mt-10 text-gray-500">
-        {translate("no_orders") || "Không có đơn hàng nào đang chờ."}
+        {translate("no_orders") || "Không có đơn hàng nào đang chờ xác nhận."}
       </p>
     );
 
-  // ✅ Hiển thị danh sách đơn
+  // ✅ Hiển thị danh sách đơn hàng
   return (
     <main className="p-6 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6 text-center text-yellow-600">
@@ -94,15 +92,16 @@ export default function PendingOrdersPage() {
             <h2 className="font-semibold text-lg mb-1">
               🧾 Mã đơn: #{order.id}
             </h2>
-            <p>👤 Người mua: <b>{order.buyer || order["người mua"]}</b></p>
-            <p>💰 Tổng tiền: <b>{order.total || order["tổng cộng"]}</b> Pi</p>
+            <p>👤 Người mua: <b>{order["người mua"]}</b></p>
+            <p>💰 Tổng tiền: <b>{order["tổng cộng"]}</b> Pi</p>
             <p>📅 Ngày tạo: {new Date(order.createdAt).toLocaleString()}</p>
 
-            {(order.items || order["mặt hàng"])?.length > 0 && (
+            {order["mặt hàng"]?.length > 0 && (
               <ul className="list-disc ml-6 mt-2 text-gray-700">
-                {(order.items || order["mặt hàng"]).map((item: any, i: number) => (
+                {order["mặt hàng"].map((item: any, i: number) => (
                   <li key={i}>
-                    {item.name || item["tên"]} — {item.price || item["giá"]} Pi × {item.quantity || item["số lượng"]}
+                    {item.name || item["tên"]} — {item["giá"]} Pi ×{" "}
+                    {item["số lượng"]}
                   </li>
                 ))}
               </ul>
