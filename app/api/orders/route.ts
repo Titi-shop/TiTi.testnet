@@ -1,13 +1,42 @@
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
 
+// 🔹 Helper: Đọc danh sách đơn hàng an toàn
+async function readOrders() {
+  try {
+    const stored = await kv.get("orders");
+    if (!stored) return [];
+    if (Array.isArray(stored)) return stored;
+
+    try {
+      return JSON.parse(stored);
+    } catch {
+      console.warn("⚠️ orders trong KV không phải JSON hợp lệ, reset lại.");
+      return [];
+    }
+  } catch (err) {
+    console.error("❌ Lỗi đọc orders:", err);
+    return [];
+  }
+}
+
+// 🔹 Helper: Ghi danh sách đơn hàng an toàn
+async function writeOrders(orders: any[]) {
+  try {
+    await kv.set("orders", JSON.stringify(orders));
+    return true;
+  } catch (err) {
+    console.error("❌ Lỗi ghi orders:", err);
+    return false;
+  }
+}
+
 // ----------------------------
 // 🔹 GET: Lấy danh sách đơn
 // ----------------------------
 export async function GET() {
   try {
-    const data = await kv.get("orders");
-    const orders = Array.isArray(data) ? data : JSON.parse(data || "[]");
+    const orders = await readOrders();
     return NextResponse.json(orders);
   } catch (err) {
     console.error("❌ GET /orders:", err);
@@ -21,10 +50,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const order = await req.json();
-    const stored = await kv.get("orders");
-    const orders = Array.isArray(stored)
-      ? stored
-      : JSON.parse(stored || "[]");
+    const orders = await readOrders();
 
     const newOrder = {
       id: order.id ?? Date.now(),
@@ -37,7 +63,7 @@ export async function POST(req: Request) {
     };
 
     orders.unshift(newOrder);
-    await kv.set("orders", JSON.stringify(orders));
+    await writeOrders(orders);
 
     return NextResponse.json({ success: true, order: newOrder });
   } catch (err) {
@@ -52,25 +78,24 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const { id, status } = await req.json();
-    const stored = await kv.get("orders");
-    const orders = Array.isArray(stored)
-      ? stored
-      : JSON.parse(stored || "[]");
+    const orders = await readOrders();
 
     const index = orders.findIndex((o) => String(o.id) === String(id));
-    if (index === -1)
+    if (index === -1) {
       return NextResponse.json(
         { success: false, message: "Không tìm thấy đơn hàng" },
         { status: 404 }
       );
+    }
 
     orders[index] = {
       ...orders[index],
-      status,
+      status: status || orders[index].status,
       updatedAt: new Date().toISOString(),
     };
 
-    await kv.set("orders", JSON.stringify(orders));
+    await writeOrders(orders);
+
     return NextResponse.json({ success: true, order: orders[index] });
   } catch (err) {
     console.error("❌ PUT /orders:", err);
