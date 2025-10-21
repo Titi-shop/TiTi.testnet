@@ -1,12 +1,13 @@
- "use client";
+"use client";
 
 import { useEffect } from "react";
 
 export default function LoginWithPi() {
   useEffect(() => {
     if (typeof window === "undefined") return;
+
     if (!window.Pi) {
-      console.warn("⚠️ Pi SDK chưa sẵn sàng — hãy mở bằng Pi Browser.");
+      console.warn("⚠️ Pi SDK chưa sẵn sàng — hãy mở trong Pi Browser.");
       return;
     }
 
@@ -22,27 +23,24 @@ export default function LoginWithPi() {
 
         if (authResult?.user?.username) {
           const info = {
+            username: authResult.user.username,
             pi_uid: authResult.user.uid,
-            pi_username: authResult.user.username,
-            wallet: authResult.user.wallet?.address || "",
           };
-          localStorage.setItem("pi_account", JSON.stringify(info));
-          console.log("✅ Đăng nhập Pi thành công:", info.pi_username);
+          localStorage.setItem("user_info", JSON.stringify(info));
+          console.log("✅ Đăng nhập thành công:", info);
 
-          // thông báo toàn app rằng user đã đăng nhập
           window.dispatchEvent(new Event("pi-user-updated"));
         }
       } catch (err) {
-        console.error("❌ Lỗi đăng nhập Pi:", err);
+        console.error("❌ Lỗi Pi login:", err);
       }
     };
 
-    const existing = localStorage.getItem("pi_account");
-    if (!existing) {
+    const current = localStorage.getItem("user_info");
+    if (!current) {
       authenticate();
     } else {
-      const user = JSON.parse(existing);
-      console.log("👤 Đã có tài khoản Pi:", user.pi_username);
+      console.log("👤 Đã có user:", JSON.parse(current).username);
       window.dispatchEvent(new Event("pi-user-updated"));
     }
   }, []);
