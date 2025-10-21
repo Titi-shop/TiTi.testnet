@@ -10,19 +10,27 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       return NextResponse.json({ error: "Thiếu thông tin cập nhật." }, { status: 400 });
     }
 
-    // Lấy danh sách đơn hiện tại
-    const orders = (await kv.get("orders")) || [];
+    // Lấy danh sách đơn hàng từ KV
+    let orders: any[] = [];
+    const stored = await kv.get("orders");
 
-    // Tìm và cập nhật
-    const updatedOrders = orders.map((o: any) =>
-      o.id === id ? { ...o, status } : o
+    if (stored) {
+      try {
+        orders = Array.isArray(stored) ? stored : JSON.parse(stored as string);
+      } catch (e) {
+        console.warn("⚠️ Không thể parse dữ liệu KV:", e);
+      }
+    }
+
+    // Cập nhật đơn hàng theo id
+    const updatedOrders = orders.map((o) =>
+      String(o.id) === String(id) ? { ...o, status } : o
     );
 
-    // Lưu lại
-    await kv.set("orders", updatedOrders);
+    // Ghi lại dữ liệu vào KV
+    await kv.set("orders", JSON.stringify(updatedOrders));
 
-    console.log(`✅ Đơn ${id} đã cập nhật sang trạng thái: ${status}`);
-
+    console.log(`✅ Đơn ${id} cập nhật trạng thái: ${status}`);
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("❌ Lỗi API PATCH:", err);
