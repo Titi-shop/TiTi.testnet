@@ -4,7 +4,7 @@ import { AuthProvider } from "../context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import { LanguageProvider } from "./context/LanguageContext";
 import BottomNav from "../components/BottomNav";
-import LoginWithPi from "../components/LoginWithPi"; // ✅ Thêm dòng này
+import LoginWithPi from "./components/LoginWithPi"; // ✅ Thêm dòng này
 
 export const metadata = {
   title: "TiTi Shop",
