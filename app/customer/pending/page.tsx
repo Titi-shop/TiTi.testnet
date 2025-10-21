@@ -3,42 +3,67 @@
 import { useEffect, useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 
+interface OrderItem {
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+interface Order {
+  id: number;
+  buyer: string;
+  total: number;
+  status: string;
+  note?: string;
+  createdAt: string;
+  items: OrderItem[];
+}
+
 export default function PendingOrdersPage() {
   const { translate } = useLanguage();
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [currentUser, setCurrentUser] = useState<string>("");
 
   // ✅ Lấy username hiện tại từ localStorage
-  const getCurrentUser = (): string => {
+  useEffect(() => {
     try {
       const info = localStorage.getItem("user_info");
-      if (!info) return "";
-      return JSON.parse(info).username || "";
-    } catch {
-      return "";
+      if (!info) {
+        console.warn("⚠️ Không tìm thấy user_info trong localStorage.");
+        return;
+      }
+      const parsed = JSON.parse(info);
+      setCurrentUser(parsed.username || "");
+    } catch (err) {
+      console.error("❌ Lỗi đọc user_info:", err);
     }
-  };
+  }, []);
 
-  // ✅ Lấy danh sách đơn hàng từ API
+  // 🧩 Tải danh sách đơn hàng "Chờ xác nhận" của người dùng hiện tại
   useEffect(() => {
     const fetchOrders = async () => {
+      setLoading(true);
       try {
         const res = await fetch("/api/orders", { cache: "no-store" });
         if (!res.ok) throw new Error("Không thể tải dữ liệu đơn hàng.");
 
-        const data = await res.json();
-        const currentUser = getCurrentUser();
+        const data: Order[] = await res.json();
+        if (!Array.isArray(data)) throw new Error("Dữ liệu đơn hàng không hợp lệ.");
 
-        // ✅ Lọc các đơn có "người mua" là user hiện tại + status = "Chờ xác nhận"
-        const filtered = data.filter((o: any) => {
-          const buyerName = o["người mua"]?.trim() || "";
-          const status = o.status?.toLowerCase() || "";
-          return (
-            buyerName === currentUser &&
-            (status.includes("chờ xác nhận") || status.includes("pending"))
-          );
-        });
+        if (!currentUser) {
+          console.warn("⚠️ Chưa đăng nhập — không thể lọc đơn hàng.");
+          setOrders([]);
+          return;
+        }
+
+        // ✅ Lọc đơn của người dùng hiện tại và đang chờ xác nhận
+        const filtered = data.filter(
+          (o) =>
+            o.buyer?.toLowerCase() === currentUser.toLowerCase() &&
+            ["Chờ xác nhận", "pending", "wait"].includes(o.status)
+        );
 
         setOrders(filtered);
       } catch (err: any) {
@@ -50,9 +75,9 @@ export default function PendingOrdersPage() {
     };
 
     fetchOrders();
-  }, []);
+  }, [currentUser]);
 
-  // 🕓 Đang tải
+  // 🕓 Loading
   if (loading)
     return (
       <p className="text-center mt-10 text-gray-500">
@@ -69,11 +94,19 @@ export default function PendingOrdersPage() {
     );
 
   // 🚫 Không có đơn nào
-  if (orders.length === 0)
+  if (!orders.length)
     return (
-      <p className="text-center mt-10 text-gray-500">
-        {translate("no_orders") || "Không có đơn hàng nào đang chờ xác nhận."}
-      </p>
+      <main className="p-6 max-w-4xl mx-auto text-center">
+        <h1 className="text-2xl font-bold text-yellow-600 mb-2">
+          ⏳ {translate("waiting_confirm") || "Đơn hàng đang chờ xác nhận"}
+        </h1>
+        <p className="text-gray-500 mb-4">
+          {translate("no_products") || "Chưa có đơn hàng chờ xác nhận."}
+        </p>
+        <p className="text-gray-400 text-sm">
+          👤 Người dùng hiện tại: {currentUser || "Chưa đăng nhập"}
+        </p>
+      </main>
     );
 
   // ✅ Hiển thị danh sách đơn hàng
@@ -82,6 +115,10 @@ export default function PendingOrdersPage() {
       <h1 className="text-2xl font-bold mb-6 text-center text-yellow-600">
         ⏳ {translate("waiting_confirm") || "Đơn hàng đang chờ xác nhận"}
       </h1>
+
+      <p className="text-center text-gray-500 mb-4">
+        👤 Người dùng hiện tại: {currentUser || "Chưa đăng nhập"}
+      </p>
 
       <div className="space-y-5">
         {orders.map((order) => (
@@ -92,16 +129,15 @@ export default function PendingOrdersPage() {
             <h2 className="font-semibold text-lg mb-1">
               🧾 Mã đơn: #{order.id}
             </h2>
-            <p>👤 Người mua: <b>{order["người mua"]}</b></p>
-            <p>💰 Tổng tiền: <b>{order["tổng cộng"]}</b> Pi</p>
+            <p>👤 Người mua: <b>{order.buyer}</b></p>
+            <p>💰 Tổng tiền: <b>{order.total}</b> Pi</p>
             <p>📅 Ngày tạo: {new Date(order.createdAt).toLocaleString()}</p>
 
-            {order["mặt hàng"]?.length > 0 && (
+            {order.items?.length > 0 && (
               <ul className="list-disc ml-6 mt-2 text-gray-700">
-                {order["mặt hàng"].map((item: any, i: number) => (
+                {order.items.map((item, i) => (
                   <li key={i}>
-                    {item.name || item["tên"]} — {item["giá"]} Pi ×{" "}
-                    {item["số lượng"]}
+                    {item.name} — {item.price} Pi × {item.quantity}
                   </li>
                 ))}
               </ul>
