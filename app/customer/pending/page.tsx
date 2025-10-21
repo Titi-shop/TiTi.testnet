@@ -1,106 +1,126 @@
-import { NextResponse } from "next/server";
-import { list, del, put } from "@vercel/blob";
+"use client";
 
-const FILE_NAME = "orders.json";
+import { useEffect, useState } from "react";
+import { useLanguage } from "../../context/LanguageContext";
 
-// 🧩 Đọc danh sách đơn hàng
-async function readOrders(): Promise<any[]> {
-  try {
-    const { blobs } = await list();
-    const file = blobs.find((b) => b.pathname === FILE_NAME);
-    if (!file) return [];
-    const res = await fetch(file.url, { cache: "no-store" });
-    if (!res.ok) return [];
-    return await res.json();
-  } catch (err) {
-    console.error("❌ Lỗi đọc orders:", err);
-    return [];
-  }
-}
+export default function PendingOrdersPage() {
+  const { translate } = useLanguage();
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-// 🧩 Ghi danh sách đơn
-async function writeOrders(orders: any[]) {
-  try {
-    const { blobs } = await list();
-    const old = blobs.find((b) => b.pathname === FILE_NAME);
-    if (old) {
-      await del(FILE_NAME);
-      await new Promise((r) => setTimeout(r, 500)); // tránh conflict
+  // ✅ Lấy username hiện tại từ localStorage (chỉ chạy client)
+  const getCurrentUser = (): string => {
+    if (typeof window === "undefined") return "";
+    try {
+      const info = localStorage.getItem("user_info");
+      if (!info) return "";
+      const parsed = JSON.parse(info);
+      return parsed.username || "";
+    } catch (err) {
+      console.error("❌ Lỗi parse user_info:", err);
+      return "";
     }
+  };
 
-    await put(FILE_NAME, JSON.stringify(orders, null, 2), {
-      access: "public",
-      addRandomSuffix: false,
-      contentType: "application/json",
-    });
+  // 🧩 Tải danh sách đơn hàng từ Blob API
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const res = await fetch("/api/orders", { cache: "no-store" });
+        if (!res.ok) throw new Error("Không thể tải dữ liệu đơn hàng.");
 
-    console.log("✅ Đã ghi orders.json:", orders.length);
-  } catch (err) {
-    console.error("❌ Lỗi ghi orders:", err);
-  }
-}
+        const data = await res.json();
+        const currentUser = getCurrentUser();
 
-// ----------------------------
-// 🔹 GET: Lấy danh sách đơn
-// ----------------------------
-export async function GET() {
-  const orders = await readOrders();
-  return NextResponse.json(orders);
-}
+        // ✅ Lọc đơn hàng của người dùng có trạng thái chờ xác nhận
+        const filtered = data.filter((o: any) => {
+          const buyerName = o.buyer || o["người mua"] || "";
+          const status = (o.status || "").toLowerCase();
+          return (
+            buyerName === currentUser &&
+            (status.includes("chờ") || status.includes("pending") || status.includes("wait"))
+          );
+        });
 
-// ----------------------------
-// 🔹 POST: Tạo đơn mới
-// ----------------------------
-export async function POST(req: Request) {
-  try {
-    const order = await req.json();
-    const orders = await readOrders();
-
-    const newOrder = {
-      id: order.id ?? Date.now(),
-      buyer: order.buyer || "unknown",          // ✅ giữ buyer
-      items: order.items ?? [],                 // ✅ giữ items
-      total: order.total ?? 0,                  // ✅ giữ tổng tiền
-      status: order.status ?? "Chờ xác nhận",   // ✅ chuẩn hoá status
-      note: order.note ?? "",                   // tuỳ chọn
-      createdAt: order.createdAt ?? new Date().toISOString(),
+        setOrders(filtered);
+      } catch (err: any) {
+        console.error("❌ Lỗi tải đơn hàng:", err);
+        setError(err.message || "Không thể tải danh sách đơn hàng.");
+      } finally {
+        setLoading(false);
+      }
     };
 
-    orders.unshift(newOrder);
-    await writeOrders(orders);
+    fetchOrders();
+  }, []);
 
-    return NextResponse.json({ success: true, order: newOrder });
-  } catch (err) {
-    console.error("❌ POST /orders:", err);
-    return NextResponse.json({ success: false }, { status: 500 });
-  }
-}
+  // 🕓 Trạng thái đang tải
+  if (loading)
+    return (
+      <p className="text-center mt-10 text-gray-500">
+        ⏳ {translate("loading") || "Đang tải đơn hàng..."}
+      </p>
+    );
 
-// ----------------------------
-// 🔹 PUT: Cập nhật trạng thái
-// ----------------------------
-export async function PUT(req: Request) {
-  try {
-    const { id, status } = await req.json();
-    const orders = await readOrders();
+  // ⚠️ Khi xảy ra lỗi
+  if (error)
+    return (
+      <p className="text-center mt-10 text-red-500">
+        ❌ {error}
+      </p>
+    );
 
-    const index = orders.findIndex((o) => Number(o.id) === Number(id));
-    if (index === -1)
-      return NextResponse.json(
-        { success: false, message: "Không tìm thấy đơn hàng" },
-        { status: 404 }
-      );
+  // 🚫 Khi không có đơn hàng nào
+  if (orders.length === 0)
+    return (
+      <p className="text-center mt-10 text-gray-500">
+        {translate("no_orders") || "Chưa có đơn hàng chờ xác nhận."}
+      </p>
+    );
 
-    orders[index] = {
-      ...orders[index],
-      status,
-      updatedAt: new Date().toISOString(),
-    };
+  // ✅ Hiển thị danh sách đơn hàng
+  return (
+    <main className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6 text-center text-yellow-600">
+        ⏳ {translate("waiting_confirm") || "Đơn hàng đang chờ xác nhận"}
+      </h1>
 
-    await writeOrders(orders);
-    return NextResponse.json({ success: true, order: orders[index] });
-  } catch (err) {
-    console.error("❌ PUT /orders:", err);
-    return NextResponse.json({ success: false }, { status: 500 });
-  }
+      <div className="space-y-5">
+        {orders.map((order) => (
+          <div
+            key={order.id}
+            className="border border-gray-200 rounded-lg p-4 bg-white shadow hover:shadow-lg transition"
+          >
+            <h2 className="font-semibold text-lg mb-1">
+              🧾 Mã đơn: #{order.id}
+            </h2>
+            <p>👤 {translate("buyer") || "Người mua"}: <b>{order.buyer || order["người mua"]}</b></p>
+            <p>💰 {translate("total") || "Tổng tiền"}: <b>{order.total}</b> Pi</p>
+            <p>📅 {translate("created_at") || "Ngày tạo"}: {new Date(order.createdAt).toLocaleString("vi-VN")}</p>
+
+            {order.items?.length > 0 && (
+              <ul className="list-disc ml-6 mt-2 text-gray-700">
+                {order.items.map((item: any, i: number) => (
+                  <li key={i}>
+                    {item.name || item.tên} — {item.price || item.giá} Pi × {item.quantity || item["số lượng"]}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <p className="mt-3 text-yellow-600 font-medium">
+              {translate("status") || "Trạng thái"}: {order.status}
+            </p>
+
+            {order.note && (
+              <p className="mt-1 text-gray-500 italic text-sm">
+                📝 {translate("note") || "Ghi chú"}: {order.note}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </main>
+  );
 }
