@@ -1,117 +1,82 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useLanguage } from "../../context/LanguageContext";
 
-export default function PendingOrdersPage() {
-  const { translate } = useLanguage();
+export default function PendingOrders() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [user, setUser] = useState("guest");
 
-  // ✅ Lấy username hiện tại từ localStorage
-  const getCurrentUser = (): string => {
-    try {
-      const info = localStorage.getItem("user_info");
-      if (!info) return "";
-      return JSON.parse(info).username || "";
-    } catch {
-      return "";
-    }
-  };
-
-  // 🧩 Tải danh sách đơn hàng chờ xác nhận
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const res = await fetch("/api/orders", { cache: "no-store" });
-        if (!res.ok) throw new Error("Không thể tải dữ liệu đơn hàng.");
-        const data = await res.json();
+    const info = localStorage.getItem("user_info");
+    if (info) {
+      const parsed = JSON.parse(info);
+      setUser(parsed.username || "guest");
+    }
 
-        const currentUser = getCurrentUser();
-
-        // ✅ Lọc đơn hàng của người dùng hiện tại có trạng thái "Chờ xác nhận"
+    fetch("/api/orders")
+      .then((res) => res.json())
+      .then((data) => {
         const filtered = data.filter(
           (o: any) =>
-            ["Chờ xác nhận", "pending", "wait"].includes(o.status) &&
-            o.buyer === currentUser
+            o["người mua"] === (parsed?.username || "guest") ||
+            o.buyer === (parsed?.username || "guest")
         );
-
         setOrders(filtered);
-      } catch (err: any) {
-        console.error("❌ Lỗi tải đơn hàng:", err);
-        setError(err.message || "Không thể tải danh sách đơn hàng.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOrders();
+      })
+      .catch((err) => console.error("❌ Lỗi tải đơn:", err))
+      .finally(() => setLoading(false));
   }, []);
 
-  // 🕓 Loading
   if (loading)
     return (
-      <p className="text-center mt-10 text-gray-500">
-        ⏳ {translate("loading") || "Đang tải đơn hàng..."}
-      </p>
+      <p className="text-center mt-10 text-gray-600">Đang tải đơn hàng...</p>
     );
 
-  // ⚠️ Lỗi
-  if (error)
-    return (
-      <p className="text-center mt-10 text-red-500">
-        ❌ {error}
-      </p>
-    );
-
-  // 🚫 Không có đơn nào
   if (orders.length === 0)
     return (
       <p className="text-center mt-10 text-gray-500">
-        {translate("no_products") || "Chưa có đơn hàng chờ xác nhận."}
+        Bạn chưa có đơn hàng nào đang chờ.
       </p>
     );
 
-  // ✅ Hiển thị danh sách đơn hàng
   return (
-    <main className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6 text-center text-yellow-600">
-        ⏳ {translate("waiting_confirm") || "Đơn hàng đang chờ xác nhận"}
-      </h1>
-
-      <div className="space-y-5">
-        {orders.map((order) => (
+    <main className="max-w-3xl mx-auto p-4">
+      <h1 className="text-xl font-bold text-center mb-6">🕓 Đơn hàng chờ xác nhận</h1>
+      <div className="space-y-4">
+        {orders.map((order, idx) => (
           <div
-            key={order.id}
-            className="border border-gray-200 rounded-lg p-4 bg-white shadow hover:shadow-lg transition"
+            key={idx}
+            className="border rounded-lg p-4 shadow bg-white hover:shadow-lg transition"
           >
-            <h2 className="font-semibold text-lg mb-1">
-              🧾 Mã đơn: #{order.id}
-            </h2>
-            <p>👤 Người mua: <b>{order.buyer}</b></p>
-            <p>💰 Tổng tiền: <b>{order.total}</b> Pi</p>
-            <p>📅 Ngày tạo: {new Date(order.createdAt).toLocaleString()}</p>
-
-            {order.items?.length > 0 && (
-              <ul className="list-disc ml-6 mt-2 text-gray-700">
-                {order.items.map((item: any, i: number) => (
-                  <li key={i}>
-                    {item.name} — {item.price} Pi × {item.quantity}
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <p className="mt-3 text-yellow-600 font-medium">
-              Trạng thái: {order.status}
+            <p>
+              <b>Người mua:</b> {order["người mua"] || order.buyer}
             </p>
-
-            {order.note && (
-              <p className="mt-1 text-gray-500 italic text-sm">
-                📝 {order.note}
-              </p>
-            )}
+            <p>
+              <b>Trạng thái:</b> {order.status}
+            </p>
+            <p>
+              <b>Tổng cộng:</b> {order["tổng cộng"] || order.total} Pi
+            </p>
+            <p className="text-gray-500 text-sm">
+              Ngày: {new Date(order.createdAt).toLocaleString()}
+            </p>
+            <hr className="my-2" />
+            {order["mặt hàng"]?.map((item: any, i: number) => (
+              <div key={i} className="flex items-center gap-3">
+                <img
+                  src={item["hình ảnh"]}
+                  alt={item["tên"]}
+                  className="w-16 h-16 rounded-md object-cover border"
+                />
+                <div>
+                  <p className="font-semibold">{item["tên"]}</p>
+                  <p className="text-sm text-gray-600">
+                    Giá: {item["giá"]} Pi × SL: {item["số lượng"]}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         ))}
       </div>
