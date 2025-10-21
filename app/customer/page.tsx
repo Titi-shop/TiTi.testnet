@@ -35,6 +35,7 @@ export default function CustomerDashboard() {
     router.push(path);
   };
 
+  // ✅ Đăng xuất khỏi Pi nhưng vẫn ở lại trang customer
   const handleLogoutPi = async () => {
     try {
       if (
@@ -43,19 +44,23 @@ export default function CustomerDashboard() {
         typeof window.Pi.logout === "function"
       ) {
         await window.Pi.logout();
-        console.log("Đã đăng xuất khỏi Pi Network session");
+        console.log("✅ Đã đăng xuất khỏi Pi Network session");
       }
 
+      // Xóa toàn bộ dữ liệu user
       localStorage.removeItem("pi_user");
       localStorage.removeItem("user_info");
       localStorage.removeItem("titi_is_logged_in");
+      localStorage.removeItem("titi_username");
 
       if (logout) logout();
 
-      router.replace("/pilogin");
+      // ⚠️ Không chuyển hướng — chỉ cập nhật lại giao diện
+      setUsername("guest_user");
+      alert("🚪 Bạn đã đăng xuất khỏi tài khoản Pi Network!");
     } catch (err) {
-      console.error("Lỗi đăng xuất:", err);
-      router.replace("/pilogin");
+      console.error("❌ Lỗi khi đăng xuất:", err);
+      alert("Không thể đăng xuất khỏi Pi Network!");
     }
   };
 
@@ -143,6 +148,7 @@ export default function CustomerDashboard() {
             <span className="text-sm mt-1">{translate("review")}</span>
           </button>
 
+          {/* 🔸 Nút đăng xuất - vẫn ở lại trang */}
           <button
             onClick={handleLogoutPi}
             className="flex flex-col items-center text-red-600 hover:text-red-700"
