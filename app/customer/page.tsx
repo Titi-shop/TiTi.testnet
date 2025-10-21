@@ -1,7 +1,6 @@
 "use client";
 
 import { useLanguage } from "../context/LanguageContext";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
@@ -64,25 +63,31 @@ export default function CustomerDashboard() {
     <div className="min-h-screen bg-gray-100">
       {/* ===== Thông tin người dùng ===== */}
       <div className="bg-orange-500 text-white p-6 text-center shadow relative">
-        <div
-          className="flex flex-col items-center justify-center cursor-pointer hover:opacity-90 transition"
-          onClick={() => router.push("/customer/profile")}
-        >
-          <div className="w-16 h-16 bg-white rounded-full mb-3 flex items-center justify-center text-orange-500 font-bold text-xl">
+        <div className="flex flex-col items-center justify-center">
+          {/* 🔸 Nút avatar chuyển đến trang hồ sơ */}
+          <button
+            onClick={() => router.push("/customer/profile")}
+            className="w-16 h-16 bg-white rounded-full mb-3 flex items-center justify-center 
+                       text-orange-500 font-bold text-xl hover:opacity-90 transition 
+                       shadow-md active:scale-95"
+            title="Xem hồ sơ cá nhân"
+          >
             {username.charAt(0).toUpperCase()}
-          </div>
+          </button>
+
           <h1 className="text-xl font-semibold">{username}</h1>
           <p className="text-sm opacity-90 mt-1">
             {translate("customer_title")}
           </p>
 
-          {/* 🔸 Đổi nút “Tài khoản” → “Đăng nhập” */}
+          {/* 🔸 Nút đăng nhập */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               router.push("/pilogin");
             }}
-            className="mt-3 bg-white text-orange-600 text-sm px-4 py-1 rounded-full flex items-center gap-1 hover:bg-gray-100 transition"
+            className="mt-3 bg-white text-orange-600 text-sm px-4 py-1 rounded-full 
+                       flex items-center gap-1 hover:bg-gray-100 transition"
           >
             <User size={16} />
             Đăng nhập
