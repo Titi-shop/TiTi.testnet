@@ -4,6 +4,7 @@ import { AuthProvider } from "../context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import { LanguageProvider } from "./context/LanguageContext";
 import BottomNav from "../components/BottomNav";
+import LoginWithPi from "../components/LoginWithPi"; // ✅ Thêm dòng này
 
 export const metadata = {
   title: "TiTi Shop",
@@ -25,11 +26,15 @@ export default function RootLayout({
         />
         <Script id="pi-init" strategy="afterInteractive">
           {`
-            if (typeof window !== "undefined" && window.Pi) {
-              console.log("✅ Pi SDK loaded:", window.Pi);
-              window.Pi.init({ version: "2.0" });
-            } else {
-              console.warn("⚠️ Pi SDK chưa load, hãy mở bằng Pi Browser.");
+            if (typeof window !== "undefined") {
+              window.addEventListener("load", () => {
+                if (window.Pi) {
+                  console.log("✅ Pi SDK loaded:", window.Pi);
+                  window.Pi.init({ version: "2.0" });
+                } else {
+                  console.warn("⚠️ Pi SDK chưa load, hãy mở bằng Pi Browser.");
+                }
+              });
             }
           `}
         </Script>
@@ -41,6 +46,9 @@ export default function RootLayout({
           {/* ✅ Bao Auth và Giỏ hàng bên trong để chúng cũng đọc được ngôn ngữ */}
           <AuthProvider>
             <CartProvider>
+              {/* ✅ Tự động đăng nhập Pi */}
+              <LoginWithPi />
+
               {/* ✅ Nội dung chính */}
               {children}
 
