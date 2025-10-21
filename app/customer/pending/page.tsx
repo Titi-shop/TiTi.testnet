@@ -9,21 +9,18 @@ export default function PendingOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // ✅ Lấy username hiện tại từ localStorage (chỉ chạy client)
+  // ✅ Lấy username hiện tại từ localStorage
   const getCurrentUser = (): string => {
-    if (typeof window === "undefined") return "";
     try {
       const info = localStorage.getItem("user_info");
       if (!info) return "";
-      const parsed = JSON.parse(info);
-      return parsed.username || "";
-    } catch (err) {
-      console.error("❌ Lỗi parse user_info:", err);
+      return JSON.parse(info).username || "";
+    } catch {
       return "";
     }
   };
 
-  // 🧩 Tải danh sách đơn hàng từ Blob API
+  // 🧩 Lấy danh sách đơn hàng từ API
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -33,13 +30,15 @@ export default function PendingOrdersPage() {
         const data = await res.json();
         const currentUser = getCurrentUser();
 
-        // ✅ Lọc đơn hàng của người dùng có trạng thái chờ xác nhận
+        // ✅ Hỗ trợ cả dữ liệu cũ và mới
         const filtered = data.filter((o: any) => {
           const buyerName = o.buyer || o["người mua"] || "";
           const status = (o.status || "").toLowerCase();
           return (
             buyerName === currentUser &&
-            (status.includes("chờ") || status.includes("pending") || status.includes("wait"))
+            (status.includes("chờ") ||
+              status.includes("pending") ||
+              status.includes("wait"))
           );
         });
 
@@ -55,7 +54,7 @@ export default function PendingOrdersPage() {
     fetchOrders();
   }, []);
 
-  // 🕓 Trạng thái đang tải
+  // 🕓 Loading
   if (loading)
     return (
       <p className="text-center mt-10 text-gray-500">
@@ -63,7 +62,7 @@ export default function PendingOrdersPage() {
       </p>
     );
 
-  // ⚠️ Khi xảy ra lỗi
+  // ⚠️ Lỗi
   if (error)
     return (
       <p className="text-center mt-10 text-red-500">
@@ -71,15 +70,15 @@ export default function PendingOrdersPage() {
       </p>
     );
 
-  // 🚫 Khi không có đơn hàng nào
+  // 🚫 Không có đơn
   if (orders.length === 0)
     return (
       <p className="text-center mt-10 text-gray-500">
-        {translate("no_orders") || "Chưa có đơn hàng chờ xác nhận."}
+        {translate("no_orders") || "Không có đơn hàng nào đang chờ."}
       </p>
     );
 
-  // ✅ Hiển thị danh sách đơn hàng
+  // ✅ Hiển thị danh sách đơn
   return (
     <main className="p-6 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6 text-center text-yellow-600">
@@ -95,27 +94,27 @@ export default function PendingOrdersPage() {
             <h2 className="font-semibold text-lg mb-1">
               🧾 Mã đơn: #{order.id}
             </h2>
-            <p>👤 {translate("buyer") || "Người mua"}: <b>{order.buyer || order["người mua"]}</b></p>
-            <p>💰 {translate("total") || "Tổng tiền"}: <b>{order.total}</b> Pi</p>
-            <p>📅 {translate("created_at") || "Ngày tạo"}: {new Date(order.createdAt).toLocaleString("vi-VN")}</p>
+            <p>👤 Người mua: <b>{order.buyer || order["người mua"]}</b></p>
+            <p>💰 Tổng tiền: <b>{order.total || order["tổng cộng"]}</b> Pi</p>
+            <p>📅 Ngày tạo: {new Date(order.createdAt).toLocaleString()}</p>
 
-            {order.items?.length > 0 && (
+            {(order.items || order["mặt hàng"])?.length > 0 && (
               <ul className="list-disc ml-6 mt-2 text-gray-700">
-                {order.items.map((item: any, i: number) => (
+                {(order.items || order["mặt hàng"]).map((item: any, i: number) => (
                   <li key={i}>
-                    {item.name || item.tên} — {item.price || item.giá} Pi × {item.quantity || item["số lượng"]}
+                    {item.name || item["tên"]} — {item.price || item["giá"]} Pi × {item.quantity || item["số lượng"]}
                   </li>
                 ))}
               </ul>
             )}
 
             <p className="mt-3 text-yellow-600 font-medium">
-              {translate("status") || "Trạng thái"}: {order.status}
+              Trạng thái: {order.status}
             </p>
 
             {order.note && (
               <p className="mt-1 text-gray-500 italic text-sm">
-                📝 {translate("note") || "Ghi chú"}: {order.note}
+                📝 {order.note}
               </p>
             )}
           </div>
