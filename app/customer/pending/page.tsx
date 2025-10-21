@@ -1,85 +1,106 @@
-"use client";
+import { NextResponse } from "next/server";
+import { list, del, put } from "@vercel/blob";
 
-import { useEffect, useState } from "react";
+const FILE_NAME = "orders.json";
 
-export default function PendingOrders() {
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState("guest");
+// 🧩 Đọc danh sách đơn hàng
+async function readOrders(): Promise<any[]> {
+  try {
+    const { blobs } = await list();
+    const file = blobs.find((b) => b.pathname === FILE_NAME);
+    if (!file) return [];
+    const res = await fetch(file.url, { cache: "no-store" });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (err) {
+    console.error("❌ Lỗi đọc orders:", err);
+    return [];
+  }
+}
 
-  useEffect(() => {
-    const info = localStorage.getItem("user_info");
-    if (info) {
-      const parsed = JSON.parse(info);
-      setUser(parsed.username || "guest");
+// 🧩 Ghi danh sách đơn
+async function writeOrders(orders: any[]) {
+  try {
+    const { blobs } = await list();
+    const old = blobs.find((b) => b.pathname === FILE_NAME);
+    if (old) {
+      await del(FILE_NAME);
+      await new Promise((r) => setTimeout(r, 500)); // tránh conflict
     }
 
-    fetch("/api/orders")
-      .then((res) => res.json())
-      .then((data) => {
-        const filtered = data.filter(
-          (o: any) =>
-            o["người mua"] === (parsed?.username || "guest") ||
-            o.buyer === (parsed?.username || "guest")
-        );
-        setOrders(filtered);
-      })
-      .catch((err) => console.error("❌ Lỗi tải đơn:", err))
-      .finally(() => setLoading(false));
-  }, []);
+    await put(FILE_NAME, JSON.stringify(orders, null, 2), {
+      access: "public",
+      addRandomSuffix: false,
+      contentType: "application/json",
+    });
 
-  if (loading)
-    return (
-      <p className="text-center mt-10 text-gray-600">Đang tải đơn hàng...</p>
-    );
+    console.log("✅ Đã ghi orders.json:", orders.length);
+  } catch (err) {
+    console.error("❌ Lỗi ghi orders:", err);
+  }
+}
 
-  if (orders.length === 0)
-    return (
-      <p className="text-center mt-10 text-gray-500">
-        Bạn chưa có đơn hàng nào đang chờ.
-      </p>
-    );
+// ----------------------------
+// 🔹 GET: Lấy danh sách đơn
+// ----------------------------
+export async function GET() {
+  const orders = await readOrders();
+  return NextResponse.json(orders);
+}
 
-  return (
-    <main className="max-w-3xl mx-auto p-4">
-      <h1 className="text-xl font-bold text-center mb-6">🕓 Đơn hàng chờ xác nhận</h1>
-      <div className="space-y-4">
-        {orders.map((order, idx) => (
-          <div
-            key={idx}
-            className="border rounded-lg p-4 shadow bg-white hover:shadow-lg transition"
-          >
-            <p>
-              <b>Người mua:</b> {order["người mua"] || order.buyer}
-            </p>
-            <p>
-              <b>Trạng thái:</b> {order.status}
-            </p>
-            <p>
-              <b>Tổng cộng:</b> {order["tổng cộng"] || order.total} Pi
-            </p>
-            <p className="text-gray-500 text-sm">
-              Ngày: {new Date(order.createdAt).toLocaleString()}
-            </p>
-            <hr className="my-2" />
-            {order["mặt hàng"]?.map((item: any, i: number) => (
-              <div key={i} className="flex items-center gap-3">
-                <img
-                  src={item["hình ảnh"]}
-                  alt={item["tên"]}
-                  className="w-16 h-16 rounded-md object-cover border"
-                />
-                <div>
-                  <p className="font-semibold">{item["tên"]}</p>
-                  <p className="text-sm text-gray-600">
-                    Giá: {item["giá"]} Pi × SL: {item["số lượng"]}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-    </main>
-  );
+// ----------------------------
+// 🔹 POST: Tạo đơn mới
+// ----------------------------
+export async function POST(req: Request) {
+  try {
+    const order = await req.json();
+    const orders = await readOrders();
+
+    const newOrder = {
+      id: order.id ?? Date.now(),
+      buyer: order.buyer || "unknown",          // ✅ giữ buyer
+      items: order.items ?? [],                 // ✅ giữ items
+      total: order.total ?? 0,                  // ✅ giữ tổng tiền
+      status: order.status ?? "Chờ xác nhận",   // ✅ chuẩn hoá status
+      note: order.note ?? "",                   // tuỳ chọn
+      createdAt: order.createdAt ?? new Date().toISOString(),
+    };
+
+    orders.unshift(newOrder);
+    await writeOrders(orders);
+
+    return NextResponse.json({ success: true, order: newOrder });
+  } catch (err) {
+    console.error("❌ POST /orders:", err);
+    return NextResponse.json({ success: false }, { status: 500 });
+  }
+}
+
+// ----------------------------
+// 🔹 PUT: Cập nhật trạng thái
+// ----------------------------
+export async function PUT(req: Request) {
+  try {
+    const { id, status } = await req.json();
+    const orders = await readOrders();
+
+    const index = orders.findIndex((o) => Number(o.id) === Number(id));
+    if (index === -1)
+      return NextResponse.json(
+        { success: false, message: "Không tìm thấy đơn hàng" },
+        { status: 404 }
+      );
+
+    orders[index] = {
+      ...orders[index],
+      status,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await writeOrders(orders);
+    return NextResponse.json({ success: true, order: orders[index] });
+  } catch (err) {
+    console.error("❌ PUT /orders:", err);
+    return NextResponse.json({ success: false }, { status: 500 });
+  }
 }
