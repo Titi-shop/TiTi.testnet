@@ -170,27 +170,7 @@ export default function ProductDetail() {
           onClick={handleCheckout}
           className="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-2 rounded-lg w-1/2 mx-2"
         >
-          💳 Mua ngay
-        </button>
-      </div>
-
-      {/* 🪟 Modal chọn số lượng + nút thêm giỏ hàng và mua ngay */}
-      {showModal && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50"
-          onClick={() => setShowModal(false)}
-        >
-          <motion.div
-            initial={{ y: 300 }}
-            animate={{ y: 0 }}
-            exit={{ y: 300 }}
-            transition={{ duration: 0.3 }}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white w-full max-w-md rounded-t-2xl p-5"
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">{product.name}</h3>
-              <button
+      
                 onClick={() => setShowModal(false)}
                 className="text-gray-500 hover:text-red-500 text-2xl font-bold"
               >
