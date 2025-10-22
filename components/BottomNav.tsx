@@ -15,8 +15,7 @@ export default function BottomNav() {
     { href: "/shop", label: translate("category") || "Danh mục", icon: Grid },
     { href: "/search", label: translate("search") || "Tìm kiếm", icon: Search },
     { href: "/notifications", label: translate("notifications") || "Thông báo", icon: Bell },
-    // ✅ Giữ nguyên icon User, chỉ đổi đường dẫn sang /customer
-    { href: "/customer", label: translate("account") || "Tài khoản", icon: User },
+    { href: "/account", label: translate("account") || "Tài khoản", icon: User },
   ];
 
   return (
