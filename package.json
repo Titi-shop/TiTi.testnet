@@ -9,7 +9,6 @@
     "start": "next start"
   },
   "dependencies": {
-    "@pi-network/pi-sdk": "latest",
     "@vercel/blob": "^2.0.0",
     "@vercel/kv": "latest",
     "@vercel/speed-insights": "latest",
