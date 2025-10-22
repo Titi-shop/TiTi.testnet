@@ -4,16 +4,15 @@ import React, { useEffect, useState } from "react";
 
 export default function CheckoutPage() {
   const [user, setUser] = useState<{ username: string } | null>(null);
-  const [isPaying, setIsPaying] = useState(false);
   const [sdkLoaded, setSdkLoaded] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
 
   const [country, setCountry] = useState("");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
-
   const [product, setProduct] = useState<any>(null);
 
-  // 🧩 Lấy thông tin người dùng Pi từ localStorage
+  // 🧠 1. Lấy thông tin user từ localStorage
   useEffect(() => {
     try {
       const stored = localStorage.getItem("pi_user");
@@ -22,11 +21,26 @@ export default function CheckoutPage() {
         setUser(parsed.user || null);
       }
     } catch (err) {
-      console.error("Error reading user:", err);
+      console.error("User parse error:", err);
     }
   }, []);
 
-  // 🧩 Lấy sản phẩm demo
+  // 🧠 2. Lấy thông tin profile nếu có
+  useEffect(() => {
+    try {
+      const profile = localStorage.getItem("titi_profile");
+      if (profile) {
+        const parsed = JSON.parse(profile);
+        setCountry(parsed.country || "");
+        setAddress(parsed.address || "");
+        setPhone(parsed.phone || "");
+      }
+    } catch (err) {
+      console.error("Profile parse error:", err);
+    }
+  }, []);
+
+  // 🧩 3. Lấy sản phẩm mẫu
   useEffect(() => {
     fetch("/api/products")
       .then((res) => res.json())
@@ -38,14 +52,14 @@ export default function CheckoutPage() {
       .catch((err) => console.error("Fetch product error:", err));
   }, []);
 
-  // 🧩 Khởi tạo SDK Pi
+  // 🧩 4. Khởi tạo SDK
   useEffect(() => {
     if (typeof window !== "undefined" && window.Pi && !sdkLoaded) {
       try {
         window.Pi.init({
           version: "2.0",
-          sandbox: true, // ⚠️ Testnet mode
-          appId: "muasam.titi.onl", // 🔹 Thay bằng App ID thật của bạn
+          sandbox: true,
+          appId: "muasam.titi.onl",
         });
         setSdkLoaded(true);
       } catch (err) {
@@ -54,31 +68,16 @@ export default function CheckoutPage() {
     }
   }, [sdkLoaded]);
 
-  // 🧾 Xử lý thanh toán
+  // 🧾 5. Hàm thanh toán
   const handlePayment = async () => {
-    if (typeof window === "undefined" || !window.Pi) {
-      alert("⚠️ Vui lòng mở trong Pi Browser để thanh toán!");
+    if (!sdkLoaded || !window.Pi) {
+      alert("⚠️ SDK Pi chưa sẵn sàng! Hãy đợi vài giây rồi thử lại.");
       return;
     }
 
-    // ✅ Bắt buộc xác thực lại với scope "payments"
-    let auth;
-    try {
-      auth = await window.Pi.authenticate(
-        ["username", "payments", "wallet_address"],
-        () => {}
-      );
-      console.log("🔐 Re-authenticated:", auth);
-    } catch (err) {
-      console.error("Auth error:", err);
-      alert("Không thể xác thực Pi user. Hãy đăng nhập lại.");
+    if (!user) {
+      alert("⚠️ Bạn cần đăng nhập bằng Pi trước!");
       window.location.href = "/pilogin";
-      return;
-    }
-
-    const username = auth?.user?.username;
-    if (!username) {
-      alert("Không tìm thấy tài khoản Pi, vui lòng đăng nhập lại!");
       return;
     }
 
@@ -87,27 +86,33 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (!product) {
-      alert("⚠️ Không tìm thấy sản phẩm!");
-      return;
-    }
+    // 💾 Lưu lại thông tin người dùng
+    localStorage.setItem(
+      "titi_profile",
+      JSON.stringify({ country, address, phone })
+    );
 
     setIsPaying(true);
 
     try {
+      const auth = await window.Pi.authenticate(
+        ["username", "payments", "wallet_address"],
+        () => {}
+      );
+      const username = auth?.user?.username || "unknown_user";
+
       const paymentData = {
-        amount: product.price || 0.97,
-        memo: `Mua hàng: ${product.name}`,
+        amount: product?.price || 0.97,
+        memo: `Thanh toán sản phẩm: ${product?.name}`,
         metadata: {
           buyer: username,
           country,
           address,
           phone,
-          productId: product.id,
+          productId: product?.id,
         },
       };
 
-      // 🧩 Gọi API duyệt & hoàn tất thanh toán
       const callbacks = {
         onReadyForServerApproval: async (paymentId: string) => {
           console.log("✅ Approving payment:", paymentId);
@@ -126,20 +131,20 @@ export default function CheckoutPage() {
           });
           alert("🎉 Thanh toán thành công!");
         },
-        onCancel: (id: string) => alert("❌ Bạn đã hủy giao dịch."),
+        onCancel: () => alert("❌ Giao dịch đã bị hủy."),
         onError: (error: any) => alert("💥 Lỗi thanh toán: " + error.message),
       };
 
       await window.Pi.createPayment(paymentData, callbacks);
     } catch (err: any) {
-      console.error("Payment failed:", err);
-      alert("Thanh toán thất bại: " + (err?.message || JSON.stringify(err)));
+      console.error("Payment error:", err);
+      alert("Thanh toán thất bại: " + (err?.message || "Không rõ lỗi."));
     } finally {
       setIsPaying(false);
     }
   };
 
-  // 🧱 Giao diện chính
+  // 🧱 Giao diện
   return (
     <main className="min-h-screen bg-gray-100 flex justify-center py-10 px-4">
       <div className="bg-white w-full max-w-md rounded-2xl shadow-lg p-6 space-y-6">
@@ -199,16 +204,16 @@ export default function CheckoutPage() {
         <div className="border-t border-gray-200"></div>
 
         <div className="flex justify-between text-lg font-semibold">
-          <span>Total:</span>
+          <span>Tổng:</span>
           <span>π{product?.price || 0.97}</span>
         </div>
 
         <button
           onClick={handlePayment}
-          disabled={isPaying}
+          disabled={isPaying || !sdkLoaded}
           className="w-full bg-orange-500 text-white py-3 rounded-xl font-medium hover:bg-orange-600 disabled:opacity-50"
         >
-          {isPaying ? "Processing..." : "Pay with Pi (Testnet)"}
+          {isPaying ? "Đang xử lý..." : "Thanh toán bằng Pi (Testnet)"}
         </button>
       </div>
     </main>
