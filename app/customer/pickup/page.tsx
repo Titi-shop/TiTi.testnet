@@ -1,30 +1,66 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useLanguage } from "../../context/LanguageContext";
 
 export default function PickupOrdersPage() {
-  const { translate: t, language } = useLanguage(); // ✅ hook ngôn ngữ
+  const router = useRouter();
+  const { translate: t, language } = useLanguage();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<string>("guest_user");
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
 
+  // ✅ Lấy thông tin đăng nhập từ localStorage (đồng bộ với Pi Login)
   useEffect(() => {
+    try {
+      const stored = localStorage.getItem("pi_user");
+      const logged = localStorage.getItem("titi_is_logged_in");
+
+      if (stored && logged === "true") {
+        const parsed = JSON.parse(stored);
+        const username = parsed?.user?.username || parsed?.username || "guest_user";
+        setCurrentUser(username);
+        setIsLoggedIn(true);
+      } else {
+        setIsLoggedIn(false);
+      }
+    } catch (err) {
+      console.error("❌ Lỗi khi đọc thông tin Pi login:", err);
+      setIsLoggedIn(false);
+    }
+  }, []);
+
+  // ✅ Tải đơn hàng của người dùng hiện tại
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setLoading(false);
+      return;
+    }
     fetchOrders();
-  }, [language]); // ✅ refetch nếu đổi ngôn ngữ
+  }, [language, isLoggedIn]);
 
   const fetchOrders = async () => {
     try {
       const res = await fetch("/api/orders");
+      if (!res.ok) throw new Error("Không thể tải danh sách đơn hàng.");
+
       const data = await res.json();
 
-      // ✅ Lọc các đơn hàng theo trạng thái có thể dịch
+      // ✅ Lọc đơn hàng theo ngôn ngữ và người mua
       const filterByLang = {
         vi: ["Đang giao", "Chờ lấy hàng"],
         en: ["Delivering", "Waiting for pickup"],
         zh: ["配送中", "等待取货"],
       }[language];
 
-      const filtered = data.filter((o: any) => filterByLang.includes(o.status));
+      const filtered = data.filter(
+        (o: any) =>
+          filterByLang.includes(o.status) &&
+          o.buyer?.toLowerCase() === currentUser.toLowerCase()
+      );
+
       setOrders(filtered);
     } catch (error) {
       console.error("❌ Lỗi tải đơn hàng:", error);
@@ -33,6 +69,7 @@ export default function PickupOrdersPage() {
     }
   };
 
+  // ✅ Nếu đang tải
   if (loading)
     return (
       <p className="text-center mt-6">
@@ -40,6 +77,23 @@ export default function PickupOrdersPage() {
       </p>
     );
 
+  // ✅ Nếu chưa đăng nhập
+  if (!isLoggedIn)
+    return (
+      <main className="p-6 text-center">
+        <h2 className="text-xl text-red-600 mb-3">
+          🔐 {t("login_required") || "Vui lòng đăng nhập bằng Pi Network"}
+        </h2>
+        <button
+          onClick={() => router.push("/pilogin")}
+          className="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+        >
+          👉 {t("go_to_login") || "Đăng nhập ngay"}
+        </button>
+      </main>
+    );
+
+  // ✅ Hiển thị danh sách đơn
   return (
     <main className="p-6 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-4 text-center text-orange-600">
@@ -58,6 +112,8 @@ export default function PickupOrdersPage() {
             : language === "en"
             ? "You have no orders currently delivering or waiting for pickup."
             : "您当前没有正在配送或等待取货的订单。"}
+          <br />
+          👤 {t("current_user") || "Tài khoản"}: <b>{currentUser}</b>
         </p>
       ) : (
         <div className="space-y-4">
