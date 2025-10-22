@@ -9,17 +9,18 @@
     "start": "next start"
   },
   "dependencies": {
+    "@pi-network/pi-sdk": "latest",
     "@vercel/blob": "^2.0.0",
+    "@vercel/kv": "latest",
     "@vercel/speed-insights": "latest",
     "axios": "^1.12.2",
+    "framer-motion": "^11.2.10",
     "lucide-react": "^0.545.0",
     "next": "15.5.4",
     "next-auth": "^4.24.11",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-icons": "^5.5.0",
-    "@vercel/kv": "latest",
-    "framer-motion": "^11.2.10"
+    "react-icons": "^5.5.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
