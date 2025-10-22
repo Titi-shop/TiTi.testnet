@@ -12,17 +12,24 @@ export default function CheckoutPage() {
   const [phone, setPhone] = useState("");
   const [product, setProduct] = useState<any>(null);
 
-  // 🧠 1. Lấy thông tin user từ localStorage
+  // 🧠 1. Lấy thông tin user từ localStorage (đồng bộ với LoginWithPi)
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("pi_user");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setUser(parsed.user || null);
+    const loadUser = () => {
+      try {
+        const stored = localStorage.getItem("user_info"); // giống LoginWithPi
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setUser(parsed || null);
+        }
+      } catch (err) {
+        console.error("User parse error:", err);
       }
-    } catch (err) {
-      console.error("User parse error:", err);
-    }
+    };
+
+    loadUser();
+    // 🔄 Cập nhật khi LoginWithPi bắn sự kiện
+    window.addEventListener("pi-user-updated", loadUser);
+    return () => window.removeEventListener("pi-user-updated", loadUser);
   }, []);
 
   // 🧠 2. Lấy thông tin profile nếu có
@@ -52,7 +59,7 @@ export default function CheckoutPage() {
       .catch((err) => console.error("Fetch product error:", err));
   }, []);
 
-  // 🧩 4. Khởi tạo SDK
+  // 🧩 4. Khởi tạo SDK (chỉ khi Pi đã có)
   useEffect(() => {
     if (typeof window !== "undefined" && window.Pi && !sdkLoaded) {
       try {
@@ -99,7 +106,7 @@ export default function CheckoutPage() {
         ["username", "payments", "wallet_address"],
         () => {}
       );
-      const username = auth?.user?.username || "unknown_user";
+      const username = auth?.user?.username || user.username || "unknown_user";
 
       const paymentData = {
         amount: product?.price || 0.97,
@@ -155,7 +162,9 @@ export default function CheckoutPage() {
             👋 Xin chào <strong>{user.username}</strong>
           </p>
         ) : (
-          <p className="text-center text-red-500">⚠️ Bạn chưa đăng nhập Pi</p>
+          <p className="text-center text-red-500">
+            ⚠️ Bạn chưa đăng nhập bằng Pi
+          </p>
         )}
 
         <p className="text-center text-sm">
