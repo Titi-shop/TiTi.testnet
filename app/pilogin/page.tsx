@@ -57,7 +57,7 @@ export default function PiLoginPage() {
           boxShadow: "0 3px 6px rgba(0,0,0,0.2)",
         }}
       >
-        🔐 Đăng nhập với Pi Network
+        Đăng nhập
       </button>
     </main>
   );
