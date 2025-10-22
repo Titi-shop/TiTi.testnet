@@ -29,7 +29,11 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (typeof window !== "undefined" && window.Pi) {
       setSdkReady(true);
-      window.Pi.init({ version: "2.0", sandbox: true });
+      window.Pi.init({
+  version: "2.0",
+  sandbox: true,
+  appId: "YOUR_PI_APP_ID_HERE", // 🔹 Thay bằng App ID của bạn
+});
     } else {
       setSdkReady(false);
     }
