@@ -116,21 +116,21 @@ export default function ProductDetail() {
         </div>
       </div>
 
-      {/* 🛍️ Thanh hành động cố định */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-md flex justify-around py-3">
-        <button
-          onClick={handleAddToCart}
-          className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-6 py-2 rounded-lg w-1/2 mx-2"
-        >
-          🛒 {translate("add_to_cart")}
-        </button>
-        <button
-          onClick={handleCheckout}
-          className="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-2 rounded-lg w-1/2 mx-2"
-        >
-          💳 {translate("checkout_now")}
-        </button>
-      </div>
+      {/* 🛍️ Thanh hành động cố định - nằm trên thanh điều hướng */}
+<div className="fixed bottom-16 left-0 right-0 bg-white border-t shadow-lg flex justify-around py-3 z-50">
+  <button
+    onClick={handleAddToCart}
+    className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-6 py-2 rounded-lg w-1/2 mx-2"
+  >
+    🛒 {translate("add_to_cart")}
+  </button>
+  <button
+    onClick={handleCheckout}
+    className="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-2 rounded-lg w-1/2 mx-2"
+  >
+    💳 {translate("checkout_now")}
+  </button>
+</div>
 
       {/* 🔍 Modal xem ảnh phóng to */}
       {activeImage && (
