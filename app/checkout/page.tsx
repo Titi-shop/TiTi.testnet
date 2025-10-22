@@ -6,6 +6,7 @@ export default function CheckoutPage() {
   const [user, setUser] = useState<{ username: string } | null>(null);
   const [product, setProduct] = useState<any>(null);
   const [isPaying, setIsPaying] = useState(false);
+  const [sdkReady, setSdkReady] = useState(false);
 
   const [country, setCountry] = useState("");
   const [address, setAddress] = useState("");
@@ -24,14 +25,23 @@ export default function CheckoutPage() {
     }
   }, []);
 
+  // 🔹 Kiểm tra SDK
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.Pi) {
+      setSdkReady(true);
+      window.Pi.init({ version: "2.0", sandbox: true });
+    } else {
+      setSdkReady(false);
+    }
+  }, []);
+
   // 🔹 Lấy dữ liệu sản phẩm từ API
   useEffect(() => {
     const fetchProduct = async () => {
       try {
         const res = await fetch("/api/products");
         const data = await res.json();
-        // Lấy sản phẩm đầu tiên làm ví dụ
-        setProduct(data[0]);
+        setProduct(data[0]); // lấy sản phẩm đầu tiên
       } catch (error) {
         console.error("❌ Lỗi khi tải sản phẩm:", error);
       }
@@ -39,42 +49,58 @@ export default function CheckoutPage() {
     fetchProduct();
   }, []);
 
-  // 🔹 Thanh toán qua Pi Testnet
+  // 🔹 Thanh toán bằng Pi Testnet
   const handlePayment = async () => {
     if (typeof window === "undefined" || !window.Pi) {
       alert("⚠️ Vui lòng mở trong Pi Browser để thanh toán!");
       return;
     }
+
     if (!user) {
       alert("⚠️ Bạn cần đăng nhập bằng Pi trước!");
       window.location.href = "/pilogin";
       return;
     }
+
     if (!country || !address || !phone) {
       alert("⚠️ Vui lòng nhập đầy đủ thông tin giao hàng!");
       return;
     }
 
+    if (!product) {
+      alert("⚠️ Không tìm thấy sản phẩm để thanh toán!");
+      return;
+    }
+
     setIsPaying(true);
     try {
-      window.Pi.init({ version: "2.0", sandbox: true });
-
       const paymentData = {
-        amount: product?.price || 0.5,
-        memo: `Thanh toán ${product?.name}`,
+        amount: product.price,
+        memo: `Thanh toán ${product.name}`,
         metadata: { buyer: user.username, country, address, phone },
       };
 
       const callbacks = {
-        onReadyForServerApproval: (paymentId: string) => {
+        onReadyForServerApproval: async (paymentId: string) => {
           console.log("✅ Ready for approval:", paymentId);
+          await fetch("/api/pi/approve", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paymentId }),
+          });
         },
-        onReadyForServerCompletion: (paymentId: string, txid: string) => {
+        onReadyForServerCompletion: async (paymentId: string, txid: string) => {
           console.log("✅ Payment completed:", paymentId, txid);
+          await fetch("/api/pi/complete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paymentId, txid }),
+          });
+          alert("🎉 Thanh toán thành công!");
           window.open(`https://wallet-testnet.minepi.com/transaction/${txid}`, "_blank");
         },
         onCancel: (paymentId: string) => {
-          console.log("❌ Payment cancelled:", paymentId);
+          console.warn("❌ Payment cancelled:", paymentId);
           setIsPaying(false);
         },
         onError: (error: any) => {
@@ -86,6 +112,7 @@ export default function CheckoutPage() {
       await window.Pi.createPayment(paymentData, callbacks);
     } catch (err) {
       console.error("Payment failed:", err);
+      alert("Thanh toán thất bại, vui lòng thử lại!");
     } finally {
       setIsPaying(false);
     }
@@ -104,12 +131,16 @@ export default function CheckoutPage() {
           <p className="text-center text-red-500">⚠️ Bạn chưa đăng nhập Pi</p>
         )}
 
+        <p className="text-center text-sm text-gray-500">
+          SDK status: {sdkReady ? "✅ Loaded" : "❌ Not found"}
+        </p>
+
         {product ? (
           <div className="flex items-center gap-4 border p-3 rounded-xl">
             <img
               src={product.images?.[0]}
               alt={product.name}
-              className="w-20 h-20 rounded-lg object-cover"
+              className="w-20 h-20 rounded-lg object-cover bg-gray-100"
             />
             <div>
               <h2 className="font-semibold">{product.name}</h2>
@@ -156,7 +187,7 @@ export default function CheckoutPage() {
 
         <button
           onClick={handlePayment}
-          disabled={isPaying || !product}
+          disabled={isPaying || !sdkReady || !product}
           className="w-full bg-orange-500 text-white py-3 rounded-xl font-medium hover:bg-orange-600 disabled:opacity-50"
         >
           {isPaying ? "Processing..." : "Pay with Pi (Testnet)"}
