@@ -114,11 +114,11 @@ export default function CheckoutPage() {
       };
 
       await window.Pi.createPayment(paymentData, callbacks);
-    } catch (err) {
-      console.error("Payment failed:", err);
-      alert("Thanh toán thất bại, vui lòng thử lại!");
-    } finally {
-      setIsPaying(false);
+    } catch (err: any) {
+  console.error("Payment failed:", err);
+  alert("Thanh toán thất bại: " + (err?.message || JSON.stringify(err)));
+} finally {
+  setIsPaying(false);
     }
   };
 
