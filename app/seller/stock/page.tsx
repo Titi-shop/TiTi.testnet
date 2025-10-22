@@ -11,6 +11,7 @@ interface Product {
   price: number;
   description?: string;
   images?: string[];
+  seller?: string;
 }
 
 export default function SellerStockPage() {
@@ -20,14 +21,41 @@ export default function SellerStockPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [sellerUser, setSellerUser] = useState<string>("");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // 🧾 Lấy danh sách sản phẩm
+  // ✅ Lấy thông tin người bán (Pi login)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("pi_user");
+      const logged = localStorage.getItem("titi_is_logged_in");
+      if (stored && logged === "true") {
+        const parsed = JSON.parse(stored);
+        const username = parsed?.user?.username || parsed?.username || "guest_user";
+        setSellerUser(username);
+        setIsLoggedIn(true);
+      } else {
+        setIsLoggedIn(false);
+      }
+    } catch (err) {
+      console.error("❌ Lỗi đọc thông tin Pi:", err);
+      setIsLoggedIn(false);
+    }
+  }, []);
+
+  // ✅ Lấy danh sách sản phẩm
   const fetchProducts = async () => {
     try {
       const res = await fetch("/api/products", { cache: "no-store" });
       if (!res.ok) throw new Error("Fetch failed");
       const data = await res.json();
-      setProducts(Array.isArray(data) ? data : []);
+
+      // ✅ Lọc sản phẩm theo người bán hiện tại
+      const filtered = data.filter(
+        (p: any) => !p.seller || p.seller?.toLowerCase() === sellerUser.toLowerCase()
+      );
+
+      setProducts(Array.isArray(filtered) ? filtered : []);
     } catch (err) {
       console.error("❌ Lỗi tải sản phẩm:", err);
       setMessage(translate("load_error") || "Không thể tải sản phẩm.");
@@ -37,8 +65,9 @@ export default function SellerStockPage() {
   };
 
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    if (isLoggedIn) fetchProducts();
+    else setLoading(false);
+  }, [isLoggedIn]);
 
   // ❌ Xoá sản phẩm
   const handleDelete = async (id: number) => {
@@ -49,11 +78,15 @@ export default function SellerStockPage() {
 
     try {
       setRefreshing(true);
-      const res = await fetch(`/api/products?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/products?id=${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ seller: sellerUser }), // ✅ Gửi seller để backend xác thực
+      });
       const result = await res.json();
 
       if (result.success) {
-        setMessage(translate("delete_success") || "Đã xóa sản phẩm.");
+        setMessage(translate("delete_success") || "✅ Đã xóa sản phẩm.");
         await fetchProducts();
       } else {
         setMessage(result.message || "Không thể xóa sản phẩm.");
@@ -66,11 +99,31 @@ export default function SellerStockPage() {
     }
   };
 
+  // 🔒 Nếu chưa đăng nhập
+  if (!isLoggedIn)
+    return (
+      <main className="p-6 text-center">
+        <h2 className="text-xl text-red-600 mb-3">
+          🔐 {translate("login_required") || "Vui lòng đăng nhập bằng Pi Network để quản lý kho hàng"}
+        </h2>
+        <button
+          onClick={() => router.push("/pilogin")}
+          className="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+        >
+          👉 {translate("go_to_login") || "Đăng nhập ngay"}
+        </button>
+      </main>
+    );
+
   return (
     <main className="p-4 max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold text-center mb-4">
         📦 {translate("stock_manager_title") || "Quản lý kho hàng"}
       </h1>
+
+      <p className="text-center text-sm text-gray-500 mb-3">
+        👤 {translate("seller_label") || "Người bán"}: <b>{sellerUser}</b>
+      </p>
 
       {message && (
         <p
