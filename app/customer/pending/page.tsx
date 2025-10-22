@@ -26,33 +26,35 @@ export default function PendingOrdersPage() {
   const [error, setError] = useState("");
   const [currentUser, setCurrentUser] = useState<string>("");
 
-  // ✅ Lấy username hiện tại từ localStorage
+  // ✅ Lấy username hiện tại từ localStorage (đúng key "pi_user")
   useEffect(() => {
     try {
-      const info = localStorage.getItem("user_info");
-      if (!info) return;
+      const info = localStorage.getItem("pi_user");
+      if (!info) {
+        console.warn("⚠️ Không tìm thấy dữ liệu người dùng (pi_user)");
+        return;
+      }
+
       const parsed = JSON.parse(info);
-      setCurrentUser(parsed.username || "");
+      const username = parsed?.user?.username || parsed?.username || "guest";
+      setCurrentUser(username);
     } catch (err) {
-      console.error("❌ Lỗi đọc user_info:", err);
+      console.error("❌ Lỗi đọc pi_user:", err);
     }
   }, []);
 
-  // 🧩 Tải danh sách đơn hàng "Chờ xác nhận" từ KV
+  // 🧩 Tải danh sách đơn hàng "Chờ xác nhận" từ API
   useEffect(() => {
     const fetchOrders = async () => {
       if (!currentUser) {
-        console.warn("⚠️ Chưa đăng nhập — không thể lọc đơn hàng.");
+        console.warn("⚠️ Chưa đăng nhập — không thể tải đơn hàng.");
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
-        const res = await fetch("/api/orders", {
-          method: "GET",
-          cache: "no-store",
-        });
+        const res = await fetch("/api/orders", { method: "GET", cache: "no-store" });
         if (!res.ok) throw new Error("Không thể tải dữ liệu đơn hàng.");
 
         const data: Order[] = await res.json();
