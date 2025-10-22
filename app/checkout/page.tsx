@@ -1,28 +1,17 @@
 "use client";
-export const dynamic = "force-dynamic";
 
 import React, { useEffect, useState } from "react";
 
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  discount?: number;
-  image: string;
-  description?: string;
-  currency?: string;
-}
-
 export default function CheckoutPage() {
   const [user, setUser] = useState<{ username: string } | null>(null);
-  const [product, setProduct] = useState<Product | null>(null);
+  const [product, setProduct] = useState<any>(null);
   const [isPaying, setIsPaying] = useState(false);
 
   const [country, setCountry] = useState("");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
 
-  // ✅ Load user từ localStorage
+  // 🔹 Lấy thông tin đăng nhập Pi
   useEffect(() => {
     const stored = localStorage.getItem("pi_user");
     if (stored) {
@@ -33,21 +22,24 @@ export default function CheckoutPage() {
         setUser(null);
       }
     }
-
-    // ✅ Tự động lấy sản phẩm (ví dụ Audi RS e-tron GT)
-    fetch("/api/products", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: "audi-rs-etron-gt" }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.error) setProduct(data);
-      })
-      .catch((err) => console.error("❌ Error fetching product:", err));
   }, []);
 
-  // ✅ Hàm thanh toán
+  // 🔹 Lấy dữ liệu sản phẩm từ API
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const res = await fetch("/api/products");
+        const data = await res.json();
+        // Lấy sản phẩm đầu tiên làm ví dụ
+        setProduct(data[0]);
+      } catch (error) {
+        console.error("❌ Lỗi khi tải sản phẩm:", error);
+      }
+    };
+    fetchProduct();
+  }, []);
+
+  // 🔹 Thanh toán qua Pi Testnet
   const handlePayment = async () => {
     if (typeof window === "undefined" || !window.Pi) {
       alert("⚠️ Vui lòng mở trong Pi Browser để thanh toán!");
@@ -63,44 +55,30 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (!product) {
-      alert("❌ Không tìm thấy sản phẩm!");
-      return;
-    }
-
     setIsPaying(true);
     try {
       window.Pi.init({ version: "2.0", sandbox: true });
 
       const paymentData = {
-        amount: product.price - (product.discount || 0),
-        memo: `Thanh toán ${product.name}`,
-        metadata: {
-          buyer: user.username,
-          productId: product.id,
-          country,
-          address,
-          phone,
-        },
+        amount: product?.price || 0.5,
+        memo: `Thanh toán ${product?.name}`,
+        metadata: { buyer: user.username, country, address, phone },
       };
 
       const callbacks = {
         onReadyForServerApproval: (paymentId: string) => {
-          console.log("🟡 Ready for approval:", paymentId);
+          console.log("✅ Ready for approval:", paymentId);
         },
         onReadyForServerCompletion: (paymentId: string, txid: string) => {
           console.log("✅ Payment completed:", paymentId, txid);
-          window.open(
-            `https://wallet-testnet.minepi.com/transaction/${txid}`,
-            "_blank"
-          );
+          window.open(`https://wallet-testnet.minepi.com/transaction/${txid}`, "_blank");
         },
         onCancel: (paymentId: string) => {
-          console.warn("❌ Payment cancelled:", paymentId);
+          console.log("❌ Payment cancelled:", paymentId);
           setIsPaying(false);
         },
         onError: (error: any) => {
-          console.error("💥 Payment error:", error);
+          console.error("❌ Payment error:", error);
           setIsPaying(false);
         },
       };
@@ -126,32 +104,22 @@ export default function CheckoutPage() {
           <p className="text-center text-red-500">⚠️ Bạn chưa đăng nhập Pi</p>
         )}
 
-        {/* ✅ Hiển thị sản phẩm */}
         {product ? (
           <div className="flex items-center gap-4 border p-3 rounded-xl">
             <img
-              src={product.image}
+              src={product.images?.[0]}
               alt={product.name}
               className="w-20 h-20 rounded-lg object-cover"
             />
             <div>
               <h2 className="font-semibold">{product.name}</h2>
-              <p className="text-gray-600">
-                Price: {product.currency || "π"}
-                {product.price.toFixed(2)}
-              </p>
-              {product.discount ? (
-                <p className="text-green-600 text-sm">
-                  Discount: -{product.discount.toFixed(2)}π
-                </p>
-              ) : null}
+              <p className="text-gray-600">Price: π{product.price}</p>
             </div>
           </div>
         ) : (
-          <p className="text-center text-gray-500">Đang tải sản phẩm...</p>
+          <p className="text-center text-gray-400">Đang tải sản phẩm...</p>
         )}
 
-        {/* ✅ Thông tin giao hàng */}
         <div className="space-y-3">
           <h3 className="font-semibold text-lg">Thông tin giao hàng</h3>
           <input
@@ -179,17 +147,13 @@ export default function CheckoutPage() {
 
         <div className="border-t border-gray-200"></div>
 
-        {/* ✅ Tổng tiền */}
         {product && (
           <div className="flex justify-between text-lg font-semibold">
             <span>Total:</span>
-            <span>
-              π{(product.price - (product.discount || 0)).toFixed(2)}
-            </span>
+            <span>π{(product.price * 0.97).toFixed(2)}</span>
           </div>
         )}
 
-        {/* ✅ Nút thanh toán */}
         <button
           onClick={handlePayment}
           disabled={isPaying || !product}
