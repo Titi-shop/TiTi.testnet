@@ -150,7 +150,7 @@ export default function ProductDetail() {
         )}
       </div>
 
-      {/* 💰 Thông tin */}
+      {/* 💰 Thông tin sản phẩm */}
       <div className="px-4 mt-5">
         <p className="text-orange-600 font-bold text-2xl">π {product.price}</p>
         <h2 className="text-lg font-semibold mt-2">{product.name}</h2>
@@ -158,7 +158,7 @@ export default function ProductDetail() {
         <p className="text-sm text-gray-400 mt-3">🏬 Tồn kho: {product.stock ?? 0}</p>
       </div>
 
-      {/* 🛍️ Nút hành động */}
+      {/* 🛍️ Nút hành động chính (ngoài modal) */}
       <div className="fixed bottom-16 left-0 right-0 bg-white border-t shadow-lg flex justify-around py-3 z-50">
         <button
           onClick={handleAddToCart}
@@ -174,7 +174,7 @@ export default function ProductDetail() {
         </button>
       </div>
 
-      {/* 🪟 Modal chọn số lượng + nút xác nhận */}
+      {/* 🪟 Modal chọn số lượng + nút thêm giỏ hàng và mua ngay */}
       {showModal && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50"
@@ -202,7 +202,7 @@ export default function ProductDetail() {
             <p className="text-gray-500 text-sm mb-4">Tồn kho: {product.stock ?? 0}</p>
 
             {/* Chọn số lượng */}
-            <div className="flex items-center justify-between border rounded-lg px-3 py-2 mb-4">
+            <div className="flex items-center justify-between border rounded-lg px-3 py-2 mb-6">
               <span className="font-semibold text-gray-700">Số lượng</span>
               <div className="flex items-center gap-3">
                 <button
@@ -221,18 +221,26 @@ export default function ProductDetail() {
               </div>
             </div>
 
-            {/* ✅ Nút xác nhận thêm vào giỏ hàng */}
-            <button
-              onClick={confirmAddToCart}
-              className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 rounded-lg shadow"
-            >
-              🛒 Xác nhận thêm vào giỏ hàng
-            </button>
+            {/* ✅ Hai nút trong modal */}
+            <div className="flex gap-3">
+              <button
+                onClick={confirmAddToCart}
+                className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 rounded-lg shadow"
+              >
+                🛒 Thêm vào giỏ hàng
+              </button>
+              <button
+                onClick={handleCheckout}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded-lg shadow"
+              >
+                💳 Mua ngay
+              </button>
+            </div>
           </motion.div>
         </div>
       )}
 
-      {/* 🖼️ Ảnh phóng to toàn màn hình */}
+      {/* 🖼️ Ảnh phóng to */}
       {showImage && (
         <div
           className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-50"
