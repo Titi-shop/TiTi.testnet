@@ -15,6 +15,7 @@ export default function ProductDetail() {
   const [showModal, setShowModal] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showImage, setShowImage] = useState(false);
 
   const { addToCart } = useCart();
   const { translate } = useLanguage();
@@ -46,12 +47,12 @@ export default function ProductDetail() {
     }
   }, [product]);
 
-  // ✅ Thêm sản phẩm vào giỏ hàng
+  // ✅ Mở modal thêm giỏ hàng
   const handleAddToCart = () => {
     setShowModal(true);
   };
 
-  // ✅ Xác nhận thêm giỏ hàng trong modal
+  // ✅ Xác nhận thêm giỏ hàng
   const confirmAddToCart = () => {
     if (!product) return;
     addToCart({
@@ -63,7 +64,7 @@ export default function ProductDetail() {
       quantity,
     });
     setShowModal(false);
-    alert("✅ " + translate("added_to_cart"));
+    alert("✅ Sản phẩm đã được thêm vào giỏ hàng!");
   };
 
   // ✅ Thanh toán nhanh
@@ -81,12 +82,12 @@ export default function ProductDetail() {
   };
 
   if (loading)
-    return <p className="text-center mt-6">⏳ {translate("loading")}</p>;
+    return <p className="text-center mt-6">⏳ Đang tải sản phẩm...</p>;
 
   if (!product)
     return (
       <p className="text-center mt-6 text-red-600 font-medium">
-        ❌ {translate("no_products")}
+        ❌ Không tìm thấy sản phẩm.
       </p>
     );
 
@@ -97,15 +98,15 @@ export default function ProductDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-40">
-      {/* 🔹 Thanh điều hướng trên */}
+      {/* 🔹 Thanh điều hướng */}
       <div className="fixed top-0 left-0 right-0 bg-white shadow z-50 flex items-center justify-between px-4 py-3">
         <button
           onClick={() => router.back()}
           className="text-gray-700 hover:text-orange-500 flex items-center gap-1"
         >
-          <ArrowLeft size={22} /> <span>{translate("back") || "Back"}</span>
+          <ArrowLeft size={22} /> <span>Quay lại</span>
         </button>
-        <h1 className="font-semibold text-lg">{translate("product_details") || "Product Details"}</h1>
+        <h1 className="font-semibold text-lg">Chi tiết sản phẩm</h1>
         <button
           onClick={() => router.push("/cart")}
           className="text-gray-700 hover:text-orange-500"
@@ -122,7 +123,8 @@ export default function ProductDetail() {
               key={currentIndex}
               src={images[currentIndex]}
               alt={product.name}
-              className="w-full h-80 object-cover rounded-lg shadow"
+              onClick={() => setShowImage(true)}
+              className="w-full h-80 object-cover rounded-lg shadow cursor-pointer"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -131,7 +133,7 @@ export default function ProductDetail() {
           </AnimatePresence>
         ) : (
           <div className="w-full h-80 flex items-center justify-center bg-gray-200 text-gray-500">
-            {translate("no_image")}
+            Không có hình ảnh
           </div>
         )}
         {/* Dấu chấm chuyển ảnh */}
@@ -151,13 +153,11 @@ export default function ProductDetail() {
 
       {/* 💰 Thông tin sản phẩm */}
       <div className="px-4 mt-5">
-        <p className="text-orange-600 font-bold text-2xl">
-          π {product.price}
-        </p>
+        <p className="text-orange-600 font-bold text-2xl">π {product.price}</p>
         <h2 className="text-lg font-semibold mt-2">{product.name}</h2>
         <p className="text-gray-600 mt-1">{product.description}</p>
         <p className="text-sm text-gray-400 mt-3">
-          🏬 {translate("inventory") || "Stock"}: {product.stock ?? 0}
+          🏬 Tồn kho: {product.stock ?? 0}
         </p>
       </div>
 
@@ -167,13 +167,13 @@ export default function ProductDetail() {
           onClick={handleAddToCart}
           className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-6 py-2 rounded-lg w-1/2 mx-2"
         >
-          🛒 {translate("add_to_cart")}
+          🛒 Thêm vào giỏ hàng
         </button>
         <button
           onClick={handleCheckout}
           className="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-2 rounded-lg w-1/2 mx-2"
         >
-          💳 {translate("checkout_now")}
+          💳 Mua ngay
         </button>
       </div>
 
@@ -202,9 +202,7 @@ export default function ProductDetail() {
             </div>
 
             <p className="text-orange-600 font-bold mb-2">π {product.price}</p>
-            <p className="text-gray-500 text-sm mb-4">
-              {translate("stock") || "Stock"}: {product.stock ?? 0}
-            </p>
+            <p className="text-gray-500 text-sm mb-4">Tồn kho: {product.stock ?? 0}</p>
 
             {/* Chọn số lượng */}
             <div className="flex items-center justify-between border rounded-lg px-3 py-2 mb-4">
@@ -226,6 +224,7 @@ export default function ProductDetail() {
               </div>
             </div>
 
+            {/* ✅ Nút xác nhận thêm vào giỏ hàng */}
             <button
               onClick={confirmAddToCart}
               className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 rounded-lg shadow"
@@ -233,6 +232,26 @@ export default function ProductDetail() {
               🛒 Xác nhận thêm vào giỏ hàng
             </button>
           </motion.div>
+        </div>
+      )}
+
+      {/* 🖼️ Xem ảnh toàn màn hình */}
+      {showImage && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-50"
+          onClick={() => setShowImage(false)}
+        >
+          <img
+            src={images[currentIndex]}
+            alt="Ảnh sản phẩm"
+            className="max-h-[90%] max-w-[90%] object-contain"
+          />
+          <button
+            onClick={() => setShowImage(false)}
+            className="absolute top-6 right-6 text-white text-4xl font-bold"
+          >
+            ×
+          </button>
         </div>
       )}
     </div>
