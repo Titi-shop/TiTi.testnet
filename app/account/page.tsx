@@ -2,24 +2,27 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useLanguage } from "../context/LanguageContext";
 
-export default function AccountPage() {
+export default function AccountRedirect() {
   const router = useRouter();
-  const { translate } = useLanguage();
 
-  // ✅ Khi vào trang account, tự động điều hướng sang /customer
   useEffect(() => {
-    router.push("/customer");
+    // 🔍 Kiểm tra đăng nhập
+    const piUser = localStorage.getItem("pi_user");
+    const isLoggedIn = localStorage.getItem("titi_is_logged_in");
+
+    if (piUser && isLoggedIn === "true") {
+      // ✅ Đã đăng nhập Pi → chuyển đến customer
+      router.replace("/customer");
+    } else {
+      // 🚪 Chưa đăng nhập → chuyển đến PiLogin
+      router.replace("/pilogin");
+    }
   }, [router]);
 
   return (
-    <main className="flex flex-col items-center justify-center h-screen text-center">
-      <h1 className="text-2xl font-bold mb-4">{translate("account")}</h1>
-      <p className="text-gray-600">{translate("redirecting_to_customer")}</p>
-      <div className="mt-4 animate-pulse text-yellow-600">
-        ⏳ {translate("loading")}
-      </div>
+    <main className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-600">
+      <p>⏳ Đang kiểm tra tài khoản...</p>
     </main>
   );
 }
