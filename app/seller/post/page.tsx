@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, ChangeEvent, FormEvent } from "react";
+import { useState, ChangeEvent, FormEvent, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useLanguage } from "../../context/LanguageContext";
@@ -16,6 +16,45 @@ export default function SellerPostPage() {
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [uploading, setUploading] = useState(false);
+
+  // ✅ Dữ liệu người bán
+  const [sellerUser, setSellerUser] = useState<string>("");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // ✅ Kiểm tra đăng nhập Pi
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("pi_user");
+      const logged = localStorage.getItem("titi_is_logged_in");
+      if (stored && logged === "true") {
+        const parsed = JSON.parse(stored);
+        const username = parsed?.user?.username || parsed?.username || "guest_user";
+        setSellerUser(username);
+        setIsLoggedIn(true);
+      } else {
+        setIsLoggedIn(false);
+      }
+    } catch (err) {
+      console.error("❌ Lỗi đọc thông tin Pi:", err);
+      setIsLoggedIn(false);
+    }
+  }, []);
+
+  // ✅ Nếu chưa đăng nhập → chuyển hướng đến Pi Login
+  if (!isLoggedIn)
+    return (
+      <main className="p-6 text-center">
+        <h2 className="text-xl text-red-600 mb-3">
+          🔐 {translate("login_required") || "Vui lòng đăng nhập bằng Pi Network để đăng sản phẩm."}
+        </h2>
+        <button
+          onClick={() => router.push("/pilogin")}
+          className="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+        >
+          👉 {translate("go_to_login") || "Đăng nhập ngay"}
+        </button>
+      </main>
+    );
 
   // 🖼 Xử lý chọn ảnh
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -65,6 +104,7 @@ export default function SellerPostPage() {
         description,
         images: uploadedUrls,
         createdAt: new Date().toISOString(),
+        seller: sellerUser, // ✅ Gắn seller
       };
 
       const res = await fetch("/api/products", {
@@ -94,11 +134,16 @@ export default function SellerPostPage() {
     }
   };
 
+  // ✅ Giao diện chính
   return (
     <main className="p-6 max-w-lg mx-auto">
       <h1 className="text-2xl font-bold mb-4 text-center">
         🛒 {translate("post_product") || "Đăng sản phẩm mới"}
       </h1>
+
+      <p className="text-center text-gray-500 mb-2">
+        👤 {translate("seller_label") || "Người bán"}: <b>{sellerUser}</b>
+      </p>
 
       {message && (
         <p
@@ -143,7 +188,7 @@ export default function SellerPostPage() {
           className="border p-2 rounded h-24"
         />
 
-        {/* ✅ Nút chọn tệp có hỗ trợ đa ngôn ngữ */}
+        {/* ✅ Upload ảnh */}
         <div>
           <input
             id="file-upload"
@@ -180,9 +225,7 @@ export default function SellerPostPage() {
           type="submit"
           disabled={uploading}
           className={`${
-            uploading
-              ? "bg-gray-400"
-              : "bg-yellow-500 hover:bg-yellow-600"
+            uploading ? "bg-gray-400" : "bg-yellow-500 hover:bg-yellow-600"
           } text-white py-2 rounded mt-4`}
         >
           {uploading
