@@ -2,69 +2,107 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useCart } from "../../context/CartContext";
+import { useLanguage } from "../../context/LanguageContext";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
-export default function ProductDetailPage() {
+export default function ProductDetail() {
   const { id } = useParams();
   const router = useRouter();
-
   const [product, setProduct] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showZoom, setShowZoom] = useState(false);
 
-  // 🧩 Lấy dữ liệu sản phẩm từ API
+  const { addToCart, clearCart } = useCart();
+  const { translate } = useLanguage();
+
+  // ✅ Lấy sản phẩm theo ID
   useEffect(() => {
-    const fetchProduct = async () => {
+    async function fetchProduct() {
       try {
-        const res = await fetch(`/api/products?id=${id}`, { cache: "no-store" });
-        const data = await res.json();
-        setProduct(Array.isArray(data) ? data[0] : data);
+        const res = await fetch("/api/products");
+        const products = await res.json();
+        const found = products.find((p: any) => p.id.toString() === id.toString());
+        setProduct(found);
       } catch (err) {
-        console.error("❌ Lỗi tải sản phẩm:", err);
+        console.error("❌ Lỗi khi tải sản phẩm:", err);
+      } finally {
+        setLoading(false);
       }
-    };
-    fetchProduct();
+    }
+
+    if (id) fetchProduct();
   }, [id]);
 
-  // 🔄 Tự động đổi hình mỗi 5 giây
+  // 🔁 Tự động đổi hình mỗi 5 giây
   useEffect(() => {
     if (!product?.images?.length) return;
-    const interval = setInterval(() => {
+    const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % product.images.length);
     }, 5000);
-    return () => clearInterval(interval);
+    return () => clearInterval(timer);
   }, [product]);
 
+  // ✅ Thêm sản phẩm vào giỏ
+  const handleAddToCart = () => {
+    if (!product) return;
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: Number(product.price),
+      description: product.description,
+      images: product.images,
+    });
+    alert("✅ " + translate("added_to_cart"));
+    router.push("/cart");
+  };
+
+  // ✅ Thanh toán nhanh
+  const handleCheckout = () => {
+    if (!product) return;
+    clearCart();
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: Number(product.price),
+      description: product.description,
+      images: product.images,
+    });
+    router.push("/checkout");
+  };
+
+  if (loading)
+    return <p className="text-center mt-6">⏳ {translate("loading")}</p>;
+
   if (!product)
-    return <p className="text-center mt-10 text-gray-500">Đang tải sản phẩm...</p>;
+    return (
+      <p className="text-center mt-6 text-red-600 font-medium">
+        ❌ {translate("no_products")}
+      </p>
+    );
 
   return (
-    <main className="bg-gray-50 min-h-screen">
-      {/* ===== Thanh tiêu đề ===== */}
-      <div className="flex items-center gap-3 bg-white shadow p-3 sticky top-0 z-20">
-        <button onClick={() => router.back()}>
-          <ChevronLeft className="w-6 h-6 text-gray-600" />
-        </button>
-        <h1 className="text-lg font-semibold text-gray-800">{product.name}</h1>
-      </div>
-
-      {/* ===== Ảnh sản phẩm (Carousel) ===== */}
-      <div className="relative w-full bg-white">
+    <main className="bg-gray-50 min-h-screen pb-24">
+      {/* ===== Hình sản phẩm (carousel) ===== */}
+      <div className="relative bg-white w-full">
         {product.images?.length > 0 ? (
           <>
             <Image
-              src={product.images[currentIndex]}
+              src={
+                product.images[currentIndex].startsWith("http")
+                  ? product.images[currentIndex]
+                  : `/uploads/${product.images[currentIndex].split("\\").pop()}`
+              }
               alt={product.name}
               width={600}
               height={600}
               className="w-full h-80 object-cover cursor-pointer"
               onClick={() => setShowZoom(true)}
             />
-            {/* Chấm điều hướng */}
-            <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2">
-              {product.images.map((_: any, i: number) => (
+            <div className="absolute bottom-2 w-full flex justify-center gap-2">
+              {product.images.map((_: string, i: number) => (
                 <div
                   key={i}
                   className={`w-2 h-2 rounded-full ${
@@ -76,48 +114,47 @@ export default function ProductDetailPage() {
           </>
         ) : (
           <div className="w-full h-80 bg-gray-100 flex items-center justify-center text-gray-400">
-            Không có ảnh
+            {translate("no_image")}
           </div>
         )}
       </div>
 
-      {/* ===== Phần chi tiết ===== */}
-      <div className="p-4 bg-white mt-2">
-        <h2 className="text-2xl font-bold text-orange-600">{product.price} π</h2>
-        <p className="text-gray-800 mt-1 font-medium">{product.name}</p>
-
-        <div className="flex justify-between text-sm text-gray-500 mt-2">
-          <span>🚚 Free Shipping</span>
-          <span>📦 Tồn kho: {product.stock || 100}</span>
-        </div>
-
-        {product.description && (
-          <p className="text-gray-600 mt-4 leading-relaxed">{product.description}</p>
-        )}
-
-        <p className="text-xs text-gray-400 mt-2">
-          7 ngày đổi trả • Giao hàng trong 72h
+      {/* ===== Thông tin sản phẩm ===== */}
+      <div className="p-5 bg-white mt-2 shadow-sm">
+        <h1 className="text-2xl font-bold text-gray-800 mb-1">
+          {product.name}
+        </h1>
+        <p className="text-orange-600 font-semibold text-xl mb-3">
+          {product.price} π
         </p>
+        <p className="text-gray-600 leading-relaxed">
+          {product.description || translate("no_description")}
+        </p>
+
+        <div className="flex justify-between text-sm text-gray-500 mt-4">
+          <span>🚚 Free Shipping</span>
+          <span>📦 {translate("stock")}: {product.stock || 100}</span>
+        </div>
       </div>
 
       {/* ===== Nút hành động ===== */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t flex items-center justify-around py-3">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around py-3 shadow-lg">
         <button
+          onClick={handleAddToCart}
           className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-6 rounded-lg"
-          onClick={() => alert("🛒 Thêm vào giỏ hàng")}
         >
-          Add to Cart
+          🛒 {translate("add_to_cart")}
         </button>
 
         <button
+          onClick={handleCheckout}
           className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-6 rounded-lg"
-          onClick={() => alert("💰 Mua ngay")}
         >
-          Buy Now
+          💳 {translate("checkout_now")}
         </button>
       </div>
 
-      {/* ===== Hiển thị ảnh phóng to ===== */}
+      {/* ===== Phóng to ảnh ===== */}
       <AnimatePresence>
         {showZoom && (
           <motion.div
@@ -128,7 +165,11 @@ export default function ProductDetailPage() {
             onClick={() => setShowZoom(false)}
           >
             <motion.img
-              src={product.images[currentIndex]}
+              src={
+                product.images[currentIndex].startsWith("http")
+                  ? product.images[currentIndex]
+                  : `/uploads/${product.images[currentIndex].split("\\").pop()}`
+              }
               alt="Zoomed product"
               className="max-h-[90vh] max-w-[90vw] rounded-lg"
               initial={{ scale: 0.8 }}
