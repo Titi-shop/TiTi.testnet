@@ -1,30 +1,61 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useLanguage } from "../../context/LanguageContext"; // ✅ Đảm bảo đúng đường dẫn
+import { useRouter } from "next/navigation";
+import { useLanguage } from "../../context/LanguageContext";
 
-/**
- * Trang hiển thị các đơn hàng đang được giao cho người mua.
- * - Hiển thị thông tin đơn hàng (sản phẩm, tổng tiền, ngày đặt, trạng thái)
- * - Cho phép người mua xác nhận “Đã nhận hàng” để hoàn tất đơn.
- */
 export default function CustomerShippingPage() {
+  const router = useRouter();
   const { translate, language } = useLanguage();
+
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<string>("guest_user");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  // ✅ Lấy thông tin từ localStorage của Pi login
   useEffect(() => {
-    fetchOrders();
-  }, [language]); // ✅ reload khi đổi ngôn ngữ
+    try {
+      const stored = localStorage.getItem("pi_user");
+      const logged = localStorage.getItem("titi_is_logged_in");
 
-  // 🧾 Lấy danh sách đơn hàng từ API
+      if (stored && logged === "true") {
+        const parsed = JSON.parse(stored);
+        const username = parsed?.user?.username || parsed?.username || "guest_user";
+        setCurrentUser(username);
+        setIsLoggedIn(true);
+      } else {
+        setIsLoggedIn(false);
+      }
+    } catch (err) {
+      console.error("❌ Lỗi đọc dữ liệu đăng nhập:", err);
+      setIsLoggedIn(false);
+    }
+  }, []);
+
+  // 🧾 Lấy danh sách đơn hàng của người dùng
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setLoading(false);
+      return;
+    }
+    fetchOrders();
+  }, [language, isLoggedIn]);
+
   const fetchOrders = async () => {
     try {
       const res = await fetch("/api/orders");
+      if (!res.ok) throw new Error("Không thể tải danh sách đơn hàng");
+
       const data = await res.json();
 
-      // ✅ Lọc các đơn đang giao
-      const filtered = data.filter((o: any) => o.status === translate("delivering") || o.status === "Đang giao");
+      // ✅ Lọc đơn "Đang giao" của người dùng hiện tại
+      const filtered = data.filter(
+        (o: any) =>
+          (o.status === "Đang giao" || o.status === translate("delivering")) &&
+          o.buyer?.toLowerCase() === currentUser.toLowerCase()
+      );
+
       setOrders(filtered);
     } catch (err) {
       console.error("❌ Lỗi tải đơn hàng:", err);
@@ -33,7 +64,7 @@ export default function CustomerShippingPage() {
     }
   };
 
-  // ✅ Người mua xác nhận đã nhận hàng
+  // ✅ Người mua xác nhận "Đã nhận hàng"
   const confirmReceived = async (id: number) => {
     if (!confirm(translate("confirm_received") || "Xác nhận rằng bạn đã nhận được hàng?")) return;
 
@@ -41,7 +72,11 @@ export default function CustomerShippingPage() {
       const res = await fetch("/api/orders", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status: translate("completed_status") || "Hoàn tất" }),
+        body: JSON.stringify({
+          id,
+          status: translate("completed_status") || "Hoàn tất",
+          buyer: currentUser,
+        }),
       });
 
       if (!res.ok) throw new Error("Không thể cập nhật trạng thái.");
@@ -54,6 +89,7 @@ export default function CustomerShippingPage() {
     }
   };
 
+  // 🔄 Giao diện tải
   if (loading)
     return (
       <p className="text-center mt-6 text-gray-500">
@@ -61,6 +97,23 @@ export default function CustomerShippingPage() {
       </p>
     );
 
+  // 🔒 Nếu chưa đăng nhập
+  if (!isLoggedIn)
+    return (
+      <main className="p-6 text-center">
+        <h2 className="text-xl text-red-600 mb-3">
+          🔐 {translate("login_required") || "Vui lòng đăng nhập bằng Pi Network"}
+        </h2>
+        <button
+          onClick={() => router.push("/pilogin")}
+          className="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+        >
+          👉 {translate("go_to_login") || "Đăng nhập ngay"}
+        </button>
+      </main>
+    );
+
+  // ✅ Hiển thị danh sách đơn hàng
   return (
     <main className="p-6 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold mb-5 text-center text-orange-600">
@@ -70,6 +123,8 @@ export default function CustomerShippingPage() {
       {orders.length === 0 ? (
         <p className="text-center text-gray-500">
           {translate("no_shipping_orders") || "Bạn chưa có đơn hàng nào đang giao."}
+          <br />
+          👤 {translate("current_user") || "Tài khoản"}: <b>{currentUser}</b>
         </p>
       ) : (
         <div className="space-y-5">
