@@ -1,14 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { init, Pi } from "@pi-network/pi-sdk";
 
 export default function CheckoutPage() {
-  const [pi, setPi] = useState<Pi | null>(null);
   const [user, setUser] = useState<{ username: string } | null>(null);
   const [isPaying, setIsPaying] = useState(false);
 
-  // Thông tin người nhận hàng
   const [country, setCountry] = useState("");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
@@ -23,36 +20,31 @@ export default function CheckoutPage() {
         setUser(null);
       }
     }
-
-    const piInstance = init({
-      version: "2.0",
-      sandbox: true,
-      apiKey: process.env.NEXT_PUBLIC_PI_API_KEY!,
-    });
-    setPi(piInstance);
   }, []);
 
   const handlePayment = async () => {
-    if (!pi) return;
+    if (typeof window === "undefined" || !window.Pi) {
+      alert("⚠️ Vui lòng mở trong Pi Browser để thanh toán!");
+      return;
+    }
     if (!user) {
-      alert("⚠️ Bạn cần đăng nhập bằng Pi trước khi thanh toán!");
+      alert("⚠️ Bạn cần đăng nhập bằng Pi trước!");
       window.location.href = "/pilogin";
       return;
     }
-
     if (!country || !address || !phone) {
       alert("⚠️ Vui lòng nhập đầy đủ thông tin giao hàng!");
       return;
     }
 
     setIsPaying(true);
-
     try {
+      window.Pi.init({ version: "2.0", sandbox: true });
+
       const paymentData = {
         amount: 0.97,
         memo: "Audi RS e-tron GT purchase",
         metadata: {
-          productId: "audi-rs-etron-gt",
           buyer: user.username,
           country,
           address,
@@ -62,22 +54,22 @@ export default function CheckoutPage() {
 
       const callbacks = {
         onReadyForServerApproval: (paymentId: string) => {
-          console.log("🟢 Ready for approval:", paymentId);
+          console.log("Ready for approval:", paymentId);
         },
         onReadyForServerCompletion: (paymentId: string, txid: string) => {
-          console.log("✅ Completed:", paymentId, txid);
+          console.log("Payment completed:", paymentId, txid);
         },
         onCancel: (paymentId: string) => {
-          console.log("🚫 Cancelled:", paymentId);
+          console.log("Payment cancelled:", paymentId);
           setIsPaying(false);
         },
-        onError: (error: any, payment?: any) => {
-          console.error("❌ Error:", error, payment);
+        onError: (error: any) => {
+          console.error("Payment error:", error);
           setIsPaying(false);
         },
       };
 
-      await pi.createPayment(paymentData, callbacks);
+      await window.Pi.createPayment(paymentData, callbacks);
     } catch (err) {
       console.error("Payment failed:", err);
     } finally {
@@ -90,7 +82,6 @@ export default function CheckoutPage() {
       <div className="bg-white w-full max-w-md rounded-2xl shadow-lg p-6 space-y-6">
         <h1 className="text-2xl font-semibold text-center">Checkout</h1>
 
-        {/* Hiển thị người dùng */}
         {user ? (
           <p className="text-center text-gray-600">
             👋 Xin chào <strong>{user.username}</strong>
@@ -101,7 +92,6 @@ export default function CheckoutPage() {
           </p>
         )}
 
-        {/* Thông tin sản phẩm */}
         <div className="flex items-center gap-4 border p-3 rounded-xl">
           <img
             src="/audi.jpg"
@@ -114,7 +104,6 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {/* Form thông tin người nhận */}
         <div className="space-y-3">
           <h3 className="font-semibold text-lg">Thông tin giao hàng</h3>
           <input
@@ -122,33 +111,31 @@ export default function CheckoutPage() {
             placeholder="Quốc gia"
             value={country}
             onChange={(e) => setCountry(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500"
           />
           <input
             type="text"
             placeholder="Địa chỉ nhận hàng"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500"
           />
           <input
             type="tel"
             placeholder="Số điện thoại"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500"
           />
         </div>
 
         <div className="border-t border-gray-200"></div>
 
-        {/* Tổng cộng */}
         <div className="flex justify-between text-lg font-semibold">
           <span>Total:</span>
           <span>π0.97</span>
         </div>
 
-        {/* Nút thanh toán */}
         <button
           onClick={handlePayment}
           disabled={isPaying}
