@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useCart } from "../context/CartContext";
 import { useRouter } from "next/navigation";
 
-// 🧩 Khai báo Pi SDK toàn cục để tránh lỗi build
+// Khai báo Pi SDK toàn cục để tránh lỗi build
 declare global {
   interface Window {
     Pi?: any;
@@ -18,34 +18,52 @@ export default function CheckoutPage() {
   const [user, setUser] = useState("guest");
   const router = useRouter();
 
-  // ✅ Lấy ví Pi và thông tin user (tạm dùng localStorage để hiển thị)
+  // ✅ Nhận diện user đã đăng nhập Pi (đồng bộ với pilogin)
   useEffect(() => {
-    const w = Number(localStorage.getItem("pi_wallet") ?? "1000");
-    setWallet(w);
+    try {
+      const authData = localStorage.getItem("pi_user");
+      const isLoggedIn = localStorage.getItem("titi_is_logged_in") === "true";
+      const username = localStorage.getItem("titi_username");
 
-    const info = localStorage.getItem("user_info");
-    if (info) {
-      const parsed = JSON.parse(info);
-      setUser(parsed.username || "guest");
+      if (isLoggedIn && authData && username) {
+        setUser(username);
+      } else {
+        setUser("guest");
+      }
+    } catch (err) {
+      console.error("User load error:", err);
+      setUser("guest");
     }
   }, []);
 
-  // 💰 Thanh toán thật qua Pi Wallet (Testnet)
+  // ✅ Lấy ví Pi (mock tạm)
+  useEffect(() => {
+    const w = Number(localStorage.getItem("pi_wallet") ?? "1000");
+    setWallet(w);
+  }, []);
+
+  // 💰 Thanh toán qua Pi Wallet (Testnet)
   const handlePayWithPi = async () => {
     if (!window.Pi) {
       alert("⚠️ Hãy mở trang này trong Pi Browser để thanh toán.");
       return;
     }
     if (cart.length === 0) return alert("🛒 Giỏ hàng trống.");
+    if (user === "guest") {
+      alert("⚠️ Bạn cần đăng nhập bằng Pi trước khi thanh toán!");
+      router.push("/pilogin");
+      return;
+    }
 
     setLoading(true);
     try {
       // ✅ 1. Xác thực người dùng Pi
+      window.Pi.init({ version: "2.0", sandbox: false });
       const scopes = ["payments", "username", "wallet_address"];
       const auth = await window.Pi.authenticate(scopes, (res: any) => res);
       console.log("✅ Xác thực Pi:", auth);
 
-      // ✅ 2. Gọi thanh toán thật
+      // ✅ 2. Gọi thanh toán
       const payment = await window.Pi.createPayment(
         {
           amount: total,
@@ -81,15 +99,15 @@ export default function CheckoutPage() {
       console.log("💰 Kết quả thanh toán:", payment);
 
       // ✅ 3. Lưu đơn hàng
-     const order = {
-  id: Date.now(),
-  items: cart,
-  total,
-  createdAt: new Date().toISOString(),
-  buyer: auth.user?.username || user,
-  status: "Chờ xác nhận",              // <= CHUẨN HOÁ
-  note: "Pi đã thanh toán (testnet)",  // nếu muốn giữ thông tin
-};
+      const order = {
+        id: Date.now(),
+        items: cart,
+        total,
+        createdAt: new Date().toISOString(),
+        buyer: auth.user?.username || user,
+        status: "Chờ xác nhận",
+        note: "Thanh toán bằng Pi (testnet)",
+      };
 
       await fetch("/api/orders", {
         method: "POST",
@@ -115,9 +133,15 @@ export default function CheckoutPage() {
       </h1>
 
       <div className="bg-white p-4 rounded shadow mb-4">
-        <p>Người mua: <b>{user}</b></p>
-        <p>Ví Pi hiện tại: <b className="text-yellow-600">{wallet} Pi</b></p>
-        <p>Tổng đơn hàng: <b className="text-yellow-600">{total} Pi</b></p>
+        <p>
+          Người mua: <b>{user}</b>
+        </p>
+        <p>
+          Ví Pi hiện tại: <b className="text-yellow-600">{wallet} Pi</b>
+        </p>
+        <p>
+          Tổng đơn hàng: <b className="text-yellow-600">{total} Pi</b>
+        </p>
       </div>
 
       <button
