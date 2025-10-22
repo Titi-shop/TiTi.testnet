@@ -1,230 +1,134 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useCart } from "../context/CartContext";
+import { useRouter } from "next/navigation";
+
+// 🧩 Khai báo Pi SDK toàn cục để tránh lỗi build
+declare global {
+  interface Window {
+    Pi?: any;
+  }
+}
 
 export default function CheckoutPage() {
-  const [user, setUser] = useState<{ username: string } | null>(null);
-  const [sdkLoaded, setSdkLoaded] = useState(false);
-  const [isPaying, setIsPaying] = useState(false);
+  const { cart, clearCart, total } = useCart();
+  const [wallet, setWallet] = useState<number>(0);
+  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState("guest");
+  const router = useRouter();
 
-  const [country, setCountry] = useState("");
-  const [address, setAddress] = useState("");
-  const [phone, setPhone] = useState("");
-  const [product, setProduct] = useState<any>(null);
-
-  // 🧠 1. Lấy thông tin user từ localStorage (đồng bộ với LoginWithPi)
+  // ✅ Lấy ví Pi và thông tin user (tạm dùng localStorage để hiển thị)
   useEffect(() => {
-    const loadUser = () => {
-      try {
-        const stored = localStorage.getItem("user_info"); // giống LoginWithPi
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setUser(parsed || null);
-        }
-      } catch (err) {
-        console.error("User parse error:", err);
-      }
-    };
+    const w = Number(localStorage.getItem("pi_wallet") ?? "1000");
+    setWallet(w);
 
-    loadUser();
-    // 🔄 Cập nhật khi LoginWithPi bắn sự kiện
-    window.addEventListener("pi-user-updated", loadUser);
-    return () => window.removeEventListener("pi-user-updated", loadUser);
+    const info = localStorage.getItem("user_info");
+    if (info) {
+      const parsed = JSON.parse(info);
+      setUser(parsed.username || "guest");
+    }
   }, []);
 
-  // 🧠 2. Lấy thông tin profile nếu có
-  useEffect(() => {
+  // 💰 Thanh toán thật qua Pi Wallet (Testnet)
+  const handlePayWithPi = async () => {
+    if (!window.Pi) {
+      alert("⚠️ Hãy mở trang này trong Pi Browser để thanh toán.");
+      return;
+    }
+    if (cart.length === 0) return alert("🛒 Giỏ hàng trống.");
+
+    setLoading(true);
     try {
-      const profile = localStorage.getItem("titi_profile");
-      if (profile) {
-        const parsed = JSON.parse(profile);
-        setCountry(parsed.country || "");
-        setAddress(parsed.address || "");
-        setPhone(parsed.phone || "");
-      }
-    } catch (err) {
-      console.error("Profile parse error:", err);
-    }
-  }, []);
+      // ✅ 1. Xác thực người dùng Pi
+      const scopes = ["payments", "username", "wallet_address"];
+      const auth = await window.Pi.authenticate(scopes, (res: any) => res);
+      console.log("✅ Xác thực Pi:", auth);
 
-  // 🧩 3. Lấy sản phẩm mẫu
-  useEffect(() => {
-    fetch("/api/products")
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setProduct(data[0]);
+      // ✅ 2. Gọi thanh toán thật
+      const payment = await window.Pi.createPayment(
+        {
+          amount: total,
+          memo: `Thanh toán đơn hàng #${Date.now()}`,
+          metadata: {
+            orderId: Date.now(),
+            items: cart,
+            buyer: auth.user?.username || user,
+          },
+        },
+        {
+          onReadyForServerApproval: async (paymentId: string) => {
+            console.log("⏳ [APPROVE] ID:", paymentId);
+            await fetch("/api/pi/approve", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ paymentId }),
+            });
+          },
+          onReadyForServerCompletion: async (paymentId: string, txid: string) => {
+            console.log("✅ [COMPLETE] ID:", paymentId, txid);
+            await fetch("/api/pi/complete", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ paymentId, txid }),
+            });
+          },
+          onCancel: () => alert("❌ Giao dịch đã bị huỷ."),
+          onError: (err: any) => console.error("💥 Lỗi Pi SDK:", err),
         }
-      })
-      .catch((err) => console.error("Fetch product error:", err));
-  }, []);
-
-  // 🧩 4. Khởi tạo SDK (chỉ khi Pi đã có)
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.Pi && !sdkLoaded) {
-      try {
-        window.Pi.init({
-          version: "2.0",
-          sandbox: true,
-          appId: "muasam.titi.onl",
-        });
-        setSdkLoaded(true);
-      } catch (err) {
-        console.error("Pi init error:", err);
-      }
-    }
-  }, [sdkLoaded]);
-
-  // 🧾 5. Hàm thanh toán
-  const handlePayment = async () => {
-    if (!sdkLoaded || !window.Pi) {
-      alert("⚠️ SDK Pi chưa sẵn sàng! Hãy đợi vài giây rồi thử lại.");
-      return;
-    }
-
-    if (!user) {
-      alert("⚠️ Bạn cần đăng nhập bằng Pi trước!");
-      window.location.href = "/pilogin";
-      return;
-    }
-
-    if (!country || !address || !phone) {
-      alert("⚠️ Vui lòng nhập đầy đủ thông tin giao hàng!");
-      return;
-    }
-
-    // 💾 Lưu lại thông tin người dùng
-    localStorage.setItem(
-      "titi_profile",
-      JSON.stringify({ country, address, phone })
-    );
-
-    setIsPaying(true);
-
-    try {
-      const auth = await window.Pi.authenticate(
-        ["username", "payments", "wallet_address"],
-        () => {}
       );
-      const username = auth?.user?.username || user.username || "unknown_user";
 
-      const paymentData = {
-        amount: product?.price || 0.97,
-        memo: `Thanh toán sản phẩm: ${product?.name}`,
-        metadata: {
-          buyer: username,
-          country,
-          address,
-          phone,
-          productId: product?.id,
-        },
-      };
+      console.log("💰 Kết quả thanh toán:", payment);
 
-      const callbacks = {
-        onReadyForServerApproval: async (paymentId: string) => {
-          console.log("✅ Approving payment:", paymentId);
-          await fetch("/api/pi/approve", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ paymentId }),
-          });
-        },
-        onReadyForServerCompletion: async (paymentId: string, txid: string) => {
-          console.log("🏁 Completing payment:", paymentId, txid);
-          await fetch("/api/pi/complete", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ paymentId, txid }),
-          });
-          alert("🎉 Thanh toán thành công!");
-        },
-        onCancel: () => alert("❌ Giao dịch đã bị hủy."),
-        onError: (error: any) => alert("💥 Lỗi thanh toán: " + error.message),
-      };
+      // ✅ 3. Lưu đơn hàng
+     const order = {
+  id: Date.now(),
+  items: cart,
+  total,
+  createdAt: new Date().toISOString(),
+  buyer: auth.user?.username || user,
+  status: "Chờ xác nhận",              // <= CHUẨN HOÁ
+  note: "Pi đã thanh toán (testnet)",  // nếu muốn giữ thông tin
+};
 
-      await window.Pi.createPayment(paymentData, callbacks);
-    } catch (err: any) {
-      console.error("Payment error:", err);
-      alert("Thanh toán thất bại: " + (err?.message || "Không rõ lỗi."));
+      await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(order),
+      });
+
+      clearCart();
+      alert("✅ Thanh toán qua Pi Wallet thành công!");
+      router.push("/customer/pending");
+    } catch (err) {
+      console.error("❌ Lỗi thanh toán:", err);
+      alert("❌ Giao dịch thất bại hoặc bị huỷ.");
     } finally {
-      setIsPaying(false);
+      setLoading(false);
     }
   };
 
-  // 🧱 Giao diện
   return (
-    <main className="min-h-screen bg-gray-100 flex justify-center py-10 px-4">
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-lg p-6 space-y-6">
-        <h1 className="text-2xl font-semibold text-center">Checkout</h1>
+    <main className="max-w-3xl mx-auto p-6 bg-gray-50 min-h-screen">
+      <h1 className="text-2xl font-bold mb-4 text-center text-orange-600">
+        💳 Thanh toán
+      </h1>
 
-        {user ? (
-          <p className="text-center text-gray-600">
-            👋 Xin chào <strong>{user.username}</strong>
-          </p>
-        ) : (
-          <p className="text-center text-red-500">
-            ⚠️ Bạn chưa đăng nhập bằng Pi
-          </p>
-        )}
-
-        <p className="text-center text-sm">
-          SDK status: {sdkLoaded ? "✅ Loaded" : "❌ Not loaded"}
-        </p>
-
-        {product && (
-          <div className="flex items-center gap-4 border p-3 rounded-xl">
-            <img
-              src={product.images?.[0]}
-              alt={product.name}
-              className="w-20 h-20 rounded-lg object-cover bg-gray-100"
-            />
-            <div>
-              <h2 className="font-semibold">{product.name}</h2>
-              <p className="text-gray-600">Price: π{product.price}</p>
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-3">
-          <h3 className="font-semibold text-lg">Thông tin giao hàng</h3>
-          <input
-            type="text"
-            placeholder="Quốc gia"
-            value={country}
-            onChange={(e) => setCountry(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500"
-          />
-          <input
-            type="text"
-            placeholder="Địa chỉ nhận hàng"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500"
-          />
-          <input
-            type="tel"
-            placeholder="Số điện thoại"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500"
-          />
-        </div>
-
-        <div className="border-t border-gray-200"></div>
-
-        <div className="flex justify-between text-lg font-semibold">
-          <span>Tổng:</span>
-          <span>π{product?.price || 0.97}</span>
-        </div>
-
-        <button
-          onClick={handlePayment}
-          disabled={isPaying || !sdkLoaded}
-          className="w-full bg-orange-500 text-white py-3 rounded-xl font-medium hover:bg-orange-600 disabled:opacity-50"
-        >
-          {isPaying ? "Đang xử lý..." : "Thanh toán bằng Pi (Testnet)"}
-        </button>
+      <div className="bg-white p-4 rounded shadow mb-4">
+        <p>Người mua: <b>{user}</b></p>
+        <p>Ví Pi hiện tại: <b className="text-yellow-600">{wallet} Pi</b></p>
+        <p>Tổng đơn hàng: <b className="text-yellow-600">{total} Pi</b></p>
       </div>
+
+      <button
+        onClick={handlePayWithPi}
+        disabled={loading}
+        className={`w-full py-3 rounded text-white font-semibold ${
+          loading ? "bg-gray-400" : "bg-purple-600 hover:bg-purple-700"
+        }`}
+      >
+        {loading ? "Đang mở Pi Wallet..." : "Thanh toán bằng Pi Wallet (Testnet)"}
+      </button>
     </main>
   );
 }
