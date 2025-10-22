@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useCart } from "../../context/CartContext";
 import { useLanguage } from "../../context/LanguageContext";
+import { ShoppingCart, ArrowLeft } from "lucide-react";
 
 export default function ProductDetail() {
   const { id } = useParams();
   const router = useRouter();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [mainImage, setMainImage] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const sliderRef = useRef<HTMLDivElement>(null);
   const { addToCart, clearCart } = useCart();
   const { translate } = useLanguage();
 
@@ -22,28 +24,17 @@ export default function ProductDetail() {
         const res = await fetch("/api/products");
         const products = await res.json();
         const found = products.find((p: any) => p.id.toString() === id.toString());
-        if (found) {
-          setProduct(found);
-          if (found.images?.length > 0) {
-            const valid = found.images.map((src: string) =>
-              src.startsWith("http") || src.startsWith("https")
-                ? src
-                : `/uploads/${src.split("\\").pop()}`
-            );
-            setMainImage(valid[0]);
-          }
-        }
+        setProduct(found);
       } catch (err) {
         console.error("❌ Lỗi khi tải sản phẩm:", err);
       } finally {
         setLoading(false);
       }
     }
-
     if (id) fetchProduct();
   }, [id]);
 
-  // ✅ Thêm vào giỏ hàng
+  // ✅ Thêm giỏ hàng
   const handleAddToCart = () => {
     if (!product) return;
     addToCart({
@@ -57,7 +48,7 @@ export default function ProductDetail() {
     alert("✅ " + translate("added_to_cart"));
   };
 
-  // ✅ Thanh toán nhanh
+  // ✅ Mua ngay
   const handleCheckout = () => {
     if (!product) return;
     clearCart();
@@ -70,6 +61,15 @@ export default function ProductDetail() {
       quantity,
     });
     router.push("/checkout");
+  };
+
+  // ✅ Vuốt qua lại bằng tay
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!sliderRef.current) return;
+    const x = e.touches[0].clientX;
+    const width = sliderRef.current.offsetWidth;
+    const newIndex = Math.round(x / width);
+    setCurrentIndex(newIndex);
   };
 
   if (loading)
@@ -90,33 +90,58 @@ export default function ProductDetail() {
     ) || [];
 
   return (
-    <div className="pb-28 bg-gray-50 min-h-screen">
-      {/* 🖼️ Ảnh sản phẩm chính */}
-      <div className="w-full flex flex-col items-center bg-white shadow-sm pb-4">
-        {mainImage ? (
-          <img
-            src={mainImage}
-            alt={product.name}
-            className="w-full max-w-md h-80 object-cover rounded-lg"
-          />
-        ) : (
-          <div className="w-full h-64 flex items-center justify-center bg-gray-100 text-gray-400">
-            {translate("no_image")}
-          </div>
-        )}
+    <div className="min-h-screen bg-gray-50 pb-24">
+      {/* 🔝 Thanh điều hướng */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white border-b shadow-sm flex items-center justify-between px-3 py-2">
+        <button
+          onClick={() => router.back()}
+          className="text-gray-700 hover:text-orange-500 flex items-center gap-1"
+        >
+          <ArrowLeft size={22} /> <span>{translate("back")}</span>
+        </button>
+        <span className="font-semibold text-base truncate max-w-[60%] text-center">
+          {product.name || translate("product_details")}
+        </span>
+        <button
+          onClick={() => router.push("/cart")}
+          className="text-gray-700 hover:text-orange-500"
+        >
+          <ShoppingCart size={22} />
+        </button>
+      </div>
 
-        {/* 🔹 Dải ảnh nhỏ bên dưới */}
-        {validImages.length > 1 && (
-          <div className="flex gap-2 mt-3 overflow-x-auto px-3">
-            {validImages.map((img: string, idx: number) => (
+      {/* 🖼️ Ảnh sản phẩm có thể kéo */}
+      <div className="mt-12 relative">
+        <div
+          ref={sliderRef}
+          className="flex overflow-x-scroll snap-x snap-mandatory scroll-smooth"
+          onTouchMove={handleTouchMove}
+        >
+          {validImages.length > 0 ? (
+            validImages.map((src, i) => (
               <img
-                key={idx}
-                src={img}
-                onClick={() => setMainImage(img)}
-                className={`w-16 h-16 object-cover rounded-md cursor-pointer border-2 ${
-                  mainImage === img ? "border-orange-500" : "border-transparent"
+                key={i}
+                src={src}
+                alt={`image-${i}`}
+                className="snap-center w-full h-80 object-cover"
+              />
+            ))
+          ) : (
+            <div className="w-full h-80 flex items-center justify-center bg-gray-100 text-gray-400">
+              {translate("no_image")}
+            </div>
+          )}
+        </div>
+
+        {/* 🔘 Dấu chấm slide */}
+        {validImages.length > 1 && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
+            {validImages.map((_, i) => (
+              <span
+                key={i}
+                className={`w-2.5 h-2.5 rounded-full ${
+                  i === currentIndex ? "bg-orange-500" : "bg-gray-300"
                 }`}
-                alt={`thumb-${idx}`}
               />
             ))}
           </div>
@@ -124,12 +149,10 @@ export default function ProductDetail() {
       </div>
 
       {/* 🏷️ Thông tin sản phẩm */}
-      <div className="p-4 max-w-3xl mx-auto bg-white mt-3 rounded-lg shadow-sm">
-        <h1 className="text-2xl font-bold mb-3">{product.name}</h1>
-
-        {/* 💰 Giá + số lượng song song */}
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xl text-orange-600 font-semibold">
+      <div className="p-4 bg-white mt-3 rounded-lg shadow-sm mx-2">
+        {/* 💰 Giá + số lượng */}
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xl font-semibold text-orange-600">
             π {product.price}
           </p>
           <div className="flex items-center gap-2">
@@ -149,20 +172,19 @@ export default function ProductDetail() {
           </div>
         </div>
 
-        {/* 📜 Mô tả */}
+        <h1 className="text-lg font-bold mb-2">{product.name}</h1>
         <p className="text-gray-700 leading-relaxed">{product.description}</p>
 
-        {/* 🏬 Tồn kho */}
         <p className="text-gray-400 text-sm mt-3">
           {translate("stock")}: {product.stock ?? 0}
         </p>
       </div>
 
-      {/* 🛍️ Thanh hành động cố định */}
-      <div className="fixed bottom-16 left-0 right-0 bg-white border-t shadow-lg flex justify-around py-3 z-50">
+      {/* 🛍️ Nút nhỏ phía trên */}
+      <div className="fixed top-2 left-1/2 -translate-x-1/2 z-40 flex gap-3 bg-white/90 rounded-full shadow px-3 py-1">
         <button
           onClick={handleAddToCart}
-          className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-6 py-2 rounded-lg w-1/2 mx-2"
+          className="bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold px-4 py-1 rounded-full"
         >
           🛒 {translate("add_to_cart")}
         </button>
@@ -173,7 +195,7 @@ export default function ProductDetail() {
             product.stock === 0
               ? "bg-gray-400 cursor-not-allowed"
               : "bg-red-500 hover:bg-red-600"
-          } text-white font-semibold px-6 py-2 rounded-lg w-1/2 mx-2`}
+          } text-white text-sm font-semibold px-4 py-1 rounded-full`}
         >
           💳 {translate("checkout_now")}
         </button>
