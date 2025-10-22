@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useCart } from "../context/CartContext";
 import { useRouter } from "next/navigation";
 
-// Khai báo Pi SDK toàn cục để tránh lỗi build
+// 🧩 Khai báo Pi SDK toàn cục
 declare global {
   interface Window {
     Pi?: any;
@@ -18,21 +18,18 @@ export default function CheckoutPage() {
   const [user, setUser] = useState("guest");
   const router = useRouter();
 
-  // ✅ Nhận diện user đã đăng nhập Pi (đồng bộ với pilogin)
+  // ✅ Lấy thông tin người dùng từ PiLogin (đã lưu trong localStorage)
   useEffect(() => {
     try {
-      const authData = localStorage.getItem("pi_user");
       const isLoggedIn = localStorage.getItem("titi_is_logged_in") === "true";
       const username = localStorage.getItem("titi_username");
-
-      if (isLoggedIn && authData && username) {
+      if (isLoggedIn && username) {
         setUser(username);
       } else {
         setUser("guest");
       }
     } catch (err) {
       console.error("User load error:", err);
-      setUser("guest");
     }
   }, []);
 
@@ -42,13 +39,16 @@ export default function CheckoutPage() {
     setWallet(w);
   }, []);
 
-  // 💰 Thanh toán qua Pi Wallet (Testnet)
+  // 💰 Hàm thanh toán
   const handlePayWithPi = async () => {
     if (!window.Pi) {
       alert("⚠️ Hãy mở trang này trong Pi Browser để thanh toán.");
       return;
     }
-    if (cart.length === 0) return alert("🛒 Giỏ hàng trống.");
+    if (cart.length === 0) {
+      alert("🛒 Giỏ hàng trống.");
+      return;
+    }
     if (user === "guest") {
       alert("⚠️ Bạn cần đăng nhập bằng Pi trước khi thanh toán!");
       router.push("/pilogin");
@@ -56,69 +56,92 @@ export default function CheckoutPage() {
     }
 
     setLoading(true);
+
     try {
-      // ✅ 1. Xác thực người dùng Pi
+      // ✅ Khởi tạo Pi SDK
       window.Pi.init({ version: "2.0", sandbox: false });
+
+      // ✅ Xác thực lại người dùng (đảm bảo an toàn)
       const scopes = ["payments", "username", "wallet_address"];
       const auth = await window.Pi.authenticate(scopes, (res: any) => res);
       console.log("✅ Xác thực Pi:", auth);
 
-      // ✅ 2. Gọi thanh toán
-      const payment = await window.Pi.createPayment(
-        {
-          amount: total,
-          memo: `Thanh toán đơn hàng #${Date.now()}`,
-          metadata: {
-            orderId: Date.now(),
-            items: cart,
-            buyer: auth.user?.username || user,
-          },
+      // ✅ Cấu hình thông tin đơn hàng
+      const orderId = Date.now();
+      const paymentData = {
+        amount: total,
+        memo: `Thanh toán đơn hàng #${orderId}`,
+        metadata: {
+          orderId,
+          items: cart,
+          buyer: auth.user?.username || user,
         },
-        {
-          onReadyForServerApproval: async (paymentId: string) => {
-            console.log("⏳ [APPROVE] ID:", paymentId);
-            await fetch("/api/pi/approve", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ paymentId }),
-            });
-          },
-          onReadyForServerCompletion: async (paymentId: string, txid: string) => {
-            console.log("✅ [COMPLETE] ID:", paymentId, txid);
-            await fetch("/api/pi/complete", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ paymentId, txid }),
-            });
-          },
-          onCancel: () => alert("❌ Giao dịch đã bị huỷ."),
-          onError: (err: any) => console.error("💥 Lỗi Pi SDK:", err),
-        }
-      );
-
-      console.log("💰 Kết quả thanh toán:", payment);
-
-      // ✅ 3. Lưu đơn hàng
-      const order = {
-        id: Date.now(),
-        items: cart,
-        total,
-        createdAt: new Date().toISOString(),
-        buyer: auth.user?.username || user,
-        status: "Chờ xác nhận",
-        note: "Thanh toán bằng Pi (testnet)",
       };
 
-      await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(order),
-      });
+      // ✅ Callback xử lý của Pi SDK
+      const callbacks = {
+        // 1️⃣ App gửi yêu cầu duyệt payment đến server
+        onReadyForServerApproval: async (paymentId: string) => {
+          console.log("⏳ [APPROVE] ID:", paymentId);
+          await fetch("/api/pi/approve", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paymentId }),
+          });
+        },
 
-      clearCart();
-      alert("✅ Thanh toán qua Pi Wallet thành công!");
-      router.push("/customer/pending");
-    } catch (err) {
+        // 2️⃣ Khi Pi Wallet hoàn tất giao dịch và gửi txid về
+        onReadyForServerCompletion: async (paymentId: string, txid: string) => {
+          console.log("✅ [COMPLETE] ID:", paymentId, "TXID:", txid);
+
+          // Gửi thông tin lên server để xác minh txid thật
+          const res = await fetch("/api/pi/complete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paymentId, txid }),
+          });
+
+          const result = await res.json();
+
+          // 🧠 Chỉ tạo đơn hàng khi backend xác minh giao dịch thành công
+          if (result?.success) {
+            const order = {
+              id: orderId,
+              items: cart,
+              total,
+              createdAt: new Date().toISOString(),
+              buyer: auth.user?.username || user,
+              status: "Đã thanh toán",
+              note: `Pi TXID: ${txid}`,
+            };
+
+            await fetch("/api/orders", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(order),
+            });
+
+            clearCart();
+            alert("✅ Thanh toán qua Pi Wallet thành công!");
+            router.push("/customer/pending");
+          } else {
+            alert("⚠️ Giao dịch đang chờ xác minh trên Pi Network.");
+          }
+        },
+
+        // 3️⃣ Khi người dùng huỷ
+        onCancel: () => alert("❌ Giao dịch đã bị huỷ."),
+
+        // 4️⃣ Khi có lỗi
+        onError: (error: any) => {
+          console.error("💥 Lỗi thanh toán:", error);
+          alert("💥 Lỗi trong quá trình thanh toán: " + error.message);
+        },
+      };
+
+      // ✅ Gọi thanh toán qua Pi SDK
+      await window.Pi.createPayment(paymentData, callbacks);
+    } catch (err: any) {
       console.error("❌ Lỗi thanh toán:", err);
       alert("❌ Giao dịch thất bại hoặc bị huỷ.");
     } finally {
@@ -126,6 +149,7 @@ export default function CheckoutPage() {
     }
   };
 
+  // 🧱 Giao diện hiển thị
   return (
     <main className="max-w-3xl mx-auto p-6 bg-gray-50 min-h-screen">
       <h1 className="text-2xl font-bold mb-4 text-center text-orange-600">
@@ -151,7 +175,7 @@ export default function CheckoutPage() {
           loading ? "bg-gray-400" : "bg-purple-600 hover:bg-purple-700"
         }`}
       >
-        {loading ? "Đang mở Pi Wallet..." : "Thanh toán bằng Pi Wallet (Testnet)"}
+        {loading ? "Đang mở Pi Wallet..." : "Thanh toán bằng Pi Wallet"}
       </button>
     </main>
   );
