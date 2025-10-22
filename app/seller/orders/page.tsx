@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useLanguage } from "../../context/LanguageContext";
 
 interface OrderItem {
@@ -12,6 +13,7 @@ interface OrderItem {
 interface Order {
   id: string;
   buyer: string;
+  seller?: string;
   createdAt: string;
   total: number;
   status: string;
@@ -20,35 +22,74 @@ interface Order {
 
 export default function SellerOrdersPage() {
   const { translate } = useLanguage();
+  const router = useRouter();
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [sellerUser, setSellerUser] = useState<string>("");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // 🔹 Lấy danh sách đơn hàng từ Vercel Blogs
+  // ✅ Lấy thông tin đăng nhập từ Pi login
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const res = await fetch("/api/orders", { cache: "no-store" });
-        const data = await res.json();
-        setOrders(data);
-      } catch (err) {
-        console.error("❌ Lỗi tải đơn hàng:", err);
-      } finally {
-        setLoading(false);
+    try {
+      const stored = localStorage.getItem("pi_user");
+      const logged = localStorage.getItem("titi_is_logged_in");
+
+      if (stored && logged === "true") {
+        const parsed = JSON.parse(stored);
+        const username = parsed?.user?.username || parsed?.username || "guest_user";
+        setSellerUser(username);
+        setIsLoggedIn(true);
+      } else {
+        setIsLoggedIn(false);
       }
-    };
-    fetchOrders();
+    } catch (err) {
+      console.error("❌ Lỗi khi đọc thông tin Pi login:", err);
+      setIsLoggedIn(false);
+    }
   }, []);
 
-  // 🔹 Hàm cập nhật trạng thái đơn hàng
+  // ✅ Nếu chưa đăng nhập thì dừng lại
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setLoading(false);
+    } else {
+      fetchOrders();
+    }
+  }, [isLoggedIn]);
+
+  // ✅ Lấy danh sách đơn hàng
+  const fetchOrders = async () => {
+    try {
+      const res = await fetch("/api/orders", { cache: "no-store" });
+      if (!res.ok) throw new Error("Không thể tải danh sách đơn hàng");
+
+      const data = await res.json();
+
+      // ✅ Lọc đơn theo seller hiện tại
+      const filtered = data.filter(
+        (o: any) =>
+          !o.seller || o.seller?.toLowerCase() === sellerUser.toLowerCase()
+      );
+
+      setOrders(filtered);
+    } catch (err) {
+      console.error("❌ Lỗi tải đơn hàng:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ Cập nhật trạng thái đơn hàng
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     setUpdating(orderId);
     try {
       const res = await fetch(`/api/orders/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus, seller: sellerUser }),
       });
 
       if (!res.ok) throw new Error("Cập nhật thất bại");
@@ -65,7 +106,7 @@ export default function SellerOrdersPage() {
     }
   };
 
-  // 🔹 Lọc đơn theo trạng thái
+  // ✅ Lọc đơn theo trạng thái
   const filteredOrders =
     filter === "all" ? orders : orders.filter((o) => o.status === filter);
 
@@ -77,12 +118,40 @@ export default function SellerOrdersPage() {
     { key: "Đã hủy", label: translate("cancelled") || "Đã hủy" },
   ];
 
-  // 🔹 Giao diện
+  // 🕓 Giao diện tải
+  if (loading)
+    return (
+      <p className="text-center text-gray-500 mt-6">
+        {translate("loading_orders") || "⏳ Đang tải đơn hàng..."}
+      </p>
+    );
+
+  // 🔒 Nếu chưa đăng nhập
+  if (!isLoggedIn)
+    return (
+      <main className="p-6 text-center">
+        <h2 className="text-xl text-red-600 mb-3">
+          🔐 {translate("login_required") || "Vui lòng đăng nhập bằng Pi Network để quản lý đơn hàng"}
+        </h2>
+        <button
+          onClick={() => router.push("/pilogin")}
+          className="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+        >
+          👉 {translate("go_to_login") || "Đăng nhập ngay"}
+        </button>
+      </main>
+    );
+
+  // ✅ Giao diện chính
   return (
     <main className="p-4 max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold text-center mb-4 text-blue-600">
         📦 {translate("order_manager_title") || "Quản lý đơn hàng"}
       </h1>
+
+      <p className="text-center text-sm text-gray-500 mb-4">
+        👤 {translate("seller_label") || "Người bán"}: <b>{sellerUser}</b>
+      </p>
 
       {/* Tabs lọc trạng thái */}
       <div className="flex flex-wrap justify-center gap-2 mb-4">
@@ -101,34 +170,18 @@ export default function SellerOrdersPage() {
         ))}
       </div>
 
-      {loading ? (
-        <p className="text-center text-gray-500">
-          {translate("loading_orders") || "Đang tải đơn hàng..."}
-        </p>
-      ) : filteredOrders.length === 0 ? (
+      {filteredOrders.length === 0 ? (
         <p className="text-center text-gray-500">
           {translate("no_orders") || "Không có đơn hàng nào."}
         </p>
       ) : (
         <div className="space-y-4">
           {filteredOrders.map((order) => (
-            <div
-              key={order.id}
-              className="border rounded-lg bg-white shadow p-3"
-            >
-              <p>
-                🧾 <b>{translate("order_id") || "Mã đơn"}:</b> #{order.id}
-              </p>
-              <p>
-                👤 {translate("buyer") || "Người mua"}: {order.buyer}
-              </p>
-              <p>
-                🕒 {translate("created_at") || "Thời gian tạo"}:{" "}
-                {new Date(order.createdAt).toLocaleString()}
-              </p>
-              <p>
-                💰 {translate("total_amount") || "Tổng tiền"}: {order.total} Pi
-              </p>
+            <div key={order.id} className="border rounded-lg bg-white shadow p-3">
+              <p>🧾 <b>{translate("order_id") || "Mã đơn"}:</b> #{order.id}</p>
+              <p>👤 {translate("buyer") || "Người mua"}: {order.buyer}</p>
+              <p>🕒 {translate("created_at") || "Thời gian tạo"}: {new Date(order.createdAt).toLocaleString()}</p>
+              <p>💰 {translate("total_amount") || "Tổng tiền"}: {order.total} Pi</p>
               <p>🧺 {translate("items") || "Sản phẩm"}:</p>
               <ul className="ml-6 list-disc">
                 {order.items.map((it, i) => (
@@ -138,7 +191,6 @@ export default function SellerOrdersPage() {
                 ))}
               </ul>
 
-              {/* ✅ Trạng thái + nút thao tác */}
               <div className="flex justify-between items-center mt-3">
                 <span
                   className={`inline-block px-3 py-1 rounded text-sm font-semibold ${
@@ -154,7 +206,6 @@ export default function SellerOrdersPage() {
                   {order.status}
                 </span>
 
-                {/* 🟡 Nút thao tác theo trạng thái */}
                 {order.status === "Chờ xác nhận" && (
                   <button
                     onClick={() => updateOrderStatus(order.id, "Đang giao")}
