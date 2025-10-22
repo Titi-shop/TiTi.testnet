@@ -11,7 +11,6 @@ export default function CartPage() {
   const router = useRouter();
   const { translate } = useLanguage();
 
-  // ✅ Thanh toán 1 sản phẩm qua Pi Testnet
   const handlePayOne = async (item: any) => {
     try {
       if (!window.Pi) {
@@ -25,18 +24,12 @@ export default function CartPage() {
 
       const scopes = ["payments", "username", "wallet_address"];
       const auth = await window.Pi.authenticate(scopes, (res) => res);
-      console.log("✅ Xác thực Pi:", auth);
 
-      // ✅ Gọi thanh toán thật
       const payment = await window.Pi.createPayment(
         {
           amount: item.price * (item.quantity || 1),
           memo: `${translate("paying_product")} ${item.name}`,
-          metadata: {
-            orderId,
-            buyer,
-            item: { id: item.id, name: item.name, price: item.price },
-          },
+          metadata: { orderId, buyer, item },
         },
         {
           onReadyForServerApproval: async (paymentId) => {
@@ -58,9 +51,6 @@ export default function CartPage() {
         }
       );
 
-      console.log("💰 Kết quả:", payment);
-
-      // ✅ Lưu đơn vào hệ thống
       const orderData = {
         id: orderId,
         buyer,
@@ -85,95 +75,92 @@ export default function CartPage() {
     }
   };
 
-  return (
-    <main className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">🛒 {translate("cart_title")}</h1>
+  const total = cart.reduce((sum, i) => sum + i.price * (i.quantity || 1), 0);
 
-      {cart.length === 0 ? (
-        <div className="text-center">
-          <p>{translate("empty_cart")}</p>
-          <Link href="/" className="text-blue-600 hover:underline">
-            {translate("back_to_shop")}
-          </Link>
-        </div>
-      ) : (
-        <div>
-          <div className="space-y-4">
-            {cart.map((it) => (
-              <div
-                key={it.id}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border p-3 rounded shadow-sm bg-white"
-              >
-                {/* Hình ảnh */}
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="w-20 h-20 bg-gray-100 flex items-center justify-center overflow-hidden rounded">
+  return (
+    <main className="min-h-screen bg-gray-50 p-4 flex flex-col items-center">
+      <div className="w-full max-w-2xl bg-white rounded-xl shadow p-4">
+        <h1 className="text-xl font-bold mb-4 text-center">🛒 {translate("cart_title")}</h1>
+
+        {cart.length === 0 ? (
+          <div className="text-center py-10">
+            <p className="mb-2 text-gray-600">{translate("empty_cart")}</p>
+            <Link href="/" className="text-purple-600 hover:underline font-medium">
+              {translate("back_to_shop")}
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className="divide-y">
+              {cart.map((it) => (
+                <div key={it.id} className="flex items-center py-4 gap-3">
+                  <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
                     {it.images?.[0] ? (
-                      <img
-                        src={it.images[0]}
-                        className="w-full h-full object-cover"
-                        alt={it.name}
-                      />
+                      <img src={it.images[0]} alt={it.name} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-gray-400 text-sm">
+                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
                         {translate("no_image")}
-                      </span>
+                      </div>
                     )}
                   </div>
 
-                  <div className="flex-1">
-                    <h3 className="font-semibold">{it.name}</h3>
-                    <p className="text-yellow-600 font-bold">{it.price} Pi</p>
-                    <p className="text-sm text-gray-600 line-clamp-2">
-                      {it.description}
-                    </p>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold truncate">{it.name}</h3>
+                    <p className="text-yellow-600 font-bold">{it.price} π</p>
+                    <p className="text-gray-500 text-sm line-clamp-2">{it.description}</p>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      value={it.quantity || 1}
+                      onChange={(e) => updateQty(it.id, Math.max(1, Number(e.target.value)))}
+                      className="w-16 border rounded text-center p-1"
+                    />
+                    <button
+                      onClick={() => removeFromCart(it.id)}
+                      className="text-xs text-red-500 hover:text-red-700"
+                    >
+                      {translate("delete")}
+                    </button>
+                    <button
+                      onClick={() => handlePayOne(it)}
+                      className="bg-purple-600 text-white text-sm px-3 py-1 rounded hover:bg-purple-700"
+                    >
+                      💳 {translate("pay_with_pi")}
+                    </button>
                   </div>
                 </div>
+              ))}
+            </div>
 
-                {/* Thao tác */}
-                <div className="flex flex-col sm:flex-row items-center gap-2 sm:w-[200px] justify-end">
-                  <input
-                    type="number"
-                    min={1}
-                    value={it.quantity || 1}
-                    onChange={(e) =>
-                      updateQty(it.id, Math.max(1, Number(e.target.value)))
-                    }
-                    className="w-16 border p-1 rounded text-center"
-                  />
+            <div className="mt-4 border-t pt-4 flex justify-between items-center text-sm">
+              <button
+                onClick={() => {
+                  clearCart();
+                  alert("🗑️ " + translate("cart_cleared"));
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                {translate("clear_all")}
+              </button>
 
-                  <button
-                    onClick={() => removeFromCart(it.id)}
-                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                  >
-                    {translate("delete")}
-                  </button>
-
-                  {/* 🔥 Thanh toán thật qua Pi Testnet */}
-                  <button
-                    onClick={() => handlePayOne(it)}
-                    className="bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700 flex items-center gap-1"
-                  >
-                    💳 {translate("pay_with_pi")}
-                  </button>
-                </div>
+              <div className="text-right">
+                <p className="font-semibold">
+                  {translate("total")}: <span className="text-purple-600">{total.toFixed(2)} π</span>
+                </p>
+                <button
+                  onClick={() => alert("🚀 Tính năng thanh toán toàn bộ đang phát triển")}
+                  className="mt-2 bg-orange-500 text-white px-5 py-2 rounded-lg font-semibold hover:bg-orange-600"
+                >
+                  {translate("order_now")}
+                </button>
               </div>
-            ))}
-          </div>
-
-          {/* ==== Nút xóa toàn bộ ==== */}
-          <div className="mt-6 flex justify-center">
-            <button
-              onClick={() => {
-                clearCart();
-                alert("🗑️ " + translate("cart_cleared"));
-              }}
-              className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
-            >
-              {translate("clear_all")}
-            </button>
-          </div>
-        </div>
-      )}
+            </div>
+          </>
+        )}
+      </div>
     </main>
   );
 }
