@@ -59,7 +59,7 @@ export default function CheckoutPage() {
 
     try {
       // ✅ Khởi tạo Pi SDK
-      window.Pi.init({ version: "2.0", sandbox: false });
+      window.Pi.init({ version: "2.0", sandbox: true });
 
       // ✅ Xác thực lại người dùng (đảm bảo an toàn)
       const scopes = ["payments", "username", "wallet_address"];
