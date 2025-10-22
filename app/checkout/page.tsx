@@ -1,134 +1,162 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useCart } from "../context/CartContext";
-import { useRouter } from "next/navigation";
-
-// 🧩 Khai báo Pi SDK toàn cục để tránh lỗi build
-declare global {
-  interface Window {
-    Pi?: any;
-  }
-}
+import React, { useEffect, useState } from "react";
+import { init, Pi } from "@pi-network/pi-sdk";
 
 export default function CheckoutPage() {
-  const { cart, clearCart, total } = useCart();
-  const [wallet, setWallet] = useState<number>(0);
-  const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState("guest");
-  const router = useRouter();
+  const [pi, setPi] = useState<Pi | null>(null);
+  const [user, setUser] = useState<{ username: string } | null>(null);
+  const [isPaying, setIsPaying] = useState(false);
 
-  // ✅ Lấy ví Pi và thông tin user (tạm dùng localStorage để hiển thị)
+  // Thông tin người nhận hàng
+  const [country, setCountry] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+
   useEffect(() => {
-    const w = Number(localStorage.getItem("pi_wallet") ?? "1000");
-    setWallet(w);
-
-    const info = localStorage.getItem("user_info");
-    if (info) {
-      const parsed = JSON.parse(info);
-      setUser(parsed.username || "guest");
+    const stored = localStorage.getItem("pi_user");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setUser(parsed.user);
+      } catch {
+        setUser(null);
+      }
     }
+
+    const piInstance = init({
+      version: "2.0",
+      sandbox: true,
+      apiKey: process.env.NEXT_PUBLIC_PI_API_KEY!,
+    });
+    setPi(piInstance);
   }, []);
 
-  // 💰 Thanh toán thật qua Pi Wallet (Testnet)
-  const handlePayWithPi = async () => {
-    if (!window.Pi) {
-      alert("⚠️ Hãy mở trang này trong Pi Browser để thanh toán.");
+  const handlePayment = async () => {
+    if (!pi) return;
+    if (!user) {
+      alert("⚠️ Bạn cần đăng nhập bằng Pi trước khi thanh toán!");
+      window.location.href = "/pilogin";
       return;
     }
-    if (cart.length === 0) return alert("🛒 Giỏ hàng trống.");
 
-    setLoading(true);
+    if (!country || !address || !phone) {
+      alert("⚠️ Vui lòng nhập đầy đủ thông tin giao hàng!");
+      return;
+    }
+
+    setIsPaying(true);
+
     try {
-      // ✅ 1. Xác thực người dùng Pi
-      const scopes = ["payments", "username", "wallet_address"];
-      const auth = await window.Pi.authenticate(scopes, (res: any) => res);
-      console.log("✅ Xác thực Pi:", auth);
-
-      // ✅ 2. Gọi thanh toán thật
-      const payment = await window.Pi.createPayment(
-        {
-          amount: total,
-          memo: `Thanh toán đơn hàng #${Date.now()}`,
-          metadata: {
-            orderId: Date.now(),
-            items: cart,
-            buyer: auth.user?.username || user,
-          },
+      const paymentData = {
+        amount: 0.97,
+        memo: "Audi RS e-tron GT purchase",
+        metadata: {
+          productId: "audi-rs-etron-gt",
+          buyer: user.username,
+          country,
+          address,
+          phone,
         },
-        {
-          onReadyForServerApproval: async (paymentId: string) => {
-            console.log("⏳ [APPROVE] ID:", paymentId);
-            await fetch("/api/pi/approve", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ paymentId }),
-            });
-          },
-          onReadyForServerCompletion: async (paymentId: string, txid: string) => {
-            console.log("✅ [COMPLETE] ID:", paymentId, txid);
-            await fetch("/api/pi/complete", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ paymentId, txid }),
-            });
-          },
-          onCancel: () => alert("❌ Giao dịch đã bị huỷ."),
-          onError: (err: any) => console.error("💥 Lỗi Pi SDK:", err),
-        }
-      );
+      };
 
-      console.log("💰 Kết quả thanh toán:", payment);
+      const callbacks = {
+        onReadyForServerApproval: (paymentId: string) => {
+          console.log("🟢 Ready for approval:", paymentId);
+        },
+        onReadyForServerCompletion: (paymentId: string, txid: string) => {
+          console.log("✅ Completed:", paymentId, txid);
+        },
+        onCancel: (paymentId: string) => {
+          console.log("🚫 Cancelled:", paymentId);
+          setIsPaying(false);
+        },
+        onError: (error: any, payment?: any) => {
+          console.error("❌ Error:", error, payment);
+          setIsPaying(false);
+        },
+      };
 
-      // ✅ 3. Lưu đơn hàng
-     const order = {
-  id: Date.now(),
-  items: cart,
-  total,
-  createdAt: new Date().toISOString(),
-  buyer: auth.user?.username || user,
-  status: "Chờ xác nhận",              // <= CHUẨN HOÁ
-  note: "Pi đã thanh toán (testnet)",  // nếu muốn giữ thông tin
-};
-
-      await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(order),
-      });
-
-      clearCart();
-      alert("✅ Thanh toán qua Pi Wallet thành công!");
-      router.push("/customer/pending");
+      await pi.createPayment(paymentData, callbacks);
     } catch (err) {
-      console.error("❌ Lỗi thanh toán:", err);
-      alert("❌ Giao dịch thất bại hoặc bị huỷ.");
+      console.error("Payment failed:", err);
     } finally {
-      setLoading(false);
+      setIsPaying(false);
     }
   };
 
   return (
-    <main className="max-w-3xl mx-auto p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-bold mb-4 text-center text-orange-600">
-        💳 Thanh toán
-      </h1>
+    <main className="min-h-screen bg-gray-100 flex justify-center py-10 px-4">
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-lg p-6 space-y-6">
+        <h1 className="text-2xl font-semibold text-center">Checkout</h1>
 
-      <div className="bg-white p-4 rounded shadow mb-4">
-        <p>Người mua: <b>{user}</b></p>
-        <p>Ví Pi hiện tại: <b className="text-yellow-600">{wallet} Pi</b></p>
-        <p>Tổng đơn hàng: <b className="text-yellow-600">{total} Pi</b></p>
+        {/* Hiển thị người dùng */}
+        {user ? (
+          <p className="text-center text-gray-600">
+            👋 Xin chào <strong>{user.username}</strong>
+          </p>
+        ) : (
+          <p className="text-center text-red-500">
+            ⚠️ Bạn chưa đăng nhập Pi
+          </p>
+        )}
+
+        {/* Thông tin sản phẩm */}
+        <div className="flex items-center gap-4 border p-3 rounded-xl">
+          <img
+            src="/audi.jpg"
+            alt="Audi RS e-tron GT"
+            className="w-20 h-20 rounded-lg object-cover"
+          />
+          <div>
+            <h2 className="font-semibold">Audi RS e-tron GT</h2>
+            <p className="text-gray-600">Price: π1.00</p>
+          </div>
+        </div>
+
+        {/* Form thông tin người nhận */}
+        <div className="space-y-3">
+          <h3 className="font-semibold text-lg">Thông tin giao hàng</h3>
+          <input
+            type="text"
+            placeholder="Quốc gia"
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+          />
+          <input
+            type="text"
+            placeholder="Địa chỉ nhận hàng"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+          />
+          <input
+            type="tel"
+            placeholder="Số điện thoại"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+          />
+        </div>
+
+        <div className="border-t border-gray-200"></div>
+
+        {/* Tổng cộng */}
+        <div className="flex justify-between text-lg font-semibold">
+          <span>Total:</span>
+          <span>π0.97</span>
+        </div>
+
+        {/* Nút thanh toán */}
+        <button
+          onClick={handlePayment}
+          disabled={isPaying}
+          className="w-full bg-orange-500 text-white py-3 rounded-xl font-medium hover:bg-orange-600 disabled:opacity-50"
+        >
+          {isPaying ? "Processing..." : "Pay with Pi (Testnet)"}
+        </button>
       </div>
-
-      <button
-        onClick={handlePayWithPi}
-        disabled={loading}
-        className={`w-full py-3 rounded text-white font-semibold ${
-          loading ? "bg-gray-400" : "bg-purple-600 hover:bg-purple-700"
-        }`}
-      >
-        {loading ? "Đang mở Pi Wallet..." : "Thanh toán bằng Pi Wallet (Testnet)"}
-      </button>
     </main>
   );
 }
