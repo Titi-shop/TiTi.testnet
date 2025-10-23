@@ -12,21 +12,18 @@ declare global {
 
 export default function CheckoutPage() {
   const { cart, clearCart, total } = useCart();
+  const router = useRouter();
   const [wallet, setWallet] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState("guest");
-  const [shippingInfo, setShippingInfo] = useState<any>(null);
-  const router = useRouter();
+  const [shipping, setShipping] = useState<any>(null);
 
-  // ✅ Lấy thông tin người dùng từ PiLogin
+  // ✅ Lấy thông tin đăng nhập
   useEffect(() => {
     try {
-      const isLoggedIn = localStorage.getItem("titi_is_logged_in") === "true";
       const username = localStorage.getItem("titi_username");
-      if (isLoggedIn && username) setUser(username);
-    } catch (err) {
-      console.error("User load error:", err);
-    }
+      if (username) setUser(username);
+    } catch {}
   }, []);
 
   // ✅ Lấy ví Pi (mock)
@@ -35,39 +32,25 @@ export default function CheckoutPage() {
     setWallet(w);
   }, []);
 
-  // ✅ Lấy địa chỉ đã lưu từ localStorage hoặc API
+  // ✅ Lấy địa chỉ giao hàng đã lưu
   useEffect(() => {
     const saved = localStorage.getItem("shipping_info");
-    if (saved) {
-      setShippingInfo(JSON.parse(saved));
-    } else {
-      // Nếu chưa có trong localStorage thì lấy từ API KV
-      const username = localStorage.getItem("titi_username");
-      if (username) {
-        fetch(`/api/address?username=${username}`)
-          .then((res) => res.json())
-          .then((data) => {
-            if (data?.address) {
-              setShippingInfo(data.address);
-              localStorage.setItem("shipping_info", JSON.stringify(data.address));
-            }
-          });
-      }
-    }
+    if (saved) setShipping(JSON.parse(saved));
   }, []);
 
   // 💰 Thanh toán qua Pi
-  const handlePayWithPi = async () => {
+  const handlePay = async () => {
     if (!window.Pi) {
-      alert("⚠️ Hãy mở trang này trong Pi Browser để thanh toán.");
+      alert("⚠️ Hãy mở trong Pi Browser để thanh toán!");
+      return;
+    }
+    if (!shipping) {
+      alert("📦 Vui lòng chọn địa chỉ giao hàng!");
+      router.push("/customer/address");
       return;
     }
     if (cart.length === 0) {
-      alert("🛒 Giỏ hàng trống.");
-      return;
-    }
-    if (!shippingInfo?.address) {
-      alert("📦 Bạn chưa chọn địa chỉ giao hàng!");
+      alert("🛒 Giỏ hàng trống!");
       return;
     }
 
@@ -77,7 +60,6 @@ export default function CheckoutPage() {
       window.Pi.init({ version: "2.0", sandbox: false });
       const scopes = ["payments", "username", "wallet_address"];
       const auth = await window.Pi.authenticate(scopes, (res: any) => res);
-      console.log("✅ Xác thực Pi:", auth);
 
       const orderId = Date.now();
       const paymentData = {
@@ -115,7 +97,7 @@ export default function CheckoutPage() {
               status: "Đã thanh toán",
               note: `Pi TXID: ${txid}`,
               createdAt: new Date().toISOString(),
-              shipping: shippingInfo, // ✅ lấy từ địa chỉ đã lưu
+              shipping,
             };
 
             await fetch("/api/orders", {
@@ -128,12 +110,12 @@ export default function CheckoutPage() {
             alert("✅ Thanh toán thành công!");
             router.push("/customer/pending");
           } else {
-            alert("⚠️ Giao dịch đang chờ xác minh trên Pi Network.");
+            alert("⚠️ Giao dịch đang chờ xác minh.");
           }
         },
-        onCancel: () => alert("❌ Giao dịch đã bị huỷ."),
+        onCancel: () => alert("❌ Giao dịch bị huỷ."),
         onError: (error: any) => {
-          console.error("💥 Lỗi thanh toán:", error);
+          console.error("💥 Lỗi:", error);
           alert("💥 Lỗi trong quá trình thanh toán: " + error.message);
         },
       };
@@ -149,49 +131,81 @@ export default function CheckoutPage() {
 
   // 🧱 Giao diện
   return (
-    <main className="max-w-3xl mx-auto p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-bold mb-4 text-center text-orange-600">
-        💳 Thanh toán
-      </h1>
-
-      {/* Hiển thị địa chỉ giao hàng đã chọn */}
-      <div className="p-4 border rounded-lg bg-white mb-4">
-        <h3 className="font-semibold text-blue-600 mb-2">📦 Địa chỉ giao hàng</h3>
-
-        {shippingInfo ? (
-          <div className="text-sm text-gray-800">
-            <p>👤 {shippingInfo.name}</p>
-            <p>📞 {shippingInfo.phone}</p>
-            <p>🏠 {shippingInfo.address}</p>
-          </div>
-        ) : (
-          <p className="text-gray-500 text-sm">Chưa có địa chỉ giao hàng.</p>
-        )}
-
-        <button
+    <main className="max-w-md mx-auto min-h-screen bg-gray-50 flex flex-col justify-between">
+      <div>
+        {/* Địa chỉ giao hàng */}
+        <div
+          className="bg-white border-b border-gray-200 p-4 flex justify-between items-center cursor-pointer"
           onClick={() => router.push("/customer/address")}
-          className="mt-3 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
-          ✏️ {shippingInfo ? "Thay đổi địa chỉ" : "Chọn địa chỉ giao hàng"}
+          {shipping ? (
+            <div className="flex-1">
+              <p className="font-semibold text-gray-800">{shipping.name}</p>
+              <p className="text-gray-600 text-sm">{shipping.phone}</p>
+              <p className="text-gray-500 text-sm">
+                {shipping.country}, {shipping.address}
+              </p>
+            </div>
+          ) : (
+            <p className="text-gray-500">➕ Thêm địa chỉ giao hàng</p>
+          )}
+          <span className="text-blue-500 text-sm ml-3">Chỉnh sửa ➜</span>
+        </div>
+
+        {/* Danh sách sản phẩm */}
+        <div className="p-4 bg-white mt-2 border-t">
+          <h2 className="font-semibold text-gray-800 mb-2">🛒 Giỏ hàng</h2>
+          {cart.length === 0 ? (
+            <p className="text-gray-500 text-sm">Không có sản phẩm nào.</p>
+          ) : (
+            <div className="space-y-3">
+              {cart.map((item, i) => (
+                <div
+                  key={i}
+                  className="flex items-center border-b border-gray-100 pb-2 cursor-pointer hover:bg-gray-50 rounded"
+                  onClick={() => router.push(`/product/${item.id}`)}
+                >
+                  <img
+                    src={item.image || "/placeholder.png"}
+                    alt={item.name}
+                    className="w-16 h-16 object-cover rounded"
+                  />
+                  <div className="ml-3 flex-1">
+                    <p className="text-gray-800 font-medium text-sm">
+                      {item.name}
+                    </p>
+                    <p className="text-gray-500 text-xs">
+                      x{item.quantity} × {item.price} Pi
+                    </p>
+                  </div>
+                  <p className="text-orange-600 font-semibold text-sm">
+                    {(item.price * item.quantity).toFixed(2)} Pi
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Tổng cộng + nút Pay */}
+      <div className="bg-white border-t border-gray-200 p-4 flex justify-between items-center">
+        <div>
+          <p className="text-gray-600 text-sm">Tổng cộng:</p>
+          <p className="text-xl font-bold text-orange-600">{total.toFixed(2)} Pi</p>
+        </div>
+        <button
+          onClick={handlePay}
+          disabled={loading}
+          className={`px-6 py-3 rounded-lg font-semibold text-white text-sm ${
+            loading
+              ? "bg-gray-400"
+              : "bg-orange-600 hover:bg-orange-700 active:bg-orange-800"
+          }`}
+        >
+          {loading ? "Đang xử lý..." : "Pay Now"}
         </button>
       </div>
-
-      {/* Thông tin thanh toán */}
-      <div className="bg-white p-4 rounded shadow mb-4">
-        <p>Người mua: <b>{user}</b></p>
-        <p>Ví Pi: <b className="text-yellow-600">{wallet} Pi</b></p>
-        <p>Tổng đơn hàng: <b className="text-yellow-600">{total} Pi</b></p>
-      </div>
-
-      <button
-        onClick={handlePayWithPi}
-        disabled={loading}
-        className={`w-full py-3 rounded text-white font-semibold ${
-          loading ? "bg-gray-400" : "bg-purple-600 hover:bg-purple-700"
-        }`}
-      >
-        {loading ? "Đang mở Pi Wallet..." : "Thanh toán bằng Pi Wallet"}
-      </button>
     </main>
   );
 }
