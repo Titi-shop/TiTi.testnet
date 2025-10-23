@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useCart } from "../context/CartContext";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ShoppingCart } from "lucide-react"; // icon đẹp từ lucide-react
+import { ArrowLeft } from "lucide-react"; // chỉ giữ icon Back
 
 declare global {
   interface Window {
@@ -14,7 +14,6 @@ declare global {
 export default function CheckoutPage() {
   const { cart, clearCart, total } = useCart();
   const router = useRouter();
-  const [wallet, setWallet] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState("guest");
   const [shipping, setShipping] = useState<any>(null);
@@ -25,12 +24,6 @@ export default function CheckoutPage() {
       const username = localStorage.getItem("titi_username");
       if (username) setUser(username);
     } catch {}
-  }, []);
-
-  // ✅ Lấy ví Pi (mock)
-  useEffect(() => {
-    const w = Number(localStorage.getItem("pi_wallet") ?? "1000");
-    setWallet(w);
   }, []);
 
   // ✅ Lấy địa chỉ giao hàng đã lưu
@@ -130,7 +123,6 @@ export default function CheckoutPage() {
     }
   };
 
-  // 🧱 Giao diện
   return (
     <main className="max-w-md mx-auto min-h-screen bg-gray-50 flex flex-col justify-between">
       {/* Thanh điều hướng */}
@@ -143,16 +135,11 @@ export default function CheckoutPage() {
           <span>Back</span>
         </button>
         <h1 className="font-semibold text-gray-800">Thanh toán</h1>
-        <button
-          onClick={() => router.push("/cart")}
-          className="text-gray-700 hover:text-blue-600"
-        >
-          <ShoppingCart className="w-5 h-5" />
-        </button>
+        <div className="w-5" /> {/* Giữ cân đối thay vì icon giỏ hàng */}
       </div>
 
       {/* Nội dung chính */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto pb-24">
         {/* Địa chỉ giao hàng */}
         <div
           className="bg-white border-b border-gray-200 p-4 flex justify-between items-center cursor-pointer"
@@ -174,7 +161,7 @@ export default function CheckoutPage() {
 
         {/* Giỏ hàng */}
         <div className="p-4 bg-white mt-2 border-t">
-          <h2 className="font-semibold text-gray-800 mb-2">🛒 Giỏ hàng</h2>
+          <h2 className="font-semibold text-gray-800 mb-2">Giỏ hàng</h2>
           {cart.length === 0 ? (
             <p className="text-gray-500 text-sm">Không có sản phẩm nào.</p>
           ) : (
@@ -188,7 +175,10 @@ export default function CheckoutPage() {
                   <img
                     src={item.image || "/placeholder.png"}
                     alt={item.name}
-                    className="w-16 h-16 object-cover rounded"
+                    className="w-16 h-16 object-cover rounded border"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "/placeholder.png";
+                    }}
                   />
                   <div className="ml-3 flex-1">
                     <p className="text-gray-800 font-medium text-sm">
@@ -208,8 +198,8 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {/* Tổng cộng + nút thanh toán */}
-      <div className="bg-white border-t border-gray-200 p-4 flex justify-between items-center sticky bottom-0">
+      {/* Thanh tổng cộng + nút thanh toán (cố định dưới) */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex justify-between items-center max-w-md mx-auto">
         <div>
           <p className="text-gray-600 text-sm">Tổng cộng:</p>
           <p className="text-xl font-bold text-orange-600">
