@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useCart } from "../context/CartContext";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react"; // chỉ giữ icon Back
+import { ArrowLeft } from "lucide-react";
 
 declare global {
   interface Window {
@@ -18,7 +18,7 @@ export default function CheckoutPage() {
   const [user, setUser] = useState("guest");
   const [shipping, setShipping] = useState<any>(null);
 
-  // ✅ Lấy thông tin đăng nhập
+  // ✅ Lấy thông tin người dùng
   useEffect(() => {
     try {
       const username = localStorage.getItem("titi_username");
@@ -26,7 +26,7 @@ export default function CheckoutPage() {
     } catch {}
   }, []);
 
-  // ✅ Lấy địa chỉ giao hàng đã lưu
+  // ✅ Lấy địa chỉ giao hàng
   useEffect(() => {
     const saved = localStorage.getItem("shipping_info");
     if (saved) setShipping(JSON.parse(saved));
@@ -61,33 +61,37 @@ export default function CheckoutPage() {
         memo: `Thanh toán đơn hàng #${orderId}`,
         metadata: {
           orderId,
-          items: cart,
           buyer: auth.user?.username || user,
+          items: cart,
         },
       };
 
+      // 🔥 Các callback từ Pi SDK
       const callbacks = {
+        // ❌ Không lưu đơn hàng ở đây — chỉ xác nhận chuẩn bị thanh toán
         onReadyForServerApproval: async (paymentId: string) => {
-          await fetch("/api/pi/approve", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ paymentId }),
-          });
+          console.log("📩 Chờ xác nhận server:", paymentId);
         },
+
+        // ✅ Khi người dùng thanh toán thành công trong ví Pi
         onReadyForServerCompletion: async (paymentId: string, txid: string) => {
-          const res = await fetch("/api/pi/complete", {
+          console.log("✅ Pi thanh toán thành công:", { paymentId, txid });
+
+          // Gọi server để xác minh Pi transaction
+          const verifyRes = await fetch("/api/pi/complete", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ paymentId, txid }),
           });
-          const result = await res.json();
+          const verifyData = await verifyRes.json();
 
-          if (result?.success) {
+          if (verifyData?.success) {
+            // ✅ Chỉ lưu đơn khi Pi xác nhận hợp lệ
             const order = {
               id: orderId,
+              buyer: auth.user?.username || user,
               items: cart,
               total,
-              buyer: auth.user?.username || user,
               status: "Đã thanh toán",
               note: `Pi TXID: ${txid}`,
               createdAt: new Date().toISOString(),
@@ -104,13 +108,18 @@ export default function CheckoutPage() {
             alert("✅ Thanh toán thành công!");
             router.push("/customer/pending");
           } else {
-            alert("⚠️ Giao dịch đang chờ xác minh.");
+            alert("⚠️ Giao dịch chưa được xác minh. Vui lòng thử lại!");
           }
         },
-        onCancel: () => alert("❌ Giao dịch bị huỷ."),
+
+        onCancel: () => {
+          console.warn("❌ Người dùng đã huỷ giao dịch.");
+          alert("Giao dịch bị huỷ.");
+        },
+
         onError: (error: any) => {
-          console.error("💥 Lỗi:", error);
-          alert("💥 Lỗi trong quá trình thanh toán: " + error.message);
+          console.error("💥 Lỗi thanh toán:", error);
+          alert("Lỗi trong quá trình thanh toán: " + error.message);
         },
       };
 
@@ -123,9 +132,16 @@ export default function CheckoutPage() {
     }
   };
 
+  // ✅ Chuẩn hoá link ảnh từ Vercel (nếu chưa có domain)
+  const getImageUrl = (url: string) => {
+    if (!url) return "/placeholder.png";
+    if (url.startsWith("http")) return url;
+    return `https://muasam-titi.vercel.app${url}`;
+  };
+
   return (
     <main className="max-w-md mx-auto min-h-screen bg-gray-50 flex flex-col justify-between">
-      {/* Thanh điều hướng */}
+      {/* 🔹 Thanh điều hướng */}
       <div className="flex items-center justify-between bg-white p-3 border-b sticky top-0 z-10">
         <button
           onClick={() => router.back()}
@@ -135,10 +151,10 @@ export default function CheckoutPage() {
           <span>Back</span>
         </button>
         <h1 className="font-semibold text-gray-800">Thanh toán</h1>
-        <div className="w-5" /> {/* Giữ cân đối thay vì icon giỏ hàng */}
+        <div className="w-5" />
       </div>
 
-      {/* Nội dung chính */}
+      {/* 🔹 Nội dung chính */}
       <div className="flex-1 overflow-y-auto pb-24">
         {/* Địa chỉ giao hàng */}
         <div
@@ -161,7 +177,7 @@ export default function CheckoutPage() {
 
         {/* Giỏ hàng */}
         <div className="p-4 bg-white mt-2 border-t">
-          <h2 className="font-semibold text-gray-800 mb-2">sản phẩm</h2>
+          <h2 className="font-semibold text-gray-800 mb-2">Sản phẩm</h2>
           {cart.length === 0 ? (
             <p className="text-gray-500 text-sm">Không có sản phẩm nào.</p>
           ) : (
@@ -173,12 +189,12 @@ export default function CheckoutPage() {
                   onClick={() => router.push(`/product/${item.id}`)}
                 >
                   <img
-                    src={item.image || "/placeholder.png"}
+                    src={getImageUrl(item.image)}
                     alt={item.name}
                     className="w-16 h-16 object-cover rounded border"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = "/placeholder.png";
-                    }}
+                    onError={(e) =>
+                      ((e.target as HTMLImageElement).src = "/placeholder.png")
+                    }
                   />
                   <div className="ml-3 flex-1">
                     <p className="text-gray-800 font-medium text-sm">
@@ -197,9 +213,9 @@ export default function CheckoutPage() {
           )}
         </div>
       </div>
-      {/* Thanh tổng cộng + nút thanh toán */}
+
+      {/* 🔹 Thanh tổng cộng + nút thanh toán */}
       <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 p-4 flex justify-between items-center max-w-md mx-auto">
-        {/* ✅ bottom-16 để nằm trên thanh điều hướng */}
         <div>
           <p className="text-gray-600 text-sm">Tổng cộng:</p>
           <p className="text-xl font-bold text-orange-600">
