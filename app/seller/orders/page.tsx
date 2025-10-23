@@ -161,7 +161,13 @@ export default function SellerOrdersPage() {
                   <li className="text-gray-400 italic">Không có chi tiết sản phẩm</li>
                 )}
               </ul>
-
+{order.shipping && (
+  <div className="mt-3 text-sm text-gray-700 bg-gray-50 p-2 rounded">
+    <p>👤 Người nhận: {order.shipping.name}</p>
+    <p>📞 Số điện thoại: {order.shipping.phone}</p>
+    <p>📍 Địa chỉ: {order.shipping.address}</p>
+  </div>
+)}
               <div className="flex justify-between items-center mt-3">
                 <span className="px-3 py-1 bg-gray-100 rounded text-sm">{order.status}</span>
                 {order.status === "Chờ xác nhận" && (
