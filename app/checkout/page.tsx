@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useCart } from "../context/CartContext";
 import { useRouter } from "next/navigation";
+import { ArrowLeft, ShoppingCart } from "lucide-react"; // icon đẹp từ lucide-react
 
 declare global {
   interface Window {
@@ -132,7 +133,26 @@ export default function CheckoutPage() {
   // 🧱 Giao diện
   return (
     <main className="max-w-md mx-auto min-h-screen bg-gray-50 flex flex-col justify-between">
-      <div>
+      {/* Thanh điều hướng */}
+      <div className="flex items-center justify-between bg-white p-3 border-b sticky top-0 z-10">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center text-gray-700 hover:text-blue-600"
+        >
+          <ArrowLeft className="w-5 h-5 mr-1" />
+          <span>Back</span>
+        </button>
+        <h1 className="font-semibold text-gray-800">Thanh toán</h1>
+        <button
+          onClick={() => router.push("/cart")}
+          className="text-gray-700 hover:text-blue-600"
+        >
+          <ShoppingCart className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Nội dung chính */}
+      <div className="flex-1 overflow-y-auto">
         {/* Địa chỉ giao hàng */}
         <div
           className="bg-white border-b border-gray-200 p-4 flex justify-between items-center cursor-pointer"
@@ -152,7 +172,7 @@ export default function CheckoutPage() {
           <span className="text-blue-500 text-sm ml-3">Chỉnh sửa ➜</span>
         </div>
 
-        {/* Danh sách sản phẩm */}
+        {/* Giỏ hàng */}
         <div className="p-4 bg-white mt-2 border-t">
           <h2 className="font-semibold text-gray-800 mb-2">🛒 Giỏ hàng</h2>
           {cart.length === 0 ? (
@@ -188,11 +208,13 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {/* Tổng cộng + nút Pay */}
-      <div className="bg-white border-t border-gray-200 p-4 flex justify-between items-center">
+      {/* Tổng cộng + nút thanh toán */}
+      <div className="bg-white border-t border-gray-200 p-4 flex justify-between items-center sticky bottom-0">
         <div>
           <p className="text-gray-600 text-sm">Tổng cộng:</p>
-          <p className="text-xl font-bold text-orange-600">{total.toFixed(2)} Pi</p>
+          <p className="text-xl font-bold text-orange-600">
+            {total.toFixed(2)} Pi
+          </p>
         </div>
         <button
           onClick={handlePay}
