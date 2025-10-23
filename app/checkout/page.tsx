@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useCart } from "../context/CartContext";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react"; // chỉ giữ icon Back
 
 declare global {
   interface Window {
@@ -20,11 +20,13 @@ export default function CheckoutPage() {
 
   // ✅ Lấy thông tin đăng nhập
   useEffect(() => {
-    const username = localStorage.getItem("titi_username");
-    if (username) setUser(username);
+    try {
+      const username = localStorage.getItem("titi_username");
+      if (username) setUser(username);
+    } catch {}
   }, []);
 
-  // ✅ Lấy địa chỉ giao hàng
+  // ✅ Lấy địa chỉ giao hàng đã lưu
   useEffect(() => {
     const saved = localStorage.getItem("shipping_info");
     if (saved) setShipping(JSON.parse(saved));
@@ -47,6 +49,7 @@ export default function CheckoutPage() {
     }
 
     setLoading(true);
+
     try {
       window.Pi.init({ version: "2.0", sandbox: false });
       const scopes = ["payments", "username", "wallet_address"];
@@ -64,34 +67,57 @@ export default function CheckoutPage() {
       };
 
       const callbacks = {
-        onReadyForServerCompletion: async (paymentId: string, txid: string) => {
-          const order = {
-            id: orderId,
-            items: cart,
-            total,
-            buyer: auth.user?.username || user,
-            status: "Đã thanh toán",
-            note: `Pi TXID: ${txid}`,
-            createdAt: new Date().toISOString(),
-            shipping,
-          };
-
-          await fetch("/api/orders", {
+        onReadyForServerApproval: async (paymentId: string) => {
+          await fetch("/api/pi/approve", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(order),
+            body: JSON.stringify({ paymentId }),
           });
-
-          clearCart();
-          alert("✅ Thanh toán thành công!");
-          router.push("/customer/pending");
         },
-        onError: (error: any) => alert("💥 Lỗi thanh toán: " + error.message),
+        onReadyForServerCompletion: async (paymentId: string, txid: string) => {
+          const res = await fetch("/api/pi/complete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paymentId, txid }),
+          });
+          const result = await res.json();
+
+          if (result?.success) {
+            const order = {
+              id: orderId,
+              items: cart,
+              total,
+              buyer: auth.user?.username || user,
+              status: "Đã thanh toán",
+              note: `Pi TXID: ${txid}`,
+              createdAt: new Date().toISOString(),
+              shipping,
+            };
+
+            await fetch("/api/orders", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(order),
+            });
+
+            clearCart();
+            alert("✅ Thanh toán thành công!");
+            router.push("/customer/pending");
+          } else {
+            alert("⚠️ Giao dịch đang chờ xác minh.");
+          }
+        },
+        onCancel: () => alert("❌ Giao dịch bị huỷ."),
+        onError: (error: any) => {
+          console.error("💥 Lỗi:", error);
+          alert("💥 Lỗi trong quá trình thanh toán: " + error.message);
+        },
       };
 
       await window.Pi.createPayment(paymentData, callbacks);
-    } catch (err) {
-      alert("❌ Giao dịch thất bại.");
+    } catch (err: any) {
+      console.error("❌ Lỗi thanh toán:", err);
+      alert("❌ Giao dịch thất bại hoặc bị huỷ.");
     } finally {
       setLoading(false);
     }
@@ -109,11 +135,11 @@ export default function CheckoutPage() {
           <span>Back</span>
         </button>
         <h1 className="font-semibold text-gray-800">Thanh toán</h1>
-        <div className="w-5" />
+        <div className="w-5" /> {/* Giữ cân đối thay vì icon giỏ hàng */}
       </div>
 
-      {/* Nội dung */}
-      <div className="flex-1 overflow-y-auto pb-28"> {/* ✅ thêm khoảng trống dưới */}
+      {/* Nội dung chính */}
+      <div className="flex-1 overflow-y-auto pb-24">
         {/* Địa chỉ giao hàng */}
         <div
           className="bg-white border-b border-gray-200 p-4 flex justify-between items-center cursor-pointer"
@@ -135,52 +161,42 @@ export default function CheckoutPage() {
 
         {/* Giỏ hàng */}
         <div className="p-4 bg-white mt-2 border-t">
-          <h2 className="font-semibold text-gray-800 mb-2">sản phẩm</h2>
+          <h2 className="font-semibold text-gray-800 mb-2">Giỏ hàng</h2>
           {cart.length === 0 ? (
             <p className="text-gray-500 text-sm">Không có sản phẩm nào.</p>
           ) : (
             <div className="space-y-3">
-              {cart.map((item, i) => {
-                // ✅ tự động xử lý ảnh
-                const imageUrl =
-                  item.image && item.image.startsWith("http")
-                    ? item.image
-                    : item.image
-                    ? `https://muasam.titi.onl${item.image}`
-                    : "/placeholder.png";
-
-                return (
-                  <div
-                    key={i}
-                    className="flex items-center border-b border-gray-100 pb-2"
-                  >
-                    <img
-                      src={imageUrl}
-                      alt={item.name}
-                      className="w-16 h-16 object-cover rounded border bg-gray-100"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = "/placeholder.png";
-                      }}
-                    />
-                    <div className="ml-3 flex-1">
-                      <p className="text-gray-800 font-medium text-sm">
-                        {item.name}
-                      </p>
-                      <p className="text-gray-500 text-xs">
-                        x{item.quantity} × {item.price} Pi
-                      </p>
-                    </div>
-                    <p className="text-orange-600 font-semibold text-sm">
-                      {(item.price * item.quantity).toFixed(2)} Pi
+              {cart.map((item, i) => (
+                <div
+                  key={i}
+                  className="flex items-center border-b border-gray-100 pb-2 cursor-pointer hover:bg-gray-50 rounded"
+                  onClick={() => router.push(`/product/${item.id}`)}
+                >
+                  <img
+                    src={item.image || "/placeholder.png"}
+                    alt={item.name}
+                    className="w-16 h-16 object-cover rounded border"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "/placeholder.png";
+                    }}
+                  />
+                  <div className="ml-3 flex-1">
+                    <p className="text-gray-800 font-medium text-sm">
+                      {item.name}
+                    </p>
+                    <p className="text-gray-500 text-xs">
+                      x{item.quantity} × {item.price} Pi
                     </p>
                   </div>
-                );
-              })}
+                  <p className="text-orange-600 font-semibold text-sm">
+                    {(item.price * item.quantity).toFixed(2)} Pi
+                  </p>
+                </div>
+              ))}
             </div>
           )}
         </div>
       </div>
-
       {/* Thanh tổng cộng + nút thanh toán */}
       <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 p-4 flex justify-between items-center max-w-md mx-auto">
         {/* ✅ bottom-16 để nằm trên thanh điều hướng */}
