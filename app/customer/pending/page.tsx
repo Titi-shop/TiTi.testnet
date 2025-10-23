@@ -62,11 +62,12 @@ export default function PendingOrdersPage() {
 
         // ✅ Lọc đơn của người dùng hiện tại và trạng thái "chờ xác nhận"
         const filtered = data.filter(
-          (o) =>
-            o.buyer?.toLowerCase() === currentUser.toLowerCase() &&
-            ["Chờ xác nhận", "pending", "wait", "Đã thanh toán", "Chờ xác minh"].includes(o.status)
+  (o) =>
+    o.buyer?.toLowerCase() === currentUser.toLowerCase() &&
+    ["Chờ xác nhận", "pending", "wait", "Đã thanh toán", "Chờ xác minh"].includes(o.status)
+);
 
-        setOrders(filtered);
+setOrders(filtered);
       } catch (err: any) {
         console.error("❌ Lỗi tải đơn hàng:", err);
         setError(err.message || "Không thể tải danh sách đơn hàng.");
