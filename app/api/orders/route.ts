@@ -53,14 +53,15 @@ export async function POST(req: Request) {
     const orders = await readOrders();
 
     const newOrder = {
-      id: order.id ?? Date.now(),
-      buyer: order.buyer || "unknown",
-      items: order.items ?? [],
-      total: order.total ?? 0,
-      status: order.status ?? "Chờ xác nhận",
-      note: order.note ?? "",
-      createdAt: new Date().toISOString(),
-    };
+  id: order.id ?? Date.now(),
+  buyer: order.buyer || "unknown",
+  items: order.items ?? [],
+  total: order.total ?? 0,
+  status: order.status ?? "Chờ xác nhận",
+  note: order.note ?? "",
+  shipping: order.shipping ?? {}, // ✅ thêm dòng này
+  createdAt: new Date().toISOString(),
+};
 
     orders.unshift(newOrder);
     await writeOrders(orders);
