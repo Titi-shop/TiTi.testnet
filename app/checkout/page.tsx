@@ -35,7 +35,7 @@ export default function CheckoutPage() {
   // 💰 Thanh toán qua Pi
   const handlePay = async () => {
     if (!window.Pi) {
-      alert("⚠️ Hãy mở trong Pi Browser để thanh toán!");
+      alert("⚠️ Hãy mở trang trong Pi Browser để thanh toán!");
       return;
     }
     if (!shipping) {
@@ -51,7 +51,9 @@ export default function CheckoutPage() {
     setLoading(true);
 
     try {
+      // 🔧 Khởi tạo Pi SDK
       window.Pi.init({ version: "2.0", sandbox: false });
+
       const scopes = ["payments", "username", "wallet_address"];
       const auth = await window.Pi.authenticate(scopes, (res: any) => res);
 
@@ -66,18 +68,22 @@ export default function CheckoutPage() {
         },
       };
 
-      // 🔥 Các callback từ Pi SDK
       const callbacks = {
-        // ❌ Không lưu đơn hàng ở đây — chỉ xác nhận chuẩn bị thanh toán
+        // ✅ Bước 1: Gửi yêu cầu approve tới server để mở ví
         onReadyForServerApproval: async (paymentId: string) => {
-          console.log("📩 Chờ xác nhận server:", paymentId);
+          console.log("📩 Gửi approve đến server:", paymentId);
+          await fetch("/api/pi/approve", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paymentId }),
+          });
         },
 
-        // ✅ Khi người dùng thanh toán thành công trong ví Pi
+        // ✅ Bước 2: Khi thanh toán Pi hoàn tất (có txid thật)
         onReadyForServerCompletion: async (paymentId: string, txid: string) => {
           console.log("✅ Pi thanh toán thành công:", { paymentId, txid });
 
-          // Gọi server để xác minh Pi transaction
+          // Xác minh giao dịch với Pi API
           const verifyRes = await fetch("/api/pi/complete", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -86,7 +92,7 @@ export default function CheckoutPage() {
           const verifyData = await verifyRes.json();
 
           if (verifyData?.success) {
-            // ✅ Chỉ lưu đơn khi Pi xác nhận hợp lệ
+            // ✅ Chỉ tạo đơn khi Pi xác nhận thật
             const order = {
               id: orderId,
               buyer: auth.user?.username || user,
@@ -112,17 +118,18 @@ export default function CheckoutPage() {
           }
         },
 
+        // ❌ Huỷ hoặc lỗi
         onCancel: () => {
-          console.warn("❌ Người dùng đã huỷ giao dịch.");
+          console.warn("❌ Người dùng huỷ giao dịch.");
           alert("Giao dịch bị huỷ.");
         },
-
         onError: (error: any) => {
-          console.error("💥 Lỗi thanh toán:", error);
+          console.error("💥 Lỗi:", error);
           alert("Lỗi trong quá trình thanh toán: " + error.message);
         },
       };
 
+      // 🔥 Gọi Pi SDK mở ví Pi
       await window.Pi.createPayment(paymentData, callbacks);
     } catch (err: any) {
       console.error("❌ Lỗi thanh toán:", err);
@@ -132,7 +139,7 @@ export default function CheckoutPage() {
     }
   };
 
-  // ✅ Chuẩn hoá link ảnh từ Vercel (nếu chưa có domain)
+  // ✅ Hàm chuẩn hóa ảnh từ Vercel
   const getImageUrl = (url: string) => {
     if (!url) return "/placeholder.png";
     if (url.startsWith("http")) return url;
@@ -141,7 +148,7 @@ export default function CheckoutPage() {
 
   return (
     <main className="max-w-md mx-auto min-h-screen bg-gray-50 flex flex-col justify-between">
-      {/* 🔹 Thanh điều hướng */}
+      {/* Thanh điều hướng */}
       <div className="flex items-center justify-between bg-white p-3 border-b sticky top-0 z-10">
         <button
           onClick={() => router.back()}
@@ -154,7 +161,7 @@ export default function CheckoutPage() {
         <div className="w-5" />
       </div>
 
-      {/* 🔹 Nội dung chính */}
+      {/* Nội dung chính */}
       <div className="flex-1 overflow-y-auto pb-24">
         {/* Địa chỉ giao hàng */}
         <div
@@ -175,7 +182,7 @@ export default function CheckoutPage() {
           <span className="text-blue-500 text-sm ml-3">Chỉnh sửa ➜</span>
         </div>
 
-        {/* Giỏ hàng */}
+        {/* Danh sách sản phẩm */}
         <div className="p-4 bg-white mt-2 border-t">
           <h2 className="font-semibold text-gray-800 mb-2">Sản phẩm</h2>
           {cart.length === 0 ? (
@@ -185,7 +192,7 @@ export default function CheckoutPage() {
               {cart.map((item, i) => (
                 <div
                   key={i}
-                  className="flex items-center border-b border-gray-100 pb-2 cursor-pointer hover:bg-gray-50 rounded"
+                  className="flex items-center border-b border-gray-100 pb-2 hover:bg-gray-50 rounded cursor-pointer"
                   onClick={() => router.push(`/product/${item.id}`)}
                 >
                   <img
@@ -214,7 +221,7 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {/* 🔹 Thanh tổng cộng + nút thanh toán */}
+      {/* Tổng cộng + nút thanh toán */}
       <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 p-4 flex justify-between items-center max-w-md mx-auto">
         <div>
           <p className="text-gray-600 text-sm">Tổng cộng:</p>
