@@ -143,11 +143,11 @@ export default function CheckoutPage() {
               {cart.map((item, i) => {
                 // ✅ tự động xử lý ảnh
                 const imageUrl =
-                  item.image && item.image.startsWith("http")
-                    ? item.image
-                    : item.image
-                    ? `https://muasam.titi.onl${item.image}`
-                    : "/placeholder.png";
+  item.image && item.image.startsWith("http")
+    ? item.image
+    : item.image
+    ? `https://muasam-titi.vercel.app${item.image}`
+    : "/placeholder.png";
 
                 return (
                   <div
