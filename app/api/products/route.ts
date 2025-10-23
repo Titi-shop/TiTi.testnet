@@ -1,19 +1,14 @@
 import { NextResponse } from "next/server";
 import { del, put, list } from "@vercel/blob";
 
-// ==================================
-// 🧩 Đọc sản phẩm từ Blob (luôn lấy bản mới nhất)
-// ==================================
+// =========================
+// 🧩 Đọc & ghi dữ liệu
+// =========================
 async function readProducts() {
   try {
     const { blobs } = await list();
     const file = blobs.find((b) => b.pathname === "products.json");
-
-    if (!file) {
-      console.warn("⚠️ Không tìm thấy file products.json — trả mảng rỗng");
-      return [];
-    }
-
+    if (!file) return [];
     const res = await fetch(file.url, { cache: "no-store" });
     return await res.json();
   } catch (err) {
@@ -22,9 +17,6 @@ async function readProducts() {
   }
 }
 
-// ==================================
-// 🧩 Ghi sản phẩm mới vào Blob
-// ==================================
 async function writeProducts(products: any[]) {
   try {
     const data = JSON.stringify(products, null, 2);
@@ -37,24 +29,62 @@ async function writeProducts(products: any[]) {
       addRandomSuffix: false,
     });
 
-    console.log("✅ Ghi thành công products.json:", products.length);
+    console.log("✅ Đã ghi products.json:", products.length);
   } catch (err) {
-    console.error("❌ Ghi thất bại:", err);
+    console.error("❌ Lỗi ghi file:", err);
   }
 }
 
-// ==============================
-// 🔹 GET — Lấy danh sách sản phẩm
-// ==============================
+// =========================
+// 🔐 Xác thực người bán qua Pi Login
+// =========================
+async function verifySeller(req: Request) {
+  try {
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) return null;
+
+    const token = authHeader.replace("Bearer ", "").trim();
+    if (!token) return null;
+
+    // 🔹 Gửi tới API của Pi để xác minh
+    const res = await fetch("https://api.minepi.com/v2/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) return null;
+    const user = await res.json();
+
+    // ✅ Kiểm tra người bán — tùy theo app bạn định danh seller
+    const allowedSellers = ["nguyenminhduc1991111", "seller_demo_1", "pi_seller"];
+    if (allowedSellers.includes(user.username)) return user;
+
+    return null;
+  } catch (err) {
+    console.error("❌ verifySeller error:", err);
+    return null;
+  }
+}
+
+// =========================
+// 🔹 GET — ai cũng có thể xem
+// =========================
 export async function GET() {
   const products = await readProducts();
   return NextResponse.json(products);
 }
 
-// ==============================
-// 🔹 POST — Thêm sản phẩm mới
-// ==============================
+// =========================
+// 🔹 POST — chỉ người bán
+// =========================
 export async function POST(req: Request) {
+  const user = await verifySeller(req);
+  if (!user) {
+    return NextResponse.json(
+      { success: false, message: "Không có quyền thêm sản phẩm" },
+      { status: 403 }
+    );
+  }
+
   try {
     const body = await req.json();
     const { name, price, description, images } = body;
@@ -73,6 +103,7 @@ export async function POST(req: Request) {
       price,
       description: description || "",
       images: images || [],
+      seller: user.username,
       createdAt: new Date().toISOString(),
     };
 
@@ -89,40 +120,20 @@ export async function POST(req: Request) {
   }
 }
 
-// ==============================
-// 🔹 DELETE — Xóa sản phẩm
-// ==============================
-export async function DELETE(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const id = Number(searchParams.get("id"));
-    if (!id)
-      return NextResponse.json(
-        { success: false, message: "Thiếu ID" },
-        { status: 400 }
-      );
-
-    const products = await readProducts();
-    const updated = products.filter((p) => p.id !== id);
-    await writeProducts(updated);
-
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error("❌ DELETE error:", err);
+// =========================
+// 🔹 PUT — chỉ người bán
+// =========================
+export async function PUT(req: Request) {
+  const user = await verifySeller(req);
+  if (!user) {
     return NextResponse.json(
-      { success: false, message: "Lỗi khi xóa sản phẩm" },
-      { status: 500 }
+      { success: false, message: "Không có quyền sửa sản phẩm" },
+      { status: 403 }
     );
   }
-}
 
-// ==============================
-// 🔹 PUT — Cập nhật sản phẩm
-// ==============================
-export async function PUT(req: Request) {
   try {
     const formData = await req.formData();
-
     const id = Number(formData.get("id"));
     const name = formData.get("name") as string;
     const price = Number(formData.get("price"));
@@ -158,12 +169,46 @@ export async function PUT(req: Request) {
     products[index] = updatedProduct;
     await writeProducts(products);
 
-    console.log("✅ Đã cập nhật sản phẩm:", updatedProduct);
     return NextResponse.json({ success: true, product: updatedProduct });
   } catch (err) {
     console.error("❌ PUT error:", err);
     return NextResponse.json(
       { success: false, message: "Không thể cập nhật sản phẩm" },
+      { status: 500 }
+    );
+  }
+}
+
+// =========================
+// 🔹 DELETE — chỉ người bán
+// =========================
+export async function DELETE(req: Request) {
+  const user = await verifySeller(req);
+  if (!user) {
+    return NextResponse.json(
+      { success: false, message: "Không có quyền xóa sản phẩm" },
+      { status: 403 }
+    );
+  }
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = Number(searchParams.get("id"));
+    if (!id)
+      return NextResponse.json(
+        { success: false, message: "Thiếu ID" },
+        { status: 400 }
+      );
+
+    const products = await readProducts();
+    const updated = products.filter((p) => p.id !== id);
+    await writeProducts(updated);
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("❌ DELETE error:", err);
+    return NextResponse.json(
+      { success: false, message: "Lỗi khi xóa sản phẩm" },
       { status: 500 }
     );
   }
