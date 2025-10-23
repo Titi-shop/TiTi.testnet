@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useCart } from "../context/CartContext";
 import { useRouter } from "next/navigation";
 
-// 🧩 Khai báo Pi SDK toàn cục
 declare global {
   interface Window {
     Pi?: any;
@@ -16,14 +15,8 @@ export default function CheckoutPage() {
   const [wallet, setWallet] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState("guest");
+  const [shippingInfo, setShippingInfo] = useState<any>(null);
   const router = useRouter();
-
-  // 🏠 Thông tin giao hàng
-  const [shippingInfo, setShippingInfo] = useState({
-    name: "",
-    phone: "",
-    address: "",
-  });
 
   // ✅ Lấy thông tin người dùng từ PiLogin
   useEffect(() => {
@@ -42,18 +35,26 @@ export default function CheckoutPage() {
     setWallet(w);
   }, []);
 
-  // ✅ Tự động nạp lại địa chỉ giao hàng cũ
+  // ✅ Lấy địa chỉ đã lưu từ localStorage hoặc API
   useEffect(() => {
     const saved = localStorage.getItem("shipping_info");
-    if (saved) setShippingInfo(JSON.parse(saved));
+    if (saved) {
+      setShippingInfo(JSON.parse(saved));
+    } else {
+      // Nếu chưa có trong localStorage thì lấy từ API KV
+      const username = localStorage.getItem("titi_username");
+      if (username) {
+        fetch(`/api/address?username=${username}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data?.address) {
+              setShippingInfo(data.address);
+              localStorage.setItem("shipping_info", JSON.stringify(data.address));
+            }
+          });
+      }
+    }
   }, []);
-
-  // ✅ Khi nhập thì lưu luôn
-  const handleShippingChange = (e: any) => {
-    const updated = { ...shippingInfo, [e.target.name]: e.target.value };
-    setShippingInfo(updated);
-    localStorage.setItem("shipping_info", JSON.stringify(updated));
-  };
 
   // 💰 Thanh toán qua Pi
   const handlePayWithPi = async () => {
@@ -65,10 +66,11 @@ export default function CheckoutPage() {
       alert("🛒 Giỏ hàng trống.");
       return;
     }
-    if (!shippingInfo.name || !shippingInfo.phone || !shippingInfo.address) {
-      alert("📦 Vui lòng nhập đầy đủ thông tin giao hàng!");
+    if (!shippingInfo?.address) {
+      alert("📦 Bạn chưa chọn địa chỉ giao hàng!");
       return;
     }
+
     setLoading(true);
 
     try {
@@ -113,7 +115,7 @@ export default function CheckoutPage() {
               status: "Đã thanh toán",
               note: `Pi TXID: ${txid}`,
               createdAt: new Date().toISOString(),
-              shipping: shippingInfo, // ✅ thêm địa chỉ giao hàng
+              shipping: shippingInfo, // ✅ lấy từ địa chỉ đã lưu
             };
 
             await fetch("/api/orders", {
@@ -152,44 +154,26 @@ export default function CheckoutPage() {
         💳 Thanh toán
       </h1>
 
-      {/* Form thông tin giao hàng */}
+      {/* Hiển thị địa chỉ giao hàng đã chọn */}
       <div className="p-4 border rounded-lg bg-white mb-4">
-        <h3 className="font-semibold text-blue-600 mb-2">📦 Thông tin giao hàng</h3>
+        <h3 className="font-semibold text-blue-600 mb-2">📦 Địa chỉ giao hàng</h3>
 
-        <label className="block mb-2">
-          Họ và tên:
-          <input
-            name="name"
-            type="text"
-            value={shippingInfo.name}
-            onChange={handleShippingChange}
-            className="w-full border p-2 rounded"
-            required
-          />
-        </label>
+        {shippingInfo ? (
+          <div className="text-sm text-gray-800">
+            <p>👤 {shippingInfo.name}</p>
+            <p>📞 {shippingInfo.phone}</p>
+            <p>🏠 {shippingInfo.address}</p>
+          </div>
+        ) : (
+          <p className="text-gray-500 text-sm">Chưa có địa chỉ giao hàng.</p>
+        )}
 
-        <label className="block mb-2">
-          Số điện thoại:
-          <input
-            name="phone"
-            type="text"
-            value={shippingInfo.phone}
-            onChange={handleShippingChange}
-            className="w-full border p-2 rounded"
-            required
-          />
-        </label>
-
-        <label className="block mb-2">
-          Địa chỉ giao hàng:
-          <textarea
-            name="address"
-            value={shippingInfo.address}
-            onChange={handleShippingChange}
-            className="w-full border p-2 rounded"
-            required
-          />
-        </label>
+        <button
+          onClick={() => router.push("/customer/address")}
+          className="mt-3 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          ✏️ {shippingInfo ? "Thay đổi địa chỉ" : "Chọn địa chỉ giao hàng"}
+        </button>
       </div>
 
       {/* Thông tin thanh toán */}
