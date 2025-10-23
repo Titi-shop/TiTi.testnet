@@ -64,8 +64,7 @@ export default function PendingOrdersPage() {
         const filtered = data.filter(
           (o) =>
             o.buyer?.toLowerCase() === currentUser.toLowerCase() &&
-            ["Chờ xác nhận", "pending", "wait"].includes(o.status)
-        );
+            ["Chờ xác nhận", "pending", "wait", "Đã thanh toán", "Chờ xác minh"].includes(o.status)
 
         setOrders(filtered);
       } catch (err: any) {
