@@ -6,8 +6,9 @@ import { useRouter } from "next/navigation";
 export default function PiLoginPage() {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
+  const [agreed, setAgreed] = useState(false);
 
-  // ✅ Tự kiểm tra đăng nhập Pi
+  // ✅ Kiểm tra đăng nhập sẵn
   useEffect(() => {
     const loggedIn = localStorage.getItem("titi_is_logged_in");
     const piUser = localStorage.getItem("pi_user");
@@ -19,8 +20,13 @@ export default function PiLoginPage() {
     }
   }, [router]);
 
-  // ✅ Xử lý đăng nhập qua Pi Network
+  // ✅ Đăng nhập bằng Pi Browser
   const handleLogin = async () => {
+    if (!agreed) {
+      alert("⚠️ Vui lòng đọc và đồng ý với các điều khoản trước khi đăng nhập.");
+      return;
+    }
+
     if (typeof window === "undefined" || !window.Pi) {
       alert("⚠️ Vui lòng mở trang này bằng Pi Browser để đăng nhập!");
       return;
@@ -54,31 +60,54 @@ export default function PiLoginPage() {
     );
   }
 
-  // ✅ Giao diện đơn giản như ảnh bạn gửi
+  // ✅ Giao diện đơn giản có 2 link điều khoản
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-white text-center px-6">
-      {/* Nút đăng nhập */}
+      {/* 🔸 Nút đăng nhập */}
       <button
         onClick={handleLogin}
-        className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-10 rounded-full text-lg shadow-md transition-all duration-200 mb-6"
+        disabled={!agreed}
+        className={`${
+          agreed
+            ? "bg-orange-500 hover:bg-orange-600 cursor-pointer"
+            : "bg-gray-300 cursor-not-allowed"
+        } text-white font-semibold py-3 px-10 rounded-full text-lg shadow-md transition-all duration-200 mb-6`}
       >
         User login
       </button>
 
-      {/* Điều khoản */}
-      <p className="text-gray-600 text-sm leading-relaxed">
-        <span className="text-orange-500 mr-1">✔</span>
-        Read & Agree{" "}
-        <a href="#" className="text-orange-500">
-          《User agreement》
-        </a>{" "}
-        And{" "}
-        <a href="#" className="text-orange-500">
-          《Privacy agreement》
-        </a>
-      </p>
+      {/* 🔸 Điều khoản & cam kết */}
+      <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
+        <input
+          type="checkbox"
+          id="agree"
+          checked={agreed}
+          onChange={() => setAgreed(!agreed)}
+          className="w-4 h-4 accent-orange-500 cursor-pointer"
+        />
+        <label htmlFor="agree" className="select-none leading-snug">
+          Read & Agree{" "}
+          <a
+            href="https://www.termsfeed.com/live/7eae894b-14dd-431c-99da-0f94cab5b9ac"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-orange-500 underline"
+          >
+            《User agreement》
+          </a>{" "}
+          and{" "}
+          <a
+            href="https://www.termsfeed.com/live/32e8bf86-ceaf-4eb6-990e-cd1fa0b0775e"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-orange-500 underline"
+          >
+            《Privacy agreement》
+          </a>
+        </label>
+      </div>
 
-      {/* Footer */}
+      {/* 🔸 Footer */}
       <footer className="absolute bottom-6 text-gray-400 text-xs">
         © copyRight 2023 1pi.app
       </footer>
