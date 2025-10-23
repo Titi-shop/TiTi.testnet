@@ -164,7 +164,7 @@ export default function SellerOrdersPage() {
 
               <div className="flex justify-between items-center mt-3">
                 <span className="px-3 py-1 bg-gray-100 rounded text-sm">{order.status}</span>
-                {["Chờ xác nhận", "Đã thanh toán", "Chờ xác minh"].includes(order.status) && (
+                {order.status === "Chờ xác nhận" && (
   <button
     onClick={() => updateOrderStatus(order.id, "Đang giao")}
     disabled={updating === order.id}
