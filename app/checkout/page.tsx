@@ -161,7 +161,7 @@ export default function CheckoutPage() {
 
         {/* Giỏ hàng */}
         <div className="p-4 bg-white mt-2 border-t">
-          <h2 className="font-semibold text-gray-800 mb-2">Giỏ hàng</h2>
+          <h2 className="font-semibold text-gray-800 mb-2">sản phẩm</h2>
           {cart.length === 0 ? (
             <p className="text-gray-500 text-sm">Không có sản phẩm nào.</p>
           ) : (
