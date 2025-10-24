@@ -3,6 +3,8 @@ import { useEffect } from "react";
 
 export default function PiSessionWatcher() {
   useEffect(() => {
+    if (typeof window === "undefined") return; // ✅ Chạy client-side thôi
+
     const handleUserUpdate = () => {
       const piUser = localStorage.getItem("pi_user");
       const username = localStorage.getItem("titi_username");
