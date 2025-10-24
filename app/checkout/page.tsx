@@ -14,11 +14,19 @@ export default function CheckoutPage() {
   const [shipping, setShipping] = useState<any>(null);
 
   useEffect(() => {
-    const u = localStorage.getItem("titi_username");
-    const uid = localStorage.getItem("titi_uid");
-    const logged = localStorage.getItem("titi_is_logged_in");
-    if (logged === "true" && u && uid) setUser({ username: u, uid });
-  }, []);
+  try {
+    const piUser = localStorage.getItem("pi_user");
+    if (piUser) {
+      const userData = JSON.parse(piUser);
+      setUser(userData.username || "guest");
+    } else {
+      const username = localStorage.getItem("titi_username");
+      if (username) setUser(username);
+    }
+  } catch {
+    setUser("guest");
+  }
+}, []);
 
   useEffect(() => {
     const saved = localStorage.getItem("shipping_info");
