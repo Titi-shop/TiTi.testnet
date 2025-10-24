@@ -2,34 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ShoppingCart, Globe } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { Home, Grid, Bell, User, ShoppingCart, Globe } from "lucide-react";
 import { useLanguage } from "@/app/context/LanguageContext";
 
 export default function Navbar() {
-  const [isSeller, setIsSeller] = useState(false);
+  const pathname = usePathname();
+  const router = useRouter();
   const [piPrice, setPiPrice] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
-  // 🈶 Ngôn ngữ hiện tại
   const { translate } = useLanguage();
-
-  // 👤 Kiểm tra tài khoản đăng nhập để hiển thị nút "Đăng hàng"
-  useEffect(() => {
-    try {
-      const savedUser = localStorage.getItem("pi_user");
-      if (savedUser) {
-        const parsed = JSON.parse(savedUser);
-        const username = parsed?.user?.username;
-        if (username === "nguyenminhduc1991111") {
-          setIsSeller(true);
-        }
-      }
-    } catch (err) {
-      console.error("⚠️ Lỗi đọc pi_user:", err);
-    }
-  }, []);
 
   // 💰 Lấy giá Pi từ API /api/pi-price
   useEffect(() => {
@@ -48,48 +31,63 @@ export default function Navbar() {
     };
 
     fetchPrice();
-    const interval = setInterval(fetchPrice, 5 * 60 * 1000); // cập nhật mỗi 5 phút
+    const interval = setInterval(fetchPrice, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
+  // 🔹 Danh sách các trang điều hướng
+  const navItems = [
+    { href: "/", label: translate("home") || "Trang chủ", icon: Home },
+    { href: "/shop", label: translate("category") || "Danh mục", icon: Grid },
+    { href: "/notifications", label: translate("notifications") || "Thông báo", icon: Bell },
+    { href: "/account", label: translate("account") || "Tài khoản", icon: User },
+  ];
+
   return (
     <header className="fixed top-0 left-0 right-0 bg-white border-b shadow-sm z-50">
-      <div className="max-w-5xl mx-auto flex items-center justify-between px-4 py-2">
+      <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-2">
+        {/* 🔹 Bên trái */}
         <div className="flex items-center gap-3">
-          {/* 🛒 Giỏ hàng */}
           <Link href="/cart" className="text-gray-700 hover:text-yellow-500">
             <ShoppingCart size={24} />
           </Link>
-
-          {/* 🟡 Nút Đăng hàng (chỉ hiện với tài khoản admin/seller) */}
-          {isSeller && (
-            <button
-              onClick={() => router.push("/seller")}
-              className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold px-3 py-1 rounded-lg text-sm"
-            >
-              🔘 {translate("post_product")}
-            </button>
-          )}
         </div>
 
-        <div className="flex items-center gap-4">
-          {/* 💰 Hiển thị giá Pi */}
-          <div className="text-sm text-purple-700 font-semibold bg-purple-50 px-2 py-1 rounded-md">
-            {loading ? (
-              "⏳ " + translate("loading")
-            ) : piPrice ? (
-              <>💰 1 PI ≈ {piPrice.toFixed(2)} USDT</>
-            ) : (
-              "⚠️ " + translate("no_products")
-            )}
-          </div>
+        {/* 💰 Giá Pi ở giữa */}
+        <div className="absolute left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold px-3 py-1 rounded-full text-sm shadow-md">
+          {loading
+            ? "⏳ " + (translate("loading") || "Đang tải...")
+            : piPrice
+            ? `💰 1 PI ≈ ${piPrice.toFixed(2)} USDT`
+            : "⚠️ " + (translate("no_data") || "Không có dữ liệu")}
+        </div>
 
-          {/* 🌐 Ngôn ngữ */}
+        {/* 🔹 Bên phải */}
+        <div className="flex items-center gap-4">
           <Link href="/language" className="text-gray-700 hover:text-yellow-500">
             <Globe size={24} />
           </Link>
         </div>
       </div>
+
+      {/* 🔹 Thanh điều hướng trang */}
+      <nav className="flex justify-around border-t bg-gray-50 py-2">
+        {navItems.map(({ href, label, icon: Icon }) => {
+          const active = pathname === href;
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={`flex flex-col items-center text-sm ${
+                active ? "text-indigo-600 font-semibold" : "text-gray-500 hover:text-black"
+              }`}
+            >
+              <Icon className={`w-5 h-5 mb-1 ${active ? "stroke-indigo-600" : ""}`} />
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
     </header>
   );
 }
