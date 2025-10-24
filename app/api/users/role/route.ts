@@ -11,7 +11,6 @@ const DEFAULT_SELLERS = ["nguyenminhduc1991111"]; // ✅ Danh sách tài khoản
 export async function POST(req: Request) {
   try {
     const { username, role } = await req.json();
-
     if (!username || !role)
       return NextResponse.json({ error: "missing data" }, { status: 400 });
 
