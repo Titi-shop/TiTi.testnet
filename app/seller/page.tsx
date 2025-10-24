@@ -18,32 +18,53 @@ export default function SellerDashboard() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [sellerUser, setSellerUser] = useState<string>("");
+  const [role, setRole] = useState<string>("buyer");
 
-  // ✅ Kiểm tra trạng thái đăng nhập Pi
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("pi_user");
-      const logged = localStorage.getItem("titi_is_logged_in");
-      if (stored && logged === "true") {
+    async function checkAccess() {
+      try {
+        const stored = localStorage.getItem("pi_user");
+        const logged = localStorage.getItem("titi_is_logged_in");
+
+        if (!stored || logged !== "true") {
+          setIsLoggedIn(false);
+          router.push("/pilogin");
+          return;
+        }
+
         const parsed = JSON.parse(stored);
-        const username = parsed?.user?.username || parsed?.username || "guest_user";
+        const username =
+          parsed?.user?.username || parsed?.username || "guest_user";
+
         setSellerUser(username);
         setIsLoggedIn(true);
-      } else {
-        setIsLoggedIn(false);
-      }
-    } catch (err) {
-      console.error("❌ Lỗi đọc thông tin đăng nhập:", err);
-      setIsLoggedIn(false);
-    }
-  }, []);
 
-  // 🚫 Nếu chưa đăng nhập → chuyển hướng về PiLogin
-  if (!isLoggedIn)
+        // 🔹 Kiểm tra quyền người dùng qua API
+        const res = await fetch(`/api/users/role?username=${username}`);
+        const data = await res.json();
+
+        if (data?.role === "seller" && username === "nguyenminhduc1991111") {
+          setRole("seller");
+        } else {
+          // ❌ Nếu không phải seller hoặc username không đúng -> chặn truy cập
+          alert("🚫 Tài khoản của bạn không có quyền truy cập trang Người Bán!");
+          router.push("/");
+        }
+      } catch (err) {
+        console.error("❌ Lỗi xác thực:", err);
+        router.push("/pilogin");
+      }
+    }
+
+    checkAccess();
+  }, [router]);
+
+  if (!isLoggedIn) {
     return (
       <main className="p-6 text-center">
         <h2 className="text-xl font-bold text-red-600 mb-3">
-          🔐 {translate("login_required") || "Vui lòng đăng nhập bằng Pi Network để truy cập khu vực Người Bán"}
+          🔐 {translate("login_required") ||
+            "Vui lòng đăng nhập để truy cập khu vực Người Bán"}
         </h2>
         <button
           onClick={() => router.push("/pilogin")}
@@ -53,11 +74,12 @@ export default function SellerDashboard() {
         </button>
       </main>
     );
+  }
 
-  // ✅ Nếu đã đăng nhập
+  if (role !== "seller") return null;
+
   return (
     <main className="p-6 max-w-6xl mx-auto">
-      {/* ===== Tiêu đề ===== */}
       <div className="bg-yellow-400 text-white text-xl font-bold p-3 rounded-t-lg mb-4 flex justify-between items-center shadow">
         <span>👑 {translate("seller_dashboard") || "Khu vực Người Bán"}</span>
         <span className="text-sm bg-white text-yellow-700 px-3 py-1 rounded shadow">
@@ -65,70 +87,35 @@ export default function SellerDashboard() {
         </span>
       </div>
 
-      {/* ===== Các mục quản lý ===== */}
+      {/* Các mục chức năng */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5 text-center">
-        <Link
-          href="/seller/post"
-          className="bg-amber-500 hover:bg-amber-600 text-white p-6 rounded-lg shadow flex flex-col items-center transition transform hover:scale-105"
-        >
+        <Link href="/seller/post" className="bg-amber-500 hover:bg-amber-600 text-white p-6 rounded-lg shadow">
           <PackagePlus size={36} />
-          <span className="mt-2 font-semibold">
-            📦 {translate("post_product") || "Đăng sản phẩm"}
-          </span>
+          <span className="mt-2 font-semibold">📦 {translate("post_product") || "Đăng sản phẩm"}</span>
         </Link>
-
-        <Link
-          href="/seller/stock"
-          className="bg-blue-500 hover:bg-blue-600 text-white p-6 rounded-lg shadow flex flex-col items-center transition transform hover:scale-105"
-        >
+        <Link href="/seller/stock" className="bg-blue-500 hover:bg-blue-600 text-white p-6 rounded-lg shadow">
           <Package size={36} />
-          <span className="mt-2 font-semibold">
-            🏬 {translate("manage_stock") || "Kho hàng"}
-          </span>
+          <span className="mt-2 font-semibold">🏬 {translate("manage_stock") || "Kho hàng"}</span>
         </Link>
-
-        <Link
-          href="/seller/orders"
-          className="bg-green-500 hover:bg-green-600 text-white p-6 rounded-lg shadow flex flex-col items-center transition transform hover:scale-105"
-        >
+        <Link href="/seller/orders" className="bg-green-500 hover:bg-green-600 text-white p-6 rounded-lg shadow">
           <ClipboardList size={36} />
-          <span className="mt-2 font-semibold">
-            🧾 {translate("process_orders") || "Xử lý đơn"}
-          </span>
+          <span className="mt-2 font-semibold">🧾 {translate("process_orders") || "Xử lý đơn"}</span>
         </Link>
-
-        <Link
-          href="/seller/status"
-          className="bg-purple-500 hover:bg-purple-600 text-white p-6 rounded-lg shadow flex flex-col items-center transition transform hover:scale-105"
-        >
+        <Link href="/seller/status" className="bg-purple-500 hover:bg-purple-600 text-white p-6 rounded-lg shadow">
           <RefreshCcw size={36} />
-          <span className="mt-2 font-semibold">
-            📊 {translate("update_status") || "Cập nhật trạng thái"}
-          </span>
+          <span className="mt-2 font-semibold">📊 {translate("update_status") || "Cập nhật trạng thái"}</span>
         </Link>
-
-        <Link
-          href="/seller/delivery"
-          className="bg-orange-500 hover:bg-orange-600 text-white p-6 rounded-lg shadow flex flex-col items-center transition transform hover:scale-105"
-        >
+        <Link href="/seller/delivery" className="bg-orange-500 hover:bg-orange-600 text-white p-6 rounded-lg shadow">
           <Truck size={36} />
-          <span className="mt-2 font-semibold">
-            🚚 {translate("delivery") || "Giao hàng"}
-          </span>
+          <span className="mt-2 font-semibold">🚚 {translate("delivery") || "Giao hàng"}</span>
         </Link>
-
-        <Link
-          href="/seller/wallet"
-          className="bg-emerald-500 hover:bg-emerald-600 text-white p-6 rounded-lg shadow flex flex-col items-center transition transform hover:scale-105"
-        >
+        <Link href="/seller/wallet" className="bg-emerald-500 hover:bg-emerald-600 text-white p-6 rounded-lg shadow">
           <Wallet size={36} />
-          <span className="mt-2 font-semibold">
-            💰 {translate("wallet") || "Ví Pi"}
-          </span>
+          <span className="mt-2 font-semibold">💰 {translate("wallet") || "Ví Pi"}</span>
         </Link>
       </div>
 
-      {/* ===== Nút đăng xuất ===== */}
+      {/* Đăng xuất */}
       <div className="text-center mt-8">
         <button
           onClick={() => {
