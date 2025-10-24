@@ -2,18 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Grid, Search, Bell, User } from "lucide-react";
+import { Home, Grid, Bell, User, PlusCircle } from "lucide-react";
 import { useLanguage } from "../app/context/LanguageContext";
 
 export default function BottomNav() {
   const pathname = usePathname();
   const { translate } = useLanguage();
 
-  // 🔹 Danh sách 5 mục chính
+  // 🔹 Danh sách 5 mục chính (đã bỏ Tìm kiếm, thêm Đăng hàng)
   const navItems = [
     { href: "/", label: translate("home") || "Trang chủ", icon: Home },
     { href: "/shop", label: translate("category") || "Danh mục", icon: Grid },
-    { href: "/search", label: translate("search") || "Tìm kiếm", icon: Search },
+    { href: "/seller", label: translate("post") || "Đăng hàng", icon: PlusCircle },
     { href: "/notifications", label: translate("notifications") || "Thông báo", icon: Bell },
     { href: "/account", label: translate("account") || "Tài khoản", icon: User },
   ];
