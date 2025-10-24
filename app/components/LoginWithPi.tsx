@@ -29,7 +29,7 @@ export default function LoginWithPi() {
     const authenticate = async () => {
       setLoading(true);
       try {
-        const scopes = ["username", "payments"];
+        const scopes = ["username", "payments", "wallet_address"];
         const authResult = await window.Pi.authenticate(
           scopes,
           (payment: any) => console.log("⚠️ Incomplete payment:", payment)
