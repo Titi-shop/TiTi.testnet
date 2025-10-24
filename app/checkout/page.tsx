@@ -69,6 +69,20 @@ export default function CheckoutPage() {
 
       // 🚀 Khởi tạo SDK và xác thực người dùng
       window.Pi.init({ version: "2.0", sandbox: false });
+      try {
+  const pending = await window.Pi.getCurrentPayments();
+  if (pending && pending.length > 0) {
+    const last = pending[0];
+    alert("⚠️ Có giao dịch Pi chưa hoàn tất, hệ thống sẽ huỷ giao dịch cũ!");
+    await fetch("/api/pi/cancel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentId: last.identifier }),
+    });
+  }
+} catch (err) {
+  console.warn("Không có giao dịch pending:", err);
+}
       const scopes = ["payments", "username", "wallet_address"];
       const auth = await window.Pi.authenticate(scopes, (res: any) => res);
 
