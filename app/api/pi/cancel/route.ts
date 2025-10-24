@@ -3,9 +3,7 @@ import { NextResponse } from "next/server";
 export async function POST(req: Request) {
   try {
     const { paymentId } = await req.json();
-    if (!paymentId) {
-      return NextResponse.json({ error: "missing paymentId" }, { status: 400 });
-    }
+    if (!paymentId) return NextResponse.json({ error: "missing paymentId" }, { status: 400 });
 
     const API_KEY = process.env.PI_API_KEY;
     const API_URL = process.env.PI_API_URL || "https://api.minepi.com/v2/payments";
@@ -18,10 +16,10 @@ export async function POST(req: Request) {
       },
     });
 
-    const data = await res.json();
+    const data = await res.text();
     console.log("🗑️ [PI CANCEL RESULT]:", data);
 
-    return NextResponse.json({ success: true, message: "Đã huỷ giao dịch pending" });
+    return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error("💥 [PI CANCEL ERROR]:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
