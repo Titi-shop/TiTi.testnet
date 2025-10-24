@@ -53,20 +53,21 @@ export default function CheckoutPage() {
     try {
       // 🔍 Kiểm tra nếu có giao dịch cũ đang pending
       try {
-        const pending = await window.Pi.getCurrentPayments();
-        if (pending && pending.length > 0) {
-          const last = pending[0];
-          alert("⚠️ Có giao dịch Pi chưa hoàn tất. Hệ thống sẽ xử lý trước khi tạo mới.");
-          await fetch("/api/pi/cancel", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ paymentId: last.identifier }),
-          });
-        }
-      } catch (err) {
-        console.warn("Không có giao dịch pending:", err);
-      }
+        try {
+  const pending = await window.Pi.getCurrentPayments();
+  if (pending && pending.length > 0) {
+    const last = pending[0];
+    alert("⚠️ Có giao dịch Pi chưa hoàn tất. Hệ thống sẽ tự huỷ để bạn thanh toán lại.");
 
+    await fetch("/api/pi/cancel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentId: last.identifier }),
+    });
+  }
+} catch (err) {
+  console.warn("Không tìm thấy pending payment:", err);
+        }
       // 🚀 Khởi tạo SDK và xác thực người dùng
       window.Pi.init({ version: "2.0", sandbox: false });
       const scopes = ["payments", "username", "wallet_address"];
