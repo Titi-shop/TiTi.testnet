@@ -26,7 +26,12 @@ export async function POST(req: Request) {
     const API_KEY = process.env.PI_API_KEY;
     const API_URL = process.env.PI_API_URL || "https://api.minepi.com/v2/payments";
 
-    // 🔹 Gọi Pi API
+    if (!API_KEY) {
+      console.error("❌ Missing PI_API_KEY");
+      return NextResponse.json({ error: "Missing API key" }, { status: 500 });
+    }
+
+    // 🔹 Gọi Pi API kiểm tra giao dịch
     const res = await fetch(`${API_URL}/${paymentId}/complete`, {
       method: "POST",
       headers: {
@@ -37,43 +42,53 @@ export async function POST(req: Request) {
     });
 
     const data = await res.json();
-    const status = data?.transaction?._status || data?._status || "pending";
+    console.log("📦 [PI COMPLETE RESPONSE]", data);
+
+    const status =
+      data?.transaction?._status || data?._status || "unknown";
     const amount = data?.amount || 0;
     const buyer = data?.user_uid || "unknown";
+    const verifiedTxid = data?.transaction?.txid;
 
-    // 🔹 Đọc danh sách đơn hiện tại
-    const orders = await readOrders();
+    // 🧠 Chỉ lưu khi Pi xác nhận thanh toán hoàn tất
+    if (status === "completed" && verifiedTxid) {
+      const orders = await readOrders();
 
-    // 🔹 Tìm đơn đã tồn tại với paymentId (nếu có)
-    const existing = orders.find((o) => o.paymentId === paymentId);
+      // Xem đơn đã tồn tại chưa
+      const existing = orders.find((o) => o.paymentId === paymentId);
+      if (existing) {
+        existing.status = "Đã thanh toán";
+        existing.note = `Pi TXID: ${verifiedTxid}`;
+        existing.updatedAt = new Date().toISOString();
+      } else {
+        orders.unshift({
+          id: Date.now(),
+          paymentId,
+          buyer,
+          total: amount,
+          status: "Đã thanh toán",
+          note: `Pi TXID: ${verifiedTxid}`,
+          createdAt: new Date().toISOString(),
+        });
+      }
 
-    if (existing) {
-      existing.status = status === "completed" ? "Đã thanh toán" : "Chờ xác minh";
-      existing.note = `Pi TXID: ${txid}`;
-      existing.updatedAt = new Date().toISOString();
-    } else {
-      orders.unshift({
-        id: Date.now(),
-        paymentId,
-        buyer,
-        total: amount,
-        status: status === "completed" ? "Đã thanh toán" : "Chờ xác minh",
-        note: `Pi TXID: ${txid}`,
-        createdAt: new Date().toISOString(),
+      await writeOrders(orders);
+
+      console.log("💾 ✅ Lưu đơn hoàn tất:", paymentId);
+      return NextResponse.json({
+        success: true,
+        status: "completed",
+        message: "✅ Thanh toán thành công và đã lưu đơn!",
       });
     }
 
-    await writeOrders(orders);
-
-    console.log("💾 Order saved/updated:", paymentId, status);
-
+    // ❌ Nếu chưa hoàn tất — KHÔNG LƯU GÌ CẢ
+    console.warn("⚠️ Giao dịch chưa xác minh hoặc chưa hoàn tất:", paymentId);
     return NextResponse.json({
-      success: true,
+      success: false,
       status,
       message:
-        status === "completed"
-          ? "✅ Thanh toán thành công!"
-          : "⚠️ Giao dịch đang chờ xác minh trên Pi Network.",
+        "⚠️ Pi chưa xác minh giao dịch, không lưu đơn hàng. Vui lòng thanh toán lại.",
     });
   } catch (err: any) {
     console.error("💥 [Pi COMPLETE ERROR]:", err);
