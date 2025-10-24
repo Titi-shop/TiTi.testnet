@@ -4,8 +4,9 @@ import { AuthProvider } from "../context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import { LanguageProvider } from "./context/LanguageContext";
 import BottomNav from "../components/BottomNav";
+import Navbar from "../components/Navbar"; // ✅ Thêm dòng này
 import LoginWithPi from "./components/LoginWithPi";
-import PiSessionWatcher from "./components/PiSessionWatcher"; // ✅ THÊM DÒNG NÀY
+import PiSessionWatcher from "./components/PiSessionWatcher";
 
 export const metadata = {
   title: "TiTi Shop",
@@ -45,14 +46,17 @@ export default function RootLayout({
         <LanguageProvider>
           <AuthProvider>
             <CartProvider>
+              {/* ✅ Navbar hiển thị trên tất cả các trang */}
+              <Navbar />
+
               {/* ✅ Tự động đăng nhập nếu có sẵn thông tin */}
               <LoginWithPi />
 
               {/* ✅ Giữ trạng thái đăng nhập đồng bộ toàn app */}
               <PiSessionWatcher />
 
-              {/* ✅ Nội dung chính */}
-              {children}
+              {/* ✅ Nội dung trang */}
+              <div className="pt-20">{children}</div>
 
               {/* ✅ Thanh điều hướng cố định dưới màn hình */}
               <BottomNav />
