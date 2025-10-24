@@ -26,14 +26,19 @@ export async function POST(req: Request) {
       },
     });
 
-    const data = await res.json().catch(() => ({}));
-    console.log("✅ [Pi APPROVE RESULT]:", res.status, data);
+    const text = await res.text();
 
-    if (!res.ok) {
-      return NextResponse.json({ success: false, data }, { status: res.status });
+    console.log("✅ [Pi APPROVE RESULT]:", res.status, text);
+
+    // Nếu lỗi quyền hạn
+    if (res.status === 401) {
+      console.error("❌ Sai API key hoặc app chưa đăng ký domain!");
     }
 
-    return NextResponse.json({ success: true, paymentId, data });
+    return new NextResponse(text, {
+      status: res.status,
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
   } catch (err: any) {
     console.error("💥 [Pi APPROVE ERROR]:", err);
     return NextResponse.json({ error: err.message || "unknown" }, { status: 500 });
