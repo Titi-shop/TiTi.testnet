@@ -30,15 +30,15 @@ export default function CheckoutPage() {
     if (saved) setShipping(JSON.parse(saved));
   }, []);
 
-  // 💳 Xử lý thanh toán
+  // 💳 Thanh toán
   const handlePay = async () => {
     if (!window.Pi) {
-      alert("⚠️ Vui lòng mở trang trong Pi Browser để thanh toán!");
+      alert("⚠️ Vui lòng mở trang này trong Pi Browser để thanh toán!");
       return;
     }
 
     if (!shipping) {
-      alert("📦 Vui lòng thêm địa chỉ giao hàng!");
+      alert("📦 Vui lòng thêm địa chỉ giao hàng trước!");
       router.push("/customer/address");
       return;
     }
@@ -51,28 +51,38 @@ export default function CheckoutPage() {
     setLoading(true);
 
     try {
-      // 🧹 Kiểm tra và huỷ giao dịch pending cũ nếu có
+      // 🧹 Kiểm tra và hủy giao dịch pending cũ nếu có
       try {
-        const pending = await window.Pi.getCurrentPayments();
-        if (pending && pending.length > 0) {
-          const last = pending[0];
-          alert("⚠️ Có giao dịch Pi chưa hoàn tất. Hệ thống sẽ tự huỷ để tạo giao dịch mới.");
+        const pendings = await window.Pi.getCurrentPayments();
+        if (pendings && pendings.length > 0) {
+          const last = pendings[0];
+          alert(`⚠️ Có giao dịch Pi đang treo (PaymentID: ${last.identifier}). Hệ thống sẽ tự huỷ...`);
 
-          await fetch("/api/pi/cancel", {
+          const cancelRes = await fetch("/api/pi/cancel", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ paymentId: last.identifier }),
           });
 
-          // chờ 1 chút để Pi cập nhật trạng thái
-          await new Promise((r) => setTimeout(r, 1500));
+          const cancelText = await cancelRes.text();
+          console.log("🧹 [PENDING CANCEL RESULT]:", cancelRes.status, cancelText);
+
+          if (cancelRes.ok) {
+            await new Promise((r) => setTimeout(r, 4000));
+            alert("✅ Giao dịch cũ đã được huỷ. Bắt đầu tạo giao dịch mới...");
+          } else {
+            alert("⚠️ Không thể huỷ giao dịch cũ. Vui lòng thử lại sau 10 giây.");
+            setLoading(false);
+            return;
+          }
         }
       } catch (err) {
-        console.warn("Không có pending payment hoặc không thể truy xuất:", err);
+        console.warn("Không thể truy xuất pending payment:", err);
       }
 
-      // 🚀 Khởi tạo SDK và xác thực
+      // 🚀 Khởi tạo Pi SDK
       window.Pi.init({ version: "2.0", sandbox: false });
+
       const scopes = ["payments", "username", "wallet_address"];
       const auth = await window.Pi.authenticate(scopes, (res: any) => res);
 
@@ -108,7 +118,7 @@ export default function CheckoutPage() {
 
           const result = await res.json();
 
-          if (result?.success) {
+          if (result?.success || res.ok) {
             const order = {
               id: orderId,
               buyer: auth.user?.username || user,
@@ -144,7 +154,6 @@ export default function CheckoutPage() {
         },
       };
 
-      // ⚙️ Tạo giao dịch mới
       await window.Pi.createPayment(paymentData, callbacks);
     } catch (err: any) {
       console.error("❌ Lỗi:", err);
@@ -237,9 +246,7 @@ export default function CheckoutPage() {
           onClick={handlePay}
           disabled={loading}
           className={`px-6 py-3 rounded-lg font-semibold text-white text-sm ${
-            loading
-              ? "bg-gray-400"
-              : "bg-orange-600 hover:bg-orange-700 active:bg-orange-800"
+            loading ? "bg-gray-400" : "bg-orange-600 hover:bg-orange-700 active:bg-orange-800"
           }`}
         >
           {loading ? "Đang xử lý..." : "Pay Now"}
