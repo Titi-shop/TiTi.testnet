@@ -4,7 +4,8 @@ import { AuthProvider } from "../context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import { LanguageProvider } from "./context/LanguageContext";
 import BottomNav from "../components/BottomNav";
-import LoginWithPi from "./components/LoginWithPi"; // ✅ Thêm dòng này
+import LoginWithPi from "./components/LoginWithPi";
+import PiSessionWatcher from "./components/PiSessionWatcher"; // ✅ THÊM DÒNG NÀY
 
 export const metadata = {
   title: "TiTi Shop",
@@ -30,7 +31,7 @@ export default function RootLayout({
               window.addEventListener("load", () => {
                 if (window.Pi) {
                   console.log("✅ Pi SDK loaded:", window.Pi);
-                  window.Pi.init({ version: "2.0" });
+                  window.Pi.init({ version: "2.0", sandbox: false });
                 } else {
                   console.warn("⚠️ Pi SDK chưa load, hãy mở bằng Pi Browser.");
                 }
@@ -41,13 +42,14 @@ export default function RootLayout({
       </head>
 
       <body className="relative pb-16 bg-gray-50">
-        {/* ✅ Bao toàn bộ ứng dụng trong LanguageProvider */}
         <LanguageProvider>
-          {/* ✅ Bao Auth và Giỏ hàng bên trong để chúng cũng đọc được ngôn ngữ */}
           <AuthProvider>
             <CartProvider>
-              {/* ✅ Tự động đăng nhập Pi */}
+              {/* ✅ Tự động đăng nhập nếu có sẵn thông tin */}
               <LoginWithPi />
+
+              {/* ✅ Giữ trạng thái đăng nhập đồng bộ toàn app */}
+              <PiSessionWatcher />
 
               {/* ✅ Nội dung chính */}
               {children}
