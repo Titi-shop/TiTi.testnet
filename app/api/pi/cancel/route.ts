@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic"; // 🔥 tránh cache
+
 export async function POST(req: Request) {
   try {
     const { paymentId } = await req.json();
