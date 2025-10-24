@@ -18,12 +18,10 @@ export default function CheckoutPage() {
   const [user, setUser] = useState("guest");
   const [shipping, setShipping] = useState<any>(null);
 
-  // ✅ Lấy username đã đăng nhập
+  // ✅ Lấy username đăng nhập
   useEffect(() => {
-    try {
-      const username = localStorage.getItem("titi_username");
-      if (username) setUser(username);
-    } catch {}
+    const username = localStorage.getItem("titi_username");
+    if (username) setUser(username);
   }, []);
 
   // ✅ Lấy địa chỉ giao hàng
@@ -32,43 +30,48 @@ export default function CheckoutPage() {
     if (saved) setShipping(JSON.parse(saved));
   }, []);
 
-  // 💰 Thanh toán qua Pi Network
+  // 💳 Xử lý thanh toán
   const handlePay = async () => {
     if (!window.Pi) {
-      alert("⚠️ Vui lòng mở trong Pi Browser để thanh toán!");
+      alert("⚠️ Vui lòng mở trang trong Pi Browser để thanh toán!");
       return;
     }
+
     if (!shipping) {
-      alert("📦 Vui lòng chọn địa chỉ giao hàng!");
+      alert("📦 Vui lòng thêm địa chỉ giao hàng!");
       router.push("/customer/address");
       return;
     }
+
     if (cart.length === 0) {
-      alert("🛒 Giỏ hàng trống!");
+      alert("🛒 Giỏ hàng của bạn đang trống!");
       return;
     }
 
     setLoading(true);
 
     try {
-      // 🔍 Kiểm tra nếu có giao dịch cũ đang pending
+      // 🧹 Kiểm tra và huỷ giao dịch pending cũ nếu có
       try {
-        try {
-  const pending = await window.Pi.getCurrentPayments();
-  if (pending && pending.length > 0) {
-    const last = pending[0];
-    alert("⚠️ Có giao dịch Pi chưa hoàn tất. Hệ thống sẽ tự huỷ để bạn thanh toán lại.");
+        const pending = await window.Pi.getCurrentPayments();
+        if (pending && pending.length > 0) {
+          const last = pending[0];
+          alert("⚠️ Có giao dịch Pi chưa hoàn tất. Hệ thống sẽ tự huỷ để tạo giao dịch mới.");
 
-    await fetch("/api/pi/cancel", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ paymentId: last.identifier }),
-    });
-  }
-} catch (err) {
-  console.warn("Không tìm thấy pending payment:", err);
+          await fetch("/api/pi/cancel", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paymentId: last.identifier }),
+          });
+
+          // chờ 1 chút để Pi cập nhật trạng thái
+          await new Promise((r) => setTimeout(r, 1500));
         }
-      // 🚀 Khởi tạo SDK và xác thực người dùng
+      } catch (err) {
+        console.warn("Không có pending payment hoặc không thể truy xuất:", err);
+      }
+
+      // 🚀 Khởi tạo SDK và xác thực
       window.Pi.init({ version: "2.0", sandbox: false });
       const scopes = ["payments", "username", "wallet_address"];
       const auth = await window.Pi.authenticate(scopes, (res: any) => res);
@@ -79,40 +82,42 @@ export default function CheckoutPage() {
         memo: `Thanh toán đơn hàng #${orderId}`,
         metadata: {
           orderId,
-          items: cart,
           buyer: auth.user?.username || user,
+          items: cart,
         },
       };
 
-      // 💳 Các bước callback
       const callbacks = {
         onReadyForServerApproval: async (paymentId: string) => {
-          console.log("🟡 Gửi duyệt:", paymentId);
+          console.log("🟡 [APPROVE] Giao dịch:", paymentId);
           await fetch("/api/pi/approve", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ paymentId }),
           });
         },
+
         onReadyForServerCompletion: async (paymentId: string, txid: string) => {
-          console.log("🟢 Hoàn tất giao dịch:", paymentId);
+          console.log("🟢 [COMPLETE] Giao dịch:", paymentId);
+
           const res = await fetch("/api/pi/complete", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ paymentId, txid }),
           });
+
           const result = await res.json();
 
           if (result?.success) {
             const order = {
               id: orderId,
+              buyer: auth.user?.username || user,
               items: cart,
               total,
-              buyer: auth.user?.username || user,
               status: "Đã thanh toán",
               note: `Pi TXID: ${txid}`,
-              createdAt: new Date().toISOString(),
               shipping,
+              createdAt: new Date().toISOString(),
             };
 
             await fetch("/api/orders", {
@@ -125,21 +130,25 @@ export default function CheckoutPage() {
             alert("✅ Thanh toán thành công!");
             router.push("/customer/pending");
           } else {
-            alert(result.message || "⚠️ Giao dịch đang chờ xác minh từ Pi.");
+            alert(result.message || "⚠️ Giao dịch đang chờ xác minh trên Pi Network.");
           }
         },
-        onCancel: () => alert("❌ Giao dịch đã bị huỷ."),
+
+        onCancel: () => {
+          alert("❌ Bạn đã huỷ giao dịch.");
+        },
+
         onError: (error: any) => {
           console.error("💥 Lỗi thanh toán:", error);
-          alert("💥 Lỗi: " + (error.message || "Không xác định."));
+          alert("💥 Lỗi thanh toán: " + (error.message || "Không xác định."));
         },
       };
 
-      // ⚙️ Gọi thanh toán
+      // ⚙️ Tạo giao dịch mới
       await window.Pi.createPayment(paymentData, callbacks);
     } catch (err: any) {
-      console.error("❌ Lỗi thanh toán:", err);
-      alert("❌ Giao dịch thất bại hoặc bị huỷ: " + err.message);
+      console.error("❌ Lỗi:", err);
+      alert("❌ Thanh toán thất bại hoặc bị huỷ: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -147,7 +156,7 @@ export default function CheckoutPage() {
 
   return (
     <main className="max-w-md mx-auto min-h-screen bg-gray-50 flex flex-col justify-between">
-      {/* Thanh điều hướng */}
+      {/* Header */}
       <div className="flex items-center justify-between bg-white p-3 border-b sticky top-0 z-10">
         <button
           onClick={() => router.back()}
@@ -160,9 +169,9 @@ export default function CheckoutPage() {
         <div className="w-5" />
       </div>
 
-      {/* Nội dung chính */}
+      {/* Nội dung */}
       <div className="flex-1 overflow-y-auto pb-24">
-        {/* Địa chỉ giao hàng */}
+        {/* Địa chỉ */}
         <div
           className="bg-white border-b border-gray-200 p-4 flex justify-between items-center cursor-pointer"
           onClick={() => router.push("/customer/address")}
@@ -218,7 +227,7 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {/* Thanh tổng cộng + nút thanh toán */}
+      {/* Thanh tổng cộng */}
       <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 p-4 flex justify-between items-center max-w-md mx-auto">
         <div>
           <p className="text-gray-600 text-sm">Tổng cộng:</p>
