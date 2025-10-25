@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 
 /**
- * ✅ API xác minh Access Token của Pi Network
- * Nhận accessToken từ frontend → gọi tới Pi API → trả về thông tin người dùng thật.
+ * ✅ API xác minh Access Token của Pi Network (Testnet/Sandbox)
+ * - Nhận accessToken từ frontend (LoginWithPi)
+ * - Gọi đúng endpoint tương ứng sandbox/mainnet để lấy thông tin người dùng thật
  */
 
 export async function POST(req: Request) {
@@ -16,8 +17,15 @@ export async function POST(req: Request) {
       );
     }
 
-    // 🔹 Gọi Pi API để xác minh accessToken thật
-    const response = await fetch("https://api.minepi.com/v2/me", {
+    // ✅ Dùng đúng API URL theo môi trường
+    const API_URL =
+      process.env.PI_API_URL?.replace("/payments", "/me") ||
+      "https://api.minepi.com/v2/sandbox/me";
+
+    console.log("🔍 [Pi VERIFY] Đang xác minh token tại:", API_URL);
+
+    // 🔹 Gọi Pi API để xác minh accessToken
+    const response = await fetch(API_URL, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -46,7 +54,7 @@ export async function POST(req: Request) {
 
     console.log("✅ Pi user verified:", verifiedUser);
 
-    // 🔹 Trả về cho frontend (để lưu localStorage)
+    // 🔹 Trả về cho frontend để lưu vào localStorage
     return NextResponse.json({
       success: true,
       user: verifiedUser,
