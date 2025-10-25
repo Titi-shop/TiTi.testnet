@@ -32,7 +32,7 @@ export default function RootLayout({
               window.addEventListener("load", () => {
                 if (window.Pi) {
                   console.log("✅ Pi SDK loaded:", window.Pi);
-                  window.Pi.init({ version: "2.0", sandbox: false });
+                  window.Pi.init({ version: "2.0", sandbox: true });
                 } else {
                   console.warn("⚠️ Pi SDK chưa load, hãy mở bằng Pi Browser.");
                 }
