@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     // ✅ Dùng đúng API URL theo môi trường
     const API_URL =
       process.env.PI_API_URL?.replace("/payments", "/me") ||
-      "https://api.minepi.com/v2/me";
+      "https://api.minepi.com/v2/payments";
 
     console.log("🔍 [Pi VERIFY] Đang xác minh token tại:", API_URL);
 
