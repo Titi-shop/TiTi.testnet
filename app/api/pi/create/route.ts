@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 /**
  * ✅ API tạo giao dịch thanh toán mới trên Pi Network
  *  - Nhận dữ liệu từ frontend (amount, memo, metadata)
- *  - Gửi đến Pi API: https://api.minepi.com/v2/sandbox/payments
+ *  - Gửi đến Pi API: https://api.minepi.com/v2/payments
  *  - Trả về paymentId và trạng thái
  */
 
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     }
 
     const API_KEY = process.env.PI_API_KEY;
-const API_URL = process.env.PI_API_URL || "https://api.minepi.com/v2/sandbox/payments";
+const API_URL = process.env.PI_API_URL || "https://api.minepi.com/v2/payments";
     if (!API_KEY) {
       console.error("❌ Thiếu PI_API_KEY trong biến môi trường");
       return NextResponse.json({ error: "Thiếu API key" }, { status: 500 });
