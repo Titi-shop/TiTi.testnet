@@ -21,19 +21,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // ✅ Chọn vai trò thủ công (giả lập)
-  const chooseRole = (newRole: "seller" | "customer") => {
-    const mockUser =
-      newRole === "seller"
-        ? { username: "nguyenminhduc1991111", wallet: "SELLER-MOCK" }
-        : { username: "guest_user", wallet: "CUSTOMER-MOCK" };
-
-    setRole(newRole);
-    setUser(mockUser);
-    localStorage.setItem("user_role", newRole);
-    localStorage.setItem("user_info", JSON.stringify(mockUser));
-  };
-
   // ✅ Đăng xuất
   const logout = () => {
     try {
