@@ -4,51 +4,47 @@ import { createContext, useContext, useEffect, useState } from "react";
 
 const AuthContext = createContext<any>(null);
 
-/**
- * ✅ AuthContext (bản thật, không giả lập)
- * - Lưu thông tin người dùng đăng nhập bằng Pi Network
- * - Hỗ trợ đăng nhập / đăng xuất thật qua Pi SDK
- * - Không còn phần “mock user” hoặc chọn vai trò thủ công
- */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
+  const [piReady, setPiReady] = useState(false);
 
-  // 🔹 Khi app load, khôi phục thông tin user từ localStorage
   useEffect(() => {
-    try {
-      const savedUser = localStorage.getItem("pi_user");
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
+    if (typeof window === "undefined") return;
+
+    const checkPi = () => {
+      if (window.Pi) {
+        console.log("✅ Pi SDK ready:", window.Pi);
+        try {
+          window.Pi.init({ version: "2.0" }); // 🔥 KHÔNG DÙNG sandbox
+          setPiReady(true);
+        } catch (e) {
+          console.error("❌ Pi.init error:", e);
+        }
+      } else {
+        console.warn("⚠️ Pi SDK chưa sẵn sàng, thử lại...");
+        setTimeout(checkPi, 1000);
       }
-    } catch (err) {
-      console.error("❌ Lỗi khi đọc localStorage:", err);
-    }
+    };
+
+    checkPi();
+
+    const savedUser = localStorage.getItem("pi_user");
+    if (savedUser) setUser(JSON.parse(savedUser));
   }, []);
 
-  // ✅ Hàm đăng nhập bằng Pi SDK thật (Testnet hoặc Mainnet)
   const piLogin = async () => {
+    if (!window.Pi) {
+      alert("⚠️ Hãy mở trang này bằng Pi Browser.");
+      return;
+    }
+
     try {
-      if (typeof window === "undefined" || !(window as any).Pi) {
-        alert("⚠️ Pi SDK chưa sẵn sàng. Hãy mở trang này bằng Pi Browser.");
-        return;
-      }
-
-      const Pi = (window as any).Pi;
-
-      // ⚙️ Khởi tạo SDK nếu chưa init
-      if (!Pi.initialized) {
-        Pi.init({ version: "2.0", sandbox: true }); // ❌ Không còn sandbox
-      }
-
       const scopes = ["username", "payments", "wallet_address"];
-      const auth = await Pi.authenticate(scopes, (payment: any) => {
-        console.log("📦 Payment callback:", payment);
+      const auth = await window.Pi.authenticate(scopes, (payment: any) => {
+        console.log("💸 Payment callback:", payment);
       });
 
-      if (!auth?.user?.username) {
-        alert("❌ Không lấy được thông tin người dùng từ Pi Network.");
-        return;
-      }
+      console.log("✅ Pi auth result:", auth);
 
       const piUser = {
         username: auth.user.username,
@@ -56,30 +52,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         accessToken: auth.accessToken,
       };
 
-      // ✅ Lưu thông tin người dùng
       setUser(piUser);
       localStorage.setItem("pi_user", JSON.stringify(piUser));
       console.log("✅ Đăng nhập Pi thành công:", piUser);
-      alert("✅ Đăng nhập Pi thành công!");
     } catch (err: any) {
       console.error("❌ Lỗi đăng nhập Pi:", err);
-      alert("Đăng nhập Pi thất bại: " + (err.message || "Không xác định."));
+      alert("Đăng nhập Pi thất bại: " + err.message);
     }
   };
 
-  // ✅ Đăng xuất
   const logout = () => {
-    try {
-      localStorage.removeItem("pi_user");
-      setUser(null);
-      console.log("🚪 Đã đăng xuất Pi user.");
-    } catch (err) {
-      console.error("❌ Lỗi khi đăng xuất:", err);
-    }
+    localStorage.removeItem("pi_user");
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, piLogin, logout }}>
+    <AuthContext.Provider value={{ user, piReady, piLogin, logout }}>
       {children}
     </AuthContext.Provider>
   );
