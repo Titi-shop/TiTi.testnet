@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 /**
  * ✅ API tạo giao dịch thanh toán mới trên Pi Network
  *  - Nhận dữ liệu từ frontend (amount, memo, metadata)
- *  - Gửi đến Pi API: https://api.minepi.com/v2/payments
+ *  - Gửi đến Pi API: https://api.minepi.com/v2/sandbox
  *  - Trả về paymentId và trạng thái
  */
 
