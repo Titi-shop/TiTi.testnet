@@ -22,9 +22,7 @@ export async function POST(req: Request) {
     }
 
     const API_KEY = process.env.PI_API_KEY;
-    const API_URL =
-      process.env.PI_API_URL || "https://api.minepi.com/v2/payments";
-
+const API_URL = process.env.PI_API_URL || "https://api.minepi.com/v2/sandbox/payments";
     if (!API_KEY) {
       console.error("❌ Thiếu PI_API_KEY trong biến môi trường");
       return NextResponse.json({ error: "Thiếu API key" }, { status: 500 });
