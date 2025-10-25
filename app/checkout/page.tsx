@@ -60,7 +60,7 @@ export default function CheckoutPage() {
     setLoading(true);
     try {
       // ✅ Khởi tạo SDK
-      window.Pi.init({ version: "2.0", sandbox: false });
+      window.Pi.init({ version: "2.0", sandbox: true });
 
       // ✅ Tạo giao dịch mới từ server
       const orderId = `ORD-${Date.now()}`;
