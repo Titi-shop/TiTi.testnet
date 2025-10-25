@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // ⚙️ Khởi tạo SDK nếu chưa init
       if (!Pi.initialized) {
-        Pi.init({ version: "2.0" }); // ❌ Không còn sandbox
+        Pi.init({ version: "2.0", sandbox: true }); // ❌ Không còn sandbox
       }
 
       const scopes = ["username", "payments", "wallet_address"];
