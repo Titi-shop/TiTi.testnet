@@ -8,9 +8,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "missing paymentId" }, { status: 400 });
     }
 
-    const API_KEY = process.env.PI_API_KEY;
-    const API_URL = process.env.PI_API_URL || "https://api.minepi.com/v2/payments";
-
+    
+const API_KEY = process.env.PI_API_KEY;
+const API_URL = process.env.PI_API_URL || "https://api.minepi.com/v2/sandbox/payments";
     if (!API_KEY) {
       console.error("❌ Missing PI_API_KEY in environment variables");
       return NextResponse.json({ error: "Missing PI_API_KEY" }, { status: 500 });
