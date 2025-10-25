@@ -23,7 +23,7 @@ export default function LoginWithPi() {
     }
 
     // ✅ Khởi tạo Pi SDK
-    window.Pi.init({ version: "2.0", sandbox: false });
+    window.Pi.init({ version: "2.0", sandbox: true });
 
     // 🔹 Hàm thực hiện đăng nhập
     const authenticate = async () => {
