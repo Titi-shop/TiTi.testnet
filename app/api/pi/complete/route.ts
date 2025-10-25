@@ -8,8 +8,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "missing paymentId" }, { status: 400 });
     }
 
-    const API_KEY = process.env.PI_API_KEY;
-    const API_URL = process.env.PI_API_URL || "https://api.minepi.com/v2/payments";
+    
+const API_KEY = process.env.PI_API_KEY;
+const API_URL = process.env.PI_API_URL || "https://api.minepi.com/v2/sandbox/payments";
 
     console.log("⏳ [Pi COMPLETE] ID:", paymentId, txid);
 
