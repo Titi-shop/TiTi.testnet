@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 
 /**
- * ✅ API xác minh Access Token của Pi Network (Testnet/Sandbox)
+ * ✅ API xác minh Access Token của Pi Network (Mainnet hoặc Sandbox)
  * - Nhận accessToken từ frontend (LoginWithPi)
- * - Gọi đúng endpoint tương ứng sandbox/mainnet để lấy thông tin người dùng thật
+ * - Gọi endpoint /v2/me để xác minh người dùng thật
  */
-
 export async function POST(req: Request) {
   try {
     const { accessToken } = await req.json();
@@ -17,12 +16,17 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ Dùng đúng API URL theo môi trường
-    const API_URL =
-      process.env.PI_API_URL?.replace("/payments", "/me") ||
-      "https://api.minepi.com/v2/me";
+    // ✅ Xác định môi trường thật hoặc sandbox từ biến môi trường
+    const isSandbox =
+      process.env.PI_ENV === "sandbox" ||
+      process.env.PI_API_URL?.includes("/sandbox");
 
-    console.log("🔍 [Pi VERIFY] Đang xác minh token tại:", API_URL);
+    // ✅ Endpoint xác minh người dùng
+    const API_URL = isSandbox
+      ? "https://api.minepi.com/v2/sandbox/me"
+      : "https://api.minepi.com/v2/me";
+
+    console.log(`🔍 [Pi VERIFY] Xác minh token qua ${isSandbox ? "SANDBOX" : "MAINNET"}:`, API_URL);
 
     // 🔹 Gọi Pi API để xác minh accessToken
     const response = await fetch(API_URL, {
@@ -32,10 +36,9 @@ export async function POST(req: Request) {
       },
     });
 
-    // 🔹 Nếu lỗi hoặc token không hợp lệ
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("❌ Pi Verify API error:", errorText);
+      console.error("❌ [Pi VERIFY ERROR]", errorText);
       return NextResponse.json(
         { success: false, message: "Token không hợp lệ hoặc hết hạn" },
         { status: 401 }
@@ -49,18 +52,18 @@ export async function POST(req: Request) {
       username: userData?.username,
       uid: userData?.uid,
       roles: userData?.roles || [],
+      wallet_address: userData?.wallet_address || null,
       created_at: userData?.created_at || new Date().toISOString(),
     };
 
-    console.log("✅ Pi user verified:", verifiedUser);
+    console.log("✅ [Pi VERIFY SUCCESS]:", verifiedUser);
 
-    // 🔹 Trả về cho frontend để lưu vào localStorage
     return NextResponse.json({
       success: true,
       user: verifiedUser,
     });
   } catch (error: any) {
-    console.error("💥 [API VERIFY ERROR]:", error);
+    console.error("💥 [API VERIFY EXCEPTION]:", error);
     return NextResponse.json(
       { success: false, message: error.message || "Lỗi xác minh Pi Network" },
       { status: 500 }
