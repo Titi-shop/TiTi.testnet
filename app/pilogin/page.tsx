@@ -32,10 +32,7 @@ export default function PiLoginPage() {
         console.log("✅ Pi SDK phát hiện, khởi tạo...");
 
         // 🔹 KHÔNG DÙNG await (Pi.init không trả Promise hợp lệ)
-        window.Pi.init({
-          version: "2.0",
-          sandbox: false, // 🔥 BẮT BUỘC nếu đang chạy Pi Testnet
-        });
+        window.Pi.init({version: "2.0",sandbox: false });
 
         setIsPiBrowser(true);
         console.log("✅ Pi SDK initialized thành công");
