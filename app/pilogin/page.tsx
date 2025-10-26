@@ -271,6 +271,3 @@ export default function PiLoginPage() {
           )}
         </button>
       )}
-
-      {/* DEBUG INFO */}
-      <div style={styles.debugInfo}>
