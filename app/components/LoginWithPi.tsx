@@ -1,103 +1,38 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
-const AuthContext = createContext<any>(null);
+function LoginWithPi() {
+  const { user, piReady, piLogin } = useAuth();
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any>(null);
-  const [piReady, setPiReady] = useState(false);
+  if (user) {
+    return (
+      <div className="text-center text-green-600 mt-4">
+        👤 Xin chào, {user.username}
+      </div>
+    );
+  }
 
-  // ✅ Kiểm tra Pi SDK khi load
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const checkPi = () => {
-      if (window.Pi) {
-        console.log("✅ Pi SDK detected:", window.Pi);
-        // ⚙️ Khởi tạo thật (không sandbox)
-        window.Pi.init({ version: "2.0", sandbox: false });
-        setPiReady(true);
-      } else {
-        console.warn("⚠️ Pi SDK chưa sẵn sàng — mở trong Pi Browser.");
-        setPiReady(false);
-      }
-    };
-
-    // Thử khởi tạo sau 1s nếu SDK load chậm
-    setTimeout(checkPi, 1000);
-  }, []);
-
-  // 🔹 Tự động khôi phục user từ localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem("pi_user");
-    if (saved) {
-      setUser(JSON.parse(saved));
-      console.log("👤 Khôi phục user:", JSON.parse(saved));
-    }
-  }, []);
-
-  // ✅ Đăng nhập bằng Pi SDK thật
-  const piLogin = async () => {
-    try {
-      if (!window.Pi) {
-        alert("⚠️ Pi SDK chưa load. Hãy mở trong Pi Browser.");
-        return;
-      }
-
-      const scopes = ["username", "payments", "wallet_address"];
-      const auth = await window.Pi.authenticate(scopes, (payment: any) =>
-        console.log("💰 Pi Payment callback:", payment)
-      );
-
-      if (!auth?.accessToken) {
-        alert("❌ Không lấy được accessToken từ Pi Network.");
-        return;
-      }
-
-      console.log("✅ Pi Auth Result:", auth);
-
-      // Gửi token sang server xác minh thật
-      const res = await fetch("/api/pi/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessToken: auth.accessToken }),
-      });
-
-      const data = await res.json();
-      if (!data.success) {
-        alert("❌ Xác minh thất bại: " + data.message);
-        return;
-      }
-
-      const verifiedUser = {
-        ...data.user,
-        wallet: auth.user.wallet_address,
-        accessToken: auth.accessToken,
-      };
-
-      localStorage.setItem("pi_user", JSON.stringify(verifiedUser));
-      setUser(verifiedUser);
-      console.log("🎉 Đăng nhập Pi thành công:", verifiedUser);
-      alert("✅ Đăng nhập thành công!");
-    } catch (err: any) {
-      console.error("💥 Lỗi đăng nhập Pi:", err);
-      alert("❌ Đăng nhập Pi thất bại: " + err.message);
-    }
-  };
-
-  // ✅ Đăng xuất
-  const logout = () => {
-    localStorage.removeItem("pi_user");
-    setUser(null);
-    console.log("🚪 Đăng xuất thành công");
-  };
+  if (!piReady) {
+    return (
+      <div className="text-center text-gray-500 mt-4">
+        ⏳ Đang tải Pi SDK...
+        <br />
+        (Hãy mở trong Pi Browser)
+      </div>
+    );
+  }
 
   return (
-    <AuthContext.Provider value={{ user, piReady, piLogin, logout }}>
-      {children}
-    </AuthContext.Provider>
+    <div className="flex flex-col items-center mt-4">
+      <button
+        onClick={piLogin}
+        className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600"
+      >
+        User login
+      </button>
+    </div>
   );
 }
 
-export const useAuth = () => useContext(AuthContext);
+export default LoginWithPi; // ✅ PHẢI CÓ DÒNG NÀY
