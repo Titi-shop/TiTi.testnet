@@ -1,5 +1,4 @@
 "use client";
-
 import { createContext, useContext, useEffect, useState } from "react";
 
 const AuthContext = createContext<any>(null);
@@ -13,51 +12,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const checkPi = () => {
       if (window.Pi) {
-        console.log("✅ Pi SDK ready:", window.Pi);
         try {
-          window.Pi.init({ version: "2.0" }); // 🔥 KHÔNG DÙNG sandbox
+          window.Pi.init({ version: "2.0" });
           setPiReady(true);
         } catch (e) {
           console.error("❌ Pi.init error:", e);
         }
       } else {
-        console.warn("⚠️ Pi SDK chưa sẵn sàng, thử lại...");
         setTimeout(checkPi, 1000);
       }
     };
 
     checkPi();
 
-    const savedUser = localStorage.getItem("pi_user");
-    if (savedUser) setUser(JSON.parse(savedUser));
+    const saved = localStorage.getItem("pi_user");
+    if (saved) setUser(JSON.parse(saved));
   }, []);
 
   const piLogin = async () => {
     if (!window.Pi) {
-      alert("⚠️ Hãy mở trang này bằng Pi Browser.");
+      alert("⚠️ Vui lòng mở bằng Pi Browser");
       return;
     }
-
     try {
       const scopes = ["username", "payments", "wallet_address"];
-      const auth = await window.Pi.authenticate(scopes, (payment: any) => {
-        console.log("💸 Payment callback:", payment);
-      });
-
-      console.log("✅ Pi auth result:", auth);
-
+      const auth = await window.Pi.authenticate(scopes, (p: any) =>
+        console.log("💸 Payment callback:", p)
+      );
       const piUser = {
+        uid: auth.user.uid,
         username: auth.user.username,
-        wallet: auth.user.wallet_address,
+        walletAddress: auth.user.wallet_address,
         accessToken: auth.accessToken,
       };
-
-      setUser(piUser);
       localStorage.setItem("pi_user", JSON.stringify(piUser));
-      console.log("✅ Đăng nhập Pi thành công:", piUser);
+      setUser(piUser);
+      alert(`🎉 Xin chào ${piUser.username}`);
     } catch (err: any) {
-      console.error("❌ Lỗi đăng nhập Pi:", err);
-      alert("Đăng nhập Pi thất bại: " + err.message);
+      alert("❌ Đăng nhập lỗi: " + err.message);
+      console.error(err);
     }
   };
 
