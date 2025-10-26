@@ -1,10 +1,9 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useCart } from "../context/CartContext";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
-// 🧩 Khai báo Pi SDK toàn cục
 declare global {
   interface Window {
     Pi?: any;
@@ -13,52 +12,35 @@ declare global {
 
 export default function CheckoutPage() {
   const { cart, clearCart, total } = useCart();
-  const [wallet, setWallet] = useState<number>(0);
+  const { user, piReady } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState("guest");
   const router = useRouter();
 
-  // 🏠 Thông tin giao hàng
   const [shippingInfo, setShippingInfo] = useState({
     name: "",
     phone: "",
     address: "",
   });
 
-  // ✅ Lấy thông tin người dùng từ PiLogin
-  useEffect(() => {
-    try {
-      const isLoggedIn = localStorage.getItem("titi_is_logged_in") === "true";
-      const username = localStorage.getItem("titi_username");
-      if (isLoggedIn && username) setUser(username);
-    } catch (err) {
-      console.error("User load error:", err);
-    }
-  }, []);
-
-  // ✅ Lấy ví Pi (mock)
-  useEffect(() => {
-    const w = Number(localStorage.getItem("pi_wallet") ?? "1000");
-    setWallet(w);
-  }, []);
-
-  // ✅ Tự động nạp lại địa chỉ giao hàng cũ
   useEffect(() => {
     const saved = localStorage.getItem("shipping_info");
     if (saved) setShippingInfo(JSON.parse(saved));
   }, []);
 
-  // ✅ Khi nhập thì lưu luôn
   const handleShippingChange = (e: any) => {
     const updated = { ...shippingInfo, [e.target.name]: e.target.value };
     setShippingInfo(updated);
     localStorage.setItem("shipping_info", JSON.stringify(updated));
   };
 
-  // 💰 Thanh toán qua Pi
   const handlePayWithPi = async () => {
-    if (!window.Pi) {
-      alert("⚠️ Hãy mở trang này trong Pi Browser để thanh toán.");
+    if (!piReady || !window.Pi) {
+      alert("⚠️ Pi SDK chưa sẵn sàng. Hãy mở trong Pi Browser.");
+      return;
+    }
+    if (!user?.username) {
+      alert("🔑 Vui lòng đăng nhập Pi trước khi thanh toán!");
+      router.push("/pilogin");
       return;
     }
     if (cart.length === 0) {
@@ -66,25 +48,20 @@ export default function CheckoutPage() {
       return;
     }
     if (!shippingInfo.name || !shippingInfo.phone || !shippingInfo.address) {
-      alert("📦 Vui lòng nhập đầy đủ thông tin giao hàng!");
+      alert("📦 Vui lòng nhập đầy đủ địa chỉ giao hàng.");
       return;
     }
+
     setLoading(true);
-
     try {
-      window.Pi.init({ version: "2.0", sandbox: true });
-      const scopes = ["payments", "username", "wallet_address"];
-      const auth = await window.Pi.authenticate(scopes, (res: any) => res);
-      console.log("✅ Xác thực Pi:", auth);
-
       const orderId = Date.now();
       const paymentData = {
-        amount: total,
+        amount: Number(total.toFixed(2)),
         memo: `Thanh toán đơn hàng #${orderId}`,
         metadata: {
           orderId,
           items: cart,
-          buyer: auth.user?.username || user,
+          buyer: user.username,
         },
       };
 
@@ -97,45 +74,39 @@ export default function CheckoutPage() {
           });
         },
         onReadyForServerCompletion: async (paymentId: string, txid: string) => {
-          const res = await fetch("/api/pi/complete", {
+          await fetch("/api/orders", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: orderId,
+              items: cart,
+              total,
+              buyer: user.username,
+              status: "Đã thanh toán",
+              note: `Pi TXID: ${txid}`,
+              createdAt: new Date().toISOString(),
+              shipping: shippingInfo,
+            }),
+          });
+
+          await fetch("/api/pi/complete", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ paymentId, txid }),
           });
-          const result = await res.json();
 
-          if (result?.success) {
-            const order = {
-              id: orderId,
-              items: cart,
-              total,
-              buyer: auth.user?.username || user,
-              status: "Đã thanh toán",
-              note: `Pi TXID: ${txid}`,
-              createdAt: new Date().toISOString(),
-              shipping: shippingInfo, // ✅ thêm địa chỉ giao hàng
-            };
-
-            await fetch("/api/orders", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(order),
-            });
-
-            clearCart();
-            alert("✅ Thanh toán thành công!");
-            router.push("/customer/pending");
-          } else {
-            alert("⚠️ Giao dịch đang chờ xác minh trên Pi Network.");
-          }
+          clearCart();
+          alert("✅ Thanh toán thành công!");
+          router.push("/customer/pending");
         },
-        onCancel: () => alert("❌ Giao dịch đã bị huỷ."),
+        onCancel: () => alert("❌ Giao dịch đã huỷ."),
         onError: (error: any) => {
           console.error("💥 Lỗi thanh toán:", error);
-          alert("💥 Lỗi trong quá trình thanh toán: " + error.message);
+          alert("💥 Lỗi thanh toán: " + error.message);
         },
       };
 
+      // chỉ gọi createPayment — KHÔNG init lại ở đây
       await window.Pi.createPayment(paymentData, callbacks);
     } catch (err: any) {
       console.error("❌ Lỗi thanh toán:", err);
@@ -145,17 +116,14 @@ export default function CheckoutPage() {
     }
   };
 
-  // 🧱 Giao diện
   return (
     <main className="max-w-3xl mx-auto p-6 bg-gray-50 min-h-screen">
       <h1 className="text-2xl font-bold mb-4 text-center text-orange-600">
         💳 Thanh toán
       </h1>
 
-      {/* Form thông tin giao hàng */}
       <div className="p-4 border rounded-lg bg-white mb-4">
         <h3 className="font-semibold text-blue-600 mb-2">📦 Thông tin giao hàng</h3>
-
         <label className="block mb-2">
           Họ và tên:
           <input
@@ -167,7 +135,6 @@ export default function CheckoutPage() {
             required
           />
         </label>
-
         <label className="block mb-2">
           Số điện thoại:
           <input
@@ -179,7 +146,6 @@ export default function CheckoutPage() {
             required
           />
         </label>
-
         <label className="block mb-2">
           Địa chỉ giao hàng:
           <textarea
@@ -192,10 +158,8 @@ export default function CheckoutPage() {
         </label>
       </div>
 
-      {/* Thông tin thanh toán */}
       <div className="bg-white p-4 rounded shadow mb-4">
-        <p>Người mua: <b>{user}</b></p>
-        <p>Ví Pi: <b className="text-yellow-600">{wallet} Pi</b></p>
+        <p>Người mua: <b>{user?.username || "guest"}</b></p>
         <p>Tổng đơn hàng: <b className="text-yellow-600">{total} Pi</b></p>
       </div>
 
