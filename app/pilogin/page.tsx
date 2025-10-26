@@ -20,46 +20,6 @@ export default function PiLoginPage() {
     }
   }, [router]);
 
-  // ✅ Đăng nhập bằng Pi Browser
-  const handleLogin = async () => {
-    if (!agreed) {
-      alert("⚠️ Vui lòng đọc và đồng ý với các điều khoản trước khi đăng nhập.");
-      return;
-    }
-
-    if (typeof window === "undefined" || !window.Pi) {
-      alert("⚠️ Vui lòng mở trang này bằng Pi Browser để đăng nhập!");
-      return;
-    }
-
-    try {
-      window.Pi.init({ version: "2.0", sandbox: true });
-
-      const scopes = ["username", "payments", "wallet_address"];
-      const auth = await window.Pi.authenticate(scopes, () => {});
-      const username = auth?.user?.username || "guest_user";
-
-      localStorage.setItem("pi_user", JSON.stringify(auth));
-      localStorage.setItem("titi_is_logged_in", "true");
-      localStorage.setItem("titi_username", username);
-      localStorage.setItem("titi_access_token", auth?.accessToken || "");
-
-      alert(`🎉 Xin chào ${username}!`);
-      router.replace("/customer");
-    } catch (err) {
-      console.error("❌ Lỗi đăng nhập:", err);
-      alert("Không thể đăng nhập. Hãy đảm bảo bạn đang mở trong Pi Browser.");
-    }
-  };
-
-  if (isChecking) {
-    return (
-      <main className="flex flex-col items-center justify-center min-h-screen bg-white text-gray-500 text-lg">
-        ⏳ Đang kiểm tra đăng nhập...
-      </main>
-    );
-  }
-
   // ✅ Giao diện đơn giản có 2 link điều khoản
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-white text-center px-6">
