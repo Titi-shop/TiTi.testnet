@@ -1,21 +1,19 @@
 import { NextResponse } from "next/server";
 
-/** ✅ API xác nhận hoàn tất thanh toán Pi Network */
 export async function POST(req: Request) {
   try {
     const { paymentId, txid } = await req.json();
-    if (!paymentId || !txid) {
-      return NextResponse.json({ success: false, message: "Thiếu paymentId hoặc txid" }, { status: 400 });
+
+    if (!paymentId) {
+      return NextResponse.json({ error: "missing paymentId" }, { status: 400 });
     }
 
     const API_KEY = process.env.PI_API_KEY;
-    const isSandbox = process.env.PI_ENV === "sandbox";
-    const API_BASE = isSandbox
-      ? "https://api.minepi.com/v2/sandbox/payments"
-      : "https://api.minepi.com/v2/payments";
-    const endpoint = `${API_BASE}/${paymentId}/complete`;
+    const API_URL = process.env.PI_API_URL || "https://api.minepi.com/v2/payments";
 
-    const res = await fetch(endpoint, {
+    console.log("⏳ [Pi COMPLETE] ID:", paymentId, txid);
+
+    const res = await fetch(`${API_URL}/${paymentId}/complete`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -24,12 +22,15 @@ export async function POST(req: Request) {
       body: JSON.stringify({ txid }),
     });
 
-    const result = await res.json();
-    console.log("✅ [Pi COMPLETE RESULT]:", result);
+    const text = await res.text();
+    console.log("✅ [Pi COMPLETE RESULT]:", res.status, text);
 
-    return NextResponse.json(result, { status: res.status });
+    return new NextResponse(text, {
+      status: res.status,
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
   } catch (err: any) {
     console.error("💥 [Pi COMPLETE ERROR]:", err);
-    return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+    return NextResponse.json({ error: err.message || "unknown" }, { status: 500 });
   }
 }
