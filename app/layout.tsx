@@ -1,8 +1,8 @@
 import "./globals.css";
 import Script from "next/script";
 import { AuthProvider } from "@/context/AuthContext";
-import { CartProvider } from "@/context/CartContext";
-import { LanguageProvider } from "@/context/LanguageContext";
+import { CartProvider } from "./context/CartContext";
+import { LanguageProvider } from "./context/LanguageContext";
 import BottomNav from "@/components/BottomNav";
 import Navbar from "@/components/Navbar";
 import LoginWithPi from "@/app/components/LoginWithPi";
