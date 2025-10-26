@@ -1,89 +1,95 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
 
+declare global {
+  interface Window {
+    Pi?: any;
+    __pi_initialized?: boolean;
+  }
+}
+
 const AuthContext = createContext<any>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [piReady, setPiReady] = useState(false);
 
-  // ✅ Chờ Pi SDK load hoàn toàn trước khi init
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const waitForPi = () =>
       new Promise<void>((resolve, reject) => {
         let tries = 0;
-        const check = setInterval(() => {
+        const id = setInterval(() => {
           if (window.Pi) {
-            clearInterval(check);
+            clearInterval(id);
             resolve();
-          } else if (tries++ > 20) {
-            clearInterval(check);
-            reject("❌ Pi SDK không tải được");
+          } else if (tries++ > 30) {
+            clearInterval(id);
+            reject(new Error("Pi SDK chưa tải được"));
           }
-        }, 300);
+        }, 200);
       });
 
     const initPi = async () => {
       try {
         await waitForPi();
-        console.log("✅ Pi SDK detected, initializing...");
 
-        const isTestnet = process.env.NEXT_PUBLIC_PI_ENV === "testnet";
-        window.Pi.init({ version: "2.0", sandbox: isTestnet });
+        if (!window.__pi_initialized) {
+          const isTestnet = process.env.NEXT_PUBLIC_PI_ENV === "testnet";
+          window.Pi.init({ version: "2.0", sandbox: isTestnet });
+          window.__pi_initialized = true;
+          console.log(`✅ Pi.init done (${isTestnet ? "TESTNET" : "MAINNET"})`);
+        } else {
+          console.log("ℹ️ Pi.init skipped (already initialized)");
+        }
 
-        console.log(`✅ Pi SDK initialized (${isTestnet ? "TESTNET" : "MAINNET"})`);
         setPiReady(true);
-      } catch (err) {
-        console.error("❌ Lỗi khởi tạo Pi SDK:", err);
+      } catch (e) {
+        console.error("❌ Pi init error:", e);
+        setPiReady(false);
       }
     };
 
     initPi();
 
-    // ✅ Nạp user nếu có sẵn trong localStorage
+    // Load user nếu có
     const saved = localStorage.getItem("pi_user");
     if (saved) setUser(JSON.parse(saved));
   }, []);
 
-  // ✅ Hàm đăng nhập Pi
   const piLogin = async () => {
     if (!window.Pi) {
-      alert("⚠️ Hãy mở trang này bằng Pi Browser");
+      alert("⚠️ Vui lòng mở bằng Pi Browser.");
       return;
     }
-
     try {
       const scopes = ["username", "payments", "wallet_address"];
-
-      const auth = await window.Pi.authenticate(scopes, (payment: any) => {
-        console.log("💸 Payment callback:", payment);
-      });
-
+      const auth = await window.Pi.authenticate(scopes, (p: any) =>
+        console.log("💸 Incomplete payment:", p)
+      );
       const piUser = {
         uid: auth.user.uid,
         username: auth.user.username,
         walletAddress: auth.user.wallet_address,
         accessToken: auth.accessToken,
       };
-
       localStorage.setItem("pi_user", JSON.stringify(piUser));
+      localStorage.setItem("titi_is_logged_in", "true");
+      localStorage.setItem("titi_username", piUser.username);
       setUser(piUser);
-
       alert(`🎉 Xin chào ${piUser.username}`);
-      console.log("✅ Pi user logged in:", piUser);
     } catch (err: any) {
       console.error("❌ Đăng nhập lỗi:", err);
-      alert("❌ Đăng nhập thất bại: " + (err.message || "Lỗi không xác định"));
+      alert("❌ Đăng nhập lỗi: " + (err?.message || "không xác định"));
     }
   };
 
-  // ✅ Hàm đăng xuất
   const logout = () => {
     localStorage.removeItem("pi_user");
+    localStorage.removeItem("titi_is_logged_in");
+    localStorage.removeItem("titi_username");
     setUser(null);
-    alert("👋 Bạn đã đăng xuất!");
   };
 
   return (
