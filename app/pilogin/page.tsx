@@ -47,7 +47,10 @@ export default function PiLoginPage() {
           if (u.username) {
             console.log("✅ Đã đăng nhập:", u.username);
             setLoginStatus("already");
-            setTimeout(() => router.replace("/customer"), 1000);
+            setTimeout(() => {
+  console.log("🔁 Redirecting to /customer ...");
+  window.location.href = "/customer";
+}, 1000);
             setLoading(false);
             return;
           }
