@@ -34,7 +34,7 @@ export default function CheckoutPage() {
       if (!window.Pi_initialized) {
         const sandbox = process.env.NEXT_PUBLIC_PI_ENV === "sandbox";
         await window.Pi.init({ version: "2.0", sandbox });
-        window.Pi_initialized = true;
+        window.Pi_initialized = false;
         console.log("✅ Pi SDK initialized");
       }
 
