@@ -34,7 +34,7 @@ export default function PiLoginPage() {
         // 🔹 KHÔNG DÙNG await (Pi.init không trả Promise hợp lệ)
         window.Pi.init({
           version: "2.0",
-          sandbox: true, // 🔥 BẮT BUỘC nếu đang chạy Pi Testnet
+          sandbox: false, // 🔥 BẮT BUỘC nếu đang chạy Pi Testnet
         });
 
         setIsPiBrowser(true);
