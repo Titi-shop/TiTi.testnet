@@ -1,73 +1,34 @@
-import { NextResponse } from "next/server";
-
-/**
- * ✅ API tạo giao dịch thanh toán mới trên Pi Network
- *  - Nhận dữ liệu từ frontend (amount, memo, metadata)
- *  - Gửi đến đúng endpoint Pi API (mainnet hoặc sandbox)
- */
-
-export const dynamic = "force-dynamic"; // tránh cache Vercel
-
+// /app/api/pi/create/route.ts
 export async function POST(req: Request) {
+  const body = await req.json();
+  console.log("📦 [Pi CREATE] Gửi giao dịch mới tới Pi API...");
+  console.log("Payload:", body);
+
   try {
-    const { amount, memo, metadata } = await req.json();
-
-    if (!amount || !memo) {
-      return NextResponse.json(
-        { success: false, message: "Thiếu amount hoặc memo" },
-        { status: 400 }
-      );
-    }
-
-    const API_KEY = process.env.PI_API_KEY;
-    const isSandbox =
-      process.env.PI_ENV === "sandbox" ||
-      process.env.PI_API_URL?.includes("/sandbox");
-
-    // ✅ Chọn đúng endpoint
-    const API_URL = isSandbox
-      ? "https://api.minepi.com/v2/sandbox/payments"
-      : "https://api.minepi.com/v2/payments";
-
-    if (!API_KEY) {
-      console.error("❌ Thiếu PI_API_KEY trong môi trường!");
-      return NextResponse.json(
-        { success: false, message: "Thiếu Pi API Key" },
-        { status: 500 }
-      );
-    }
-
-    console.log(`🟢 [Pi CREATE] Gửi giao dịch mới tới ${isSandbox ? "SANDBOX" : "MAINNET"}...`);
-    console.log("📦 Payload:", { amount, memo, metadata });
-
-    const res = await fetch(API_URL, {
+    const res = await fetch(`${process.env.PI_API_URL}/payments`, {
       method: "POST",
       headers: {
+        Authorization: `Key ${process.env.PI_API_KEY}`,
         "Content-Type": "application/json",
-        Authorization: `Key ${API_KEY}`,
       },
-      body: JSON.stringify({ amount, memo, metadata }),
+      body: JSON.stringify({
+        amount: body.amount,
+        memo: body.memo,
+        metadata: body.metadata,
+      }),
     });
 
-    const resultText = await res.text();
-    let result;
-    try {
-      result = JSON.parse(resultText);
-    } catch {
-      result = { raw: resultText };
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("❌ Pi API error:", text);
+      return Response.json({ error: text }, { status: res.status });
     }
 
-    console.log("✅ [Pi CREATE RESULT]:", res.status, result);
-
-    return NextResponse.json(result, {
-      status: res.status,
-      headers: { "Access-Control-Allow-Origin": "*" },
-    });
-  } catch (error: any) {
-    console.error("💥 [Pi CREATE ERROR]:", error);
-    return NextResponse.json(
-      { success: false, message: error.message || "Lỗi tạo giao dịch" },
-      { status: 500 }
-    );
+    const data = await res.json();
+    console.log("✅ [Pi CREATE RESULT]:", data);
+    return Response.json(data);
+  } catch (err) {
+    console.error("💥 Lỗi khi tạo payment:", err);
+    return Response.json({ error: err.message }, { status: 500 });
   }
 }
