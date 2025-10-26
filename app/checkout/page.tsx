@@ -8,6 +8,7 @@ import { ArrowLeft } from "lucide-react";
 declare global {
   interface Window {
     Pi?: any;
+    Pi_initialized?: boolean;
   }
 }
 
@@ -18,7 +19,7 @@ export default function CheckoutPage() {
   const [user, setUser] = useState<any>(null);
   const [shipping, setShipping] = useState<any>(null);
 
-  // ✅ Lấy thông tin user (đã xác minh bằng Pi)
+  // ✅ Lấy thông tin user (đã đăng nhập Pi)
   useEffect(() => {
     try {
       const saved = localStorage.getItem("pi_user");
@@ -42,7 +43,7 @@ export default function CheckoutPage() {
     }
     if (!user) {
       alert("🔑 Bạn cần đăng nhập Pi Network trước khi thanh toán!");
-      router.push("/login");
+      router.push("/pilogin");
       return;
     }
     if (!shipping) {
@@ -57,11 +58,15 @@ export default function CheckoutPage() {
 
     setLoading(true);
     try {
-      // ✅ Khởi tạo Pi SDK theo môi trường
-      const isSandbox =
-        process.env.NEXT_PUBLIC_PI_ENV === "sandbox" ||
-        process.env.NEXT_PUBLIC_PI_API_URL?.includes("/sandbox");
-      window.Pi.init({ version: "2.0", sandbox: isSandbox });
+      // ✅ Chỉ khởi tạo Pi SDK nếu chưa có
+      if (!window.Pi_initialized) {
+        const isSandbox =
+          process.env.NEXT_PUBLIC_PI_ENV === "sandbox" ||
+          process.env.NEXT_PUBLIC_PI_API_URL?.includes("/sandbox");
+        await window.Pi.init({ version: "2.0", sandbox: isSandbox });
+        window.Pi_initialized = true;
+        console.log("✅ Pi SDK initialized (checkout)");
+      }
 
       const orderId = `ORD-${Date.now()}`;
       const paymentData = {
@@ -81,18 +86,18 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(paymentData),
       });
+
       const payment = await createRes.json();
+      console.log("📦 [Pi CREATE RESULT]:", payment);
 
       if (!payment.identifier && !payment.id) {
         throw new Error("Không thể tạo giao dịch trên Pi Network!");
       }
 
-      console.log("✅ Giao dịch đã tạo:", payment);
-
-      // ✅ Định nghĩa callback Pi SDK
+      // ✅ Callback xử lý các bước thanh toán
       const callbacks = {
         onReadyForServerApproval: async (paymentId: string) => {
-          console.log("⏳ Gửi yêu cầu APPROVE:", paymentId);
+          console.log("⏳ [APPROVE]", paymentId);
           await fetch("/api/pi/approve", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -101,9 +106,9 @@ export default function CheckoutPage() {
         },
 
         onReadyForServerCompletion: async (paymentId: string, txid: string) => {
-          console.log("✅ Hoàn tất thanh toán:", paymentId, txid);
+          console.log("✅ [COMPLETE]", paymentId, txid);
 
-          // Ghi đơn hàng vào server (hoặc database riêng)
+          // Lưu đơn hàng
           await fetch("/api/orders", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -119,7 +124,7 @@ export default function CheckoutPage() {
             }),
           });
 
-          // ✅ Gọi API hoàn tất giao dịch
+          // Hoàn tất giao dịch
           await fetch("/api/pi/complete", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -132,7 +137,7 @@ export default function CheckoutPage() {
         },
 
         onCancel: async (paymentId: string) => {
-          console.log("🛑 Hủy thanh toán:", paymentId);
+          console.log("🛑 [CANCEL]", paymentId);
           await fetch("/api/pi/cancel", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -142,12 +147,12 @@ export default function CheckoutPage() {
         },
 
         onError: (error: any) => {
-          console.error("💥 Lỗi thanh toán:", error);
+          console.error("💥 [ERROR]", error);
           alert("❌ Lỗi: " + error.message);
         },
       };
 
-      // ✅ Gọi Pi SDK thanh toán
+      // ✅ Gọi thanh toán bằng Pi SDK
       await window.Pi.createPayment(paymentData, callbacks);
     } catch (err: any) {
       console.error("💥 Giao dịch thất bại:", err);
@@ -204,9 +209,11 @@ export default function CheckoutPage() {
               {cart.map((item, i) => (
                 <div key={i} className="flex items-center border-b pb-2">
                   <img
-                    src={item.image?.startsWith("http")
-                      ? item.image
-                      : `https://muasam.titi.onl${item.image || ""}`}
+                    src={
+                      item.image?.startsWith("http")
+                        ? item.image
+                        : `https://muasam.titi.onl${item.image || ""}`
+                    }
                     alt={item.name}
                     className="w-16 h-16 object-cover rounded border bg-gray-100"
                   />
