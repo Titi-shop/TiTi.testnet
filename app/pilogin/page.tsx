@@ -8,7 +8,7 @@ export default function PiLoginPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.Pi) {
-      window.Pi.init({ version: "2.0", sandbox: true });
+      window.Pi.init({ version: "2.0", sandbox: false });
       setIsPiBrowser(true);
 
       const saved = localStorage.getItem("pi_user");
