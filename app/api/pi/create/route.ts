@@ -1,10 +1,10 @@
-// /app/api/pi/create/route.ts
-export async function POST(req: Request) {
-  const body = await req.json();
-  console.log("📦 [Pi CREATE] Gửi giao dịch mới tới Pi API...");
-  console.log("Payload:", body);
+import { NextResponse } from "next/server";
 
+export async function POST(req: Request) {
   try {
+    const body = await req.json();
+    console.log("📦 [Pi CREATE] Gửi giao dịch mới tới Pi API...", body);
+
     const res = await fetch(`${process.env.PI_API_URL}/payments`, {
       method: "POST",
       headers: {
@@ -21,14 +21,14 @@ export async function POST(req: Request) {
     if (!res.ok) {
       const text = await res.text();
       console.error("❌ Pi API error:", text);
-      return Response.json({ error: text }, { status: res.status });
+      return NextResponse.json({ error: text }, { status: res.status });
     }
 
     const data = await res.json();
     console.log("✅ [Pi CREATE RESULT]:", data);
-    return Response.json(data);
-  } catch (err) {
+    return NextResponse.json(data);
+  } catch (err: any) {
     console.error("💥 Lỗi khi tạo payment:", err);
-    return Response.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
