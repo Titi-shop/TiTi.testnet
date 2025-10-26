@@ -274,6 +274,3 @@ export default function PiLoginPage() {
 
       {/* DEBUG INFO */}
       <div style={styles.debugInfo}>
-        <h4>🔧 Th
-
-Type your message...
