@@ -20,10 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* ✅ Nạp Pi SDK sớm nhất để window.Pi có sẵn */}
         <Script
           src="https://sdk.minepi.com/pi-sdk.js"
-          strategy="beforeInteractive"
-          onLoad={() => console.log("✅ Pi SDK loaded")}
-          onError={(e) => console.error("❌ Lỗi tải Pi SDK:", e)}
-        />
+          strategy="beforeInteractive" />
       </head>
 
       <body className="relative min-h-screen bg-gray-50 text-gray-800 pb-16">
