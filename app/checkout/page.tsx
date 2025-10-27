@@ -5,9 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
 declare global {
-  interface Window {
-    Pi?: any;
-  }
+  interface Window { Pi?: any; }
 }
 
 export default function CheckoutPage() {
@@ -17,9 +15,7 @@ export default function CheckoutPage() {
   const router = useRouter();
 
   const [shippingInfo, setShippingInfo] = useState({
-    name: "",
-    phone: "",
-    address: "",
+    name: "", phone: "", address: "",
   });
 
   useEffect(() => {
@@ -54,41 +50,49 @@ export default function CheckoutPage() {
 
     setLoading(true);
     try {
-      const orderId = Date.now();
+      const orderId = `ORD-${Date.now()}`;
+
       const paymentData = {
         amount: Number(total.toFixed(2)),
         memo: `Thanh toán đơn hàng #${orderId}`,
         metadata: {
           orderId,
-          items: cart,
           buyer: user.username,
+          items: cart,
+          shipping: shippingInfo,
         },
       };
 
       const callbacks = {
         onReadyForServerApproval: async (paymentId: string) => {
+          console.log("⏳ onReadyForServerApproval:", paymentId);
           await fetch("/api/pi/approve", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ paymentId }),
           });
         },
+
         onReadyForServerCompletion: async (paymentId: string, txid: string) => {
+          console.log("✅ onReadyForServerCompletion:", paymentId, txid);
+
+          // Lưu đơn
           await fetch("/api/orders", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               id: orderId,
+              buyer: user.username,
               items: cart,
               total,
-              buyer: user.username,
-              status: "Đã thanh toán",
-              note: `Pi TXID: ${txid}`,
-              createdAt: new Date().toISOString(),
+              txid,
               shipping: shippingInfo,
+              status: "Đã thanh toán",
+              createdAt: new Date().toISOString(),
             }),
           });
 
+          // Complete giao dịch trên Pi
           await fetch("/api/pi/complete", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -96,17 +100,21 @@ export default function CheckoutPage() {
           });
 
           clearCart();
-          alert("✅ Thanh toán thành công!");
+          alert("🎉 Thanh toán thành công!");
           router.push("/customer/pending");
         },
-        onCancel: () => alert("❌ Giao dịch đã huỷ."),
+
+        onCancel: async (paymentId: string) => {
+          console.log("🛑 onCancel:", paymentId);
+          alert("❌ Giao dịch đã huỷ.");
+        },
+
         onError: (error: any) => {
-          console.error("💥 Lỗi thanh toán:", error);
+          console.error("💥 onError:", error);
           alert("💥 Lỗi thanh toán: " + error.message);
         },
       };
 
-      // chỉ gọi createPayment — KHÔNG init lại ở đây
       await window.Pi.createPayment(paymentData, callbacks);
     } catch (err: any) {
       console.error("❌ Lỗi thanh toán:", err);
@@ -118,43 +126,21 @@ export default function CheckoutPage() {
 
   return (
     <main className="max-w-3xl mx-auto p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-bold mb-4 text-center text-orange-600">
-        💳 Thanh toán
-      </h1>
+      <h1 className="text-2xl font-bold mb-4 text-center text-orange-600">💳 Thanh toán</h1>
 
       <div className="p-4 border rounded-lg bg-white mb-4">
         <h3 className="font-semibold text-blue-600 mb-2">📦 Thông tin giao hàng</h3>
         <label className="block mb-2">
           Họ và tên:
-          <input
-            name="name"
-            type="text"
-            value={shippingInfo.name}
-            onChange={handleShippingChange}
-            className="w-full border p-2 rounded"
-            required
-          />
+          <input name="name" value={shippingInfo.name} onChange={handleShippingChange} className="w-full border p-2 rounded" />
         </label>
         <label className="block mb-2">
           Số điện thoại:
-          <input
-            name="phone"
-            type="text"
-            value={shippingInfo.phone}
-            onChange={handleShippingChange}
-            className="w-full border p-2 rounded"
-            required
-          />
+          <input name="phone" value={shippingInfo.phone} onChange={handleShippingChange} className="w-full border p-2 rounded" />
         </label>
         <label className="block mb-2">
           Địa chỉ giao hàng:
-          <textarea
-            name="address"
-            value={shippingInfo.address}
-            onChange={handleShippingChange}
-            className="w-full border p-2 rounded"
-            required
-          />
+          <textarea name="address" value={shippingInfo.address} onChange={handleShippingChange} className="w-full border p-2 rounded" />
         </label>
       </div>
 
@@ -166,11 +152,9 @@ export default function CheckoutPage() {
       <button
         onClick={handlePayWithPi}
         disabled={loading}
-        className={`w-full py-3 rounded text-white font-semibold ${
-          loading ? "bg-gray-400" : "bg-purple-600 hover:bg-purple-700"
-        }`}
+        className={`w-full py-3 rounded text-white font-semibold ${loading ? "bg-gray-400" : "bg-purple-600 hover:bg-purple-700"}`}
       >
-        {loading ? "Đang mở Pi Wallet..." : "Thanh toán bằng Pi Wallet"}
+        {loading ? "Đang mở Pi Wallet..." : "Thanh toán bằng Pi Wallet (Testnet)"}
       </button>
     </main>
   );
