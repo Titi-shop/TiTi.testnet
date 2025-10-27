@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -8,7 +7,6 @@ export default function PiLoginPage() {
   const { user, piReady, piLogin } = useAuth();
   const router = useRouter();
 
-  // ✅ Nếu user đã đăng nhập → tự chuyển đến /customer
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("titi_is_logged_in") === "true";
     if (isLoggedIn && user?.username) {
@@ -16,51 +14,31 @@ export default function PiLoginPage() {
     }
   }, [user, router]);
 
-  // ✅ Hiển thị trạng thái SDK
   if (!piReady) {
     return (
       <main className="text-center mt-10">
-        ⏳ Đang tải Pi SDK... <br />
-        (Vui lòng mở trang này bằng <b>Pi Browser Testnet</b>)
+        ⏳ Đang tải Pi SDK... (mở trong Pi Browser Testnet)
       </main>
     );
   }
 
-  // ✅ Nếu đã đăng nhập
   if (user) {
     return (
       <main className="text-center mt-10">
-        ✅ Xin chào <b>{user.username}</b>! <br />
-        Đang chuyển hướng đến trang khách hàng...
+        ✅ Xin chào <b>{user.username}</b>! Đang chuyển hướng...
       </main>
     );
   }
 
-  // ✅ Nếu chưa đăng nhập
   return (
-    <main
-      style={{
-        textAlign: "center",
-        padding: "30px",
-      }}
-    >
+    <main style={{ textAlign: "center", padding: 30 }}>
       <h2>🔐 Đăng nhập bằng Pi Network</h2>
-      <p style={{ color: "#555", marginTop: "10px" }}>
-        Hãy mở trang này bằng <b>Pi Browser Testnet</b>.
+      <p className="text-gray-500 mt-2">
+        Hãy dùng <b>Pi Browser Testnet</b> để đăng nhập.
       </p>
-
       <button
         onClick={piLogin}
-        style={{
-          background: "#ff7b00",
-          color: "#fff",
-          border: "none",
-          padding: "12px 25px",
-          borderRadius: "8px",
-          fontSize: "16px",
-          cursor: "pointer",
-          marginTop: "20px",
-        }}
+        className="mt-4 bg-orange-500 text-white px-5 py-3 rounded-lg hover:bg-orange-600"
       >
         Đăng nhập với Pi
       </button>
