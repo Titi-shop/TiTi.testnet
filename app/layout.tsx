@@ -15,14 +15,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi">
       <head>
-        {/* Nạp Pi SDK SAU khi trang tương tác để Pi Browser inject context trước */}
+        {/* ⚙️ Tải Pi SDK sớm nhưng sau khi Pi Browser inject context */}
         <Script
           src="https://sdk.minepi.com/pi-sdk.js"
           strategy="afterInteractive"
+          onLoad={() => {
+            console.log("✅ Pi SDK script loaded (from layout.tsx)");
+          }}
         />
       </head>
 
       <body className="relative min-h-screen bg-gray-50 text-gray-800 pb-16">
+        {/* 🧠 Các context bọc đúng thứ tự */}
         <LanguageProvider>
           <AuthProvider>
             <CartProvider>
