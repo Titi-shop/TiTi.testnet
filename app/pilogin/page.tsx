@@ -1,47 +1,43 @@
 "use client";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { useEffect, useState } from "react";
 
-export default function PiLoginPage() {
-  const { user, piReady, piLogin } = useAuth();
-  const router = useRouter();
+export default function PiLoginTest() {
+  const [status, setStatus] = useState("Đang khởi tạo...");
 
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem("titi_is_logged_in") === "true";
-    if (isLoggedIn && user?.username) {
-      router.replace("/customer");
-    }
-  }, [user, router]);
+    if (typeof window === "undefined") return;
 
-  if (!piReady) {
-    return (
-      <main className="text-center mt-10">
-        ⏳ Đang tải Pi SDK... (mở trong Pi Browser Testnet)
-      </main>
-    );
-  }
+    const init = async () => {
+      try {
+        await new Promise((r) => setTimeout(r, 1000)); // đợi SDK load
+        if (!window.Pi) {
+          setStatus("⚠️ Pi SDK chưa load. Hãy mở bằng Pi Browser.");
+          return;
+        }
 
-  if (user) {
-    return (
-      <main className="text-center mt-10">
-        ✅ Xin chào <b>{user.username}</b>! Đang chuyển hướng...
-      </main>
-    );
-  }
+        window.Pi.init({ version: "2.0", sandbox: true });
+        setStatus("✅ Pi SDK đã khởi tạo!");
+
+        const scopes = ["username", "payments", "wallet_address"];
+        const auth = await window.Pi.authenticate(scopes, (payment) => {
+          console.log("Payment in progress:", payment);
+        });
+
+        console.log("✅ Auth thành công:", auth);
+        setStatus(`🎉 Xin chào ${auth.user.username}`);
+      } catch (err) {
+        console.error("❌ Lỗi Pi login:", err);
+        setStatus("❌ Lỗi: " + err.message);
+      }
+    };
+
+    init();
+  }, []);
 
   return (
-    <main style={{ textAlign: "center", padding: 30 }}>
-      <h2>🔐 Đăng nhập bằng Pi Network</h2>
-      <p className="text-gray-500 mt-2">
-        Hãy dùng <b>Pi Browser Testnet</b> để đăng nhập.
-      </p>
-      <button
-        onClick={piLogin}
-        className="mt-4 bg-orange-500 text-white px-5 py-3 rounded-lg hover:bg-orange-600"
-      >
-        Đăng nhập với Pi
-      </button>
-    </main>
+    <div style={{ padding: 20, fontFamily: "sans-serif" }}>
+      <h2>🔐 Kiểm tra đăng nhập Pi</h2>
+      <p>{status}</p>
+    </div>
   );
 }
