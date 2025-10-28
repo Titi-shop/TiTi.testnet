@@ -1,72 +1,67 @@
-import { NextResponse } from "next/server";
+"use client";
 
-/**
- * ✅ API xác minh Access Token của Pi Network (Mainnet hoặc Sandbox)
- * - Nhận accessToken từ frontend (LoginWithPi)
- * - Gọi endpoint /v2/me để xác minh người dùng thật
- */
-export async function POST(req: Request) {
-  try {
-    const { accessToken } = await req.json();
+import { useAuth } from "@/context/AuthContext";
 
-    if (!accessToken) {
-      return NextResponse.json(
-        { success: false, message: "Thiếu accessToken" },
-        { status: 400 }
-      );
+function LoginWithPi() {
+  const { user, piReady, piLogin } = useAuth();
+
+  // ✅ Thêm hàm login kiểm tra backend xác minh token
+  const handleLogin = async () => {
+    try {
+      const authData = await piLogin(); // piLogin() trả về { accessToken, username, ... }
+
+      if (authData?.accessToken) {
+        // 🔹 Gửi token tới server để xác minh
+        const res = await fetch("/api/pi/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accessToken: authData.accessToken }),
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          console.log("✅ Xác minh thành công:", data.user);
+          alert(`🎉 Đăng nhập hợp lệ: ${data.user.username}`);
+        } else {
+          alert(`⚠️ Xác minh thất bại: ${data.message}`);
+        }
+      } else {
+        alert("❌ Không nhận được accessToken từ Pi Network");
+      }
+    } catch (err) {
+      console.error("💥 Lỗi xác minh:", err);
+      alert("💥 Lỗi khi xác minh người dùng!");
     }
+  };
 
-    const isSandbox =
-  process.env.NEXT_PUBLIC_PI_ENV === "testnet" ||
-  process.env.PI_ENV === "sandbox" ||
-  process.env.PI_API_URL?.includes("/sandbox");
-
-    // ✅ Endpoint xác minh người dùng
-    const API_URL = isSandbox
-      ? "https://api.minepi.com/v2/sandbox/me"
-      : "https://api.minepi.com/v2/me";
-
-    console.log(`🔍 [Pi VERIFY] Xác minh token qua ${isSandbox ? "SANDBOX" : "MAINNET"}:`, API_URL);
-
-    // 🔹 Gọi Pi API để xác minh accessToken
-    const response = await fetch(API_URL, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("❌ [Pi VERIFY ERROR]", errorText);
-      return NextResponse.json(
-        { success: false, message: "Token không hợp lệ hoặc hết hạn" },
-        { status: 401 }
-      );
-    }
-
-    // 🔹 Nhận dữ liệu người dùng thật từ Pi Network
-    const userData = await response.json();
-
-    const verifiedUser = {
-      username: userData?.username,
-      uid: userData?.uid,
-      roles: userData?.roles || [],
-      wallet_address: userData?.wallet_address || null,
-      created_at: userData?.created_at || new Date().toISOString(),
-    };
-
-    console.log("✅ [Pi VERIFY SUCCESS]:", verifiedUser);
-
-    return NextResponse.json({
-      success: true,
-      user: verifiedUser,
-    });
-  } catch (error: any) {
-    console.error("💥 [API VERIFY EXCEPTION]:", error);
-    return NextResponse.json(
-      { success: false, message: error.message || "Lỗi xác minh Pi Network" },
-      { status: 500 }
+  if (user) {
+    return (
+      <div className="text-center text-green-600 mt-4">
+        👤 Xin chào, {user.username}
+      </div>
     );
   }
+
+  if (!piReady) {
+    return (
+      <div className="text-center text-gray-500 mt-4">
+        ⏳ Đang tải Pi SDK...
+        <br />
+        (Hãy mở trong Pi Browser)
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center mt-4">
+      <button
+        onClick={handleLogin}
+        className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600"
+      >
+        🔐 Đăng nhập với Pi
+      </button>
+    </div>
+  );
 }
+
+export default LoginWithPi;
