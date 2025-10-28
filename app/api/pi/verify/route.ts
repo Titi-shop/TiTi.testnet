@@ -16,10 +16,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ Xác định môi trường thật hoặc sandbox từ biến môi trường
     const isSandbox =
-      process.env.PI_ENV === "sandbox" ||
-      process.env.PI_API_URL?.includes("/sandbox");
+  process.env.NEXT_PUBLIC_PI_ENV === "testnet" ||
+  process.env.PI_ENV === "sandbox" ||
+  process.env.PI_API_URL?.includes("/sandbox");
 
     // ✅ Endpoint xác minh người dùng
     const API_URL = isSandbox
