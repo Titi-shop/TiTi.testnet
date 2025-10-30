@@ -34,42 +34,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [piReady, setPiReady] = useState(false);
 
   useEffect(() => {
-  if (typeof window === "undefined") return;
+    if (typeof window === "undefined") return;
 
-  const waitForPi = () =>
-    new Promise<void>((resolve, reject) => {
-      let tries = 0;
-      const id = setInterval(() => {
-        if (window.Pi) {
-          clearInterval(id);
-          resolve();
-        } else if (tries++ > 30) {
-          clearInterval(id);
-          reject(new Error("Pi SDK chưa tải được"));
-        }
-      }, 300);
-    });
+    const check = setInterval(() => {
+      if (window.Pi && window.__pi_initialized) {
+        setPiReady(true);
+        clearInterval(check);
+      }
+    }, 400);
 
-  const initPi = async () => {
-    try {
-      await waitForPi();
-      console.log("ℹ️ Pi SDK ready (init done by PiProvider)");
-      setPiReady(true);
-    } catch (err) {
-      console.error("❌ Pi SDK init error:", err);
-      setPiReady(false);
-    }
+    const saved = localStorage.getItem("pi_user");
+    if (saved) setUser(JSON.parse(saved));
 
-    try {
-      const saved = localStorage.getItem("pi_user");
-      if (saved) setUser(JSON.parse(saved));
-    } catch (e) {
-      console.warn("⚠️ Không thể load user:", e);
-    }
-  };
-
-  initPi();
-}, []);
+    return () => clearInterval(check);
+  }, []);
 
   const piLogin = async () => {
     if (!window.Pi) {
@@ -90,14 +68,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         accessToken: auth.accessToken,
       };
 
-      // ✅ Lưu thông tin người dùng
       localStorage.setItem("pi_user", JSON.stringify(piUser));
-      localStorage.setItem("titi_is_logged_in", "true");
-      localStorage.setItem("titi_username", piUser.username);
       setUser(piUser);
-
       alert(`🎉 Xin chào ${piUser.username}`);
-      console.log("✅ Đăng nhập thành công:", piUser);
     } catch (err: any) {
       console.error("❌ Lỗi đăng nhập:", err);
       alert("❌ Lỗi đăng nhập: " + (err?.message || "Không xác định"));
@@ -106,8 +79,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem("pi_user");
-    localStorage.removeItem("titi_is_logged_in");
-    localStorage.removeItem("titi_username");
     setUser(null);
     alert("🚪 Đã đăng xuất");
   };
