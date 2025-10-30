@@ -34,48 +34,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [piReady, setPiReady] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+  if (typeof window === "undefined") return;
 
-    // ⏳ Đợi SDK Pi load hoàn toàn
-    const waitForPi = () =>
-      new Promise<void>((resolve, reject) => {
-        let tries = 0;
-        const id = setInterval(() => {
-          if (window.Pi) {
-            clearInterval(id);
-            resolve();
-          } else if (tries++ > 30) {
-            clearInterval(id);
-            reject(new Error("Pi SDK chưa tải được"));
-          }
-        }, 300);
-      });
-
-    const initPi = async () => {
-      try {
-        await waitForPi();
-
-        console.log("ℹ️ Pi SDK ready (init done by PiProvider)");
-          console.log("ℹ️ Pi SDK đã init trước đó, bỏ qua...");
+  const waitForPi = () =>
+    new Promise<void>((resolve, reject) => {
+      let tries = 0;
+      const id = setInterval(() => {
+        if (window.Pi) {
+          clearInterval(id);
+          resolve();
+        } else if (tries++ > 30) {
+          clearInterval(id);
+          reject(new Error("Pi SDK chưa tải được"));
         }
+      }, 300);
+    });
 
-        setPiReady(true);
-      } catch (err) {
-        console.error("❌ Pi SDK init error:", err);
-        setPiReady(false);
-      }
+  const initPi = async () => {
+    try {
+      await waitForPi();
+      console.log("ℹ️ Pi SDK ready (init done by PiProvider)");
+      setPiReady(true);
+    } catch (err) {
+      console.error("❌ Pi SDK init error:", err);
+      setPiReady(false);
+    }
 
-      // ✅ Load user đã lưu (nếu có)
-      try {
-        const saved = localStorage.getItem("pi_user");
-        if (saved) setUser(JSON.parse(saved));
-      } catch (e) {
-        console.warn("⚠️ Không thể load user:", e);
-      }
-    };
+    try {
+      const saved = localStorage.getItem("pi_user");
+      if (saved) setUser(JSON.parse(saved));
+    } catch (e) {
+      console.warn("⚠️ Không thể load user:", e);
+    }
+  };
 
-    initPi();
-  }, []);
+  initPi();
+}, []);
 
   const piLogin = async () => {
     if (!window.Pi) {
