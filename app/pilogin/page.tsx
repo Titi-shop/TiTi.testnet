@@ -6,15 +6,13 @@ export default function PiLoginPage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      if (typeof window !== "undefined" && window.Pi) {
-        clearInterval(timer);
-        setReady(true);
-        setStatus("✅ Sẵn sàng đăng nhập bằng Pi Network");
-      }
-    }, 400);
-    return () => clearInterval(timer);
-  }, []);
+  const timer = setInterval(() => {
+    if (typeof window !== "undefined") {
+      console.log("🔍 window.Pi =", window.Pi);
+    }
+  }, 2000);
+  return () => clearInterval(timer);
+}, []);
 
   const handleLogin = async () => {
     if (!window.Pi) {
