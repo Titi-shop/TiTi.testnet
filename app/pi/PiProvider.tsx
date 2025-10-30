@@ -3,7 +3,7 @@ import { useEffect } from "react";
 
 export default function PiProvider() {
   useEffect(() => {
-    const checkPi = setInterval(() => {
+    const timer = setInterval(() => {
       if (typeof window !== "undefined" && window.Pi) {
         if (!window.__pi_initialized) {
           const isTestnet = process.env.NEXT_PUBLIC_PI_ENV === "testnet";
@@ -11,10 +11,11 @@ export default function PiProvider() {
           window.__pi_initialized = true;
           console.log(`✅ Pi SDK initialized (${isTestnet ? "TESTNET" : "MAINNET"})`);
         }
-        clearInterval(checkPi);
+        clearInterval(timer);
       }
     }, 400);
-    return () => clearInterval(checkPi);
+    return () => clearInterval(timer);
   }, []);
+
   return null;
 }
