@@ -41,4 +41,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </AuthProvider>
         </LanguageProvider>
       </body>
-    </
+    </html>
+  );
+}
