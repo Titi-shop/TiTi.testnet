@@ -16,11 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi">
       <head>
-        <Script
-          src="https://sdk.minepi.com/pi-sdk.js"
-          strategy="afterInteractive"
-          onLoad={() => console.log("✅ Pi SDK script loaded")}
-        />
+        <Script src="https://sdk.minepi.com/pi-sdk.js" strategy="afterInteractive" />
       </head>
       <body className="relative min-h-screen bg-gray-50 text-gray-800 pb-16">
         <LanguageProvider>
