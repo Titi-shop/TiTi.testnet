@@ -5,7 +5,7 @@ import { CartProvider } from "./context/CartContext";
 import { LanguageProvider } from "./context/LanguageContext";
 import BottomNav from "@/components/BottomNav";
 import Navbar from "@/components/Navbar";
-import PiProvider from "./pi/PiProvider"; // ✅ Thêm dòng này
+import PiProvider from "./pi/PiProvider"; // ✅ Đảm bảo file này tồn tại
 
 export const metadata = {
   title: "🛍️ TiTi Shop",
@@ -16,22 +16,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi">
       <head>
-        {/* ⚙️ Tải SDK Pi */}
-        <Script
-          src="https://sdk.minepi.com/pi-sdk.js"
-          strategy="afterInteractive"
-          onLoad={() => {
-            console.log("✅ Pi SDK script loaded (from layout.tsx)");
-          }}
-        />
+        {/* ⚙️ Nạp SDK Pi Network — KHÔNG dùng onLoad (gây lỗi prerender) */}
+        <Script src="https://sdk.minepi.com/pi-sdk.js" strategy="afterInteractive" />
       </head>
 
       <body className="relative min-h-screen bg-gray-50 text-gray-800 pb-16">
-        {/* 🧠 Bao bọc các context */}
+        {/* 🧠 Gói các provider toàn cục */}
         <LanguageProvider>
           <AuthProvider>
             <CartProvider>
-              {/* ✅ Khởi tạo Pi SDK ở client */}
+              {/* ✅ Khởi tạo Pi SDK phía client */}
               <PiProvider />
 
               <Navbar />
