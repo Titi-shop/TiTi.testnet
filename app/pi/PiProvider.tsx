@@ -3,26 +3,18 @@ import { useEffect } from "react";
 
 export default function PiProvider() {
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (typeof window !== "undefined") {
-        console.log("🔎 window.Pi =", typeof (window as any).Pi);
-      }
-
-      if (typeof window !== "undefined" && (window as any).Pi) {
-        try {
-          const isTestnet =
-            process.env.NEXT_PUBLIC_PI_ENV === "testnet" ||
-            true; // ép testnet cho chắc
-          (window as any).Pi.init({ version: "2.0", sandbox: isTestnet });
-          console.log("✅ Pi SDK initialized!");
-          clearInterval(interval);
-        } catch (err) {
-          console.error("❌ Pi.init error:", err);
+    const timer = setInterval(() => {
+      if (typeof window !== "undefined" && window.Pi) {
+        if (!window.__pi_initialized) {
+          const isTestnet = process.env.NEXT_PUBLIC_PI_ENV === "testnet";
+          window.Pi.init({ version: "2.0", sandbox: isTestnet });
+          window.__pi_initialized = true;
+          console.log(`✅ Pi SDK initialized (${isTestnet ? "TESTNET" : "MAINNET"})`);
         }
+        clearInterval(timer);
       }
-    }, 1000);
-
-    return () => clearInterval(interval);
+    }, 400);
+    return () => clearInterval(timer);
   }, []);
 
   return null;
