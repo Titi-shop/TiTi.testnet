@@ -1,29 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // ✅ Bỏ qua lỗi ESLint trong quá trình build
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true },
+  images: { unoptimized: true },
 
-  // ✅ Bỏ qua lỗi TypeScript trong quá trình build
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-
-  // ✅ Không tối ưu ảnh (giúp load nhanh hơn)
-  images: {
-    unoptimized: true,
-  },
-
-  // ✅ Cho phép tải script Pi SDK từ domain chính thức
   async headers() {
     return [
       {
-        source: "/(.*)", // Áp dụng cho toàn bộ route
+        source: "/(.*)",
         headers: [
           {
             key: "Content-Security-Policy",
-            // ⚙️ Cho phép script Pi SDK và inline script cần thiết
             value:
               "default-src 'self'; " +
               "script-src 'self' https://sdk.minepi.com 'unsafe-inline'; " +
