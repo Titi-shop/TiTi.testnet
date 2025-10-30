@@ -5,6 +5,7 @@ import { CartProvider } from "./context/CartContext";
 import { LanguageProvider } from "./context/LanguageContext";
 import BottomNav from "@/components/BottomNav";
 import Navbar from "@/components/Navbar";
+import PiProvider from "./pi/PiProvider"; // ✅ Thêm dòng này
 
 export const metadata = {
   title: "🛍️ TiTi Shop",
@@ -15,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi">
       <head>
-        {/* ⚙️ Tải Pi SDK sớm nhưng sau khi Pi Browser inject context */}
+        {/* ⚙️ Tải SDK Pi */}
         <Script
           src="https://sdk.minepi.com/pi-sdk.js"
           strategy="afterInteractive"
@@ -26,10 +27,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
 
       <body className="relative min-h-screen bg-gray-50 text-gray-800 pb-16">
-        {/* 🧠 Các context bọc đúng thứ tự */}
+        {/* 🧠 Bao bọc các context */}
         <LanguageProvider>
           <AuthProvider>
             <CartProvider>
+              {/* ✅ Khởi tạo Pi SDK ở client */}
+              <PiProvider />
+
               <Navbar />
               <main className="pt-20 px-3">{children}</main>
               <BottomNav />
@@ -37,6 +41,4 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </AuthProvider>
         </LanguageProvider>
       </body>
-    </html>
-  );
-}
+    </
