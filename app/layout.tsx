@@ -24,7 +24,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <CartProvider>
               <PiProvider />
               <Navbar />
-              <main className="pt-20 px-3">{children}</main>
+                <main>
+               <PiStatus />
+                {children}
+                </main>
               <BottomNav />
             </CartProvider>
           </AuthProvider>
