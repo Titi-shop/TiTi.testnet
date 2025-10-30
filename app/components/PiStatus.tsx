@@ -5,14 +5,14 @@ export default function PiStatus() {
   const [status, setStatus] = useState("⏳ Đang tải Pi SDK...");
 
   useEffect(() => {
-    const check = setInterval(() => {
+    const interval = setInterval(() => {
       if (typeof window !== "undefined" && (window as any).Pi) {
         setStatus("✅ Pi SDK đã load!");
-        clearInterval(check);
+        clearInterval(interval);
       }
     }, 1000);
-    return () => clearInterval(check);
+    return () => clearInterval(interval);
   }, []);
 
-  return <div className="text-center mt-4">{status}</div>;
+  return <div className="text-center mt-4 font-medium text-gray-700">{status}</div>;
 }
