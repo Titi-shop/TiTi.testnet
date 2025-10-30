@@ -1,16 +1,20 @@
 "use client";
-
 import { useEffect } from "react";
 
 export default function PiProvider() {
   useEffect(() => {
-    if (typeof window !== "undefined" && window.Pi) {
-      window.Pi.init({ version: "2.0", sandbox: true });
-      console.log("✅ Pi SDK initialized");
-    } else {
-      console.warn("⚠️ Pi SDK not found");
-    }
+    const checkPi = setInterval(() => {
+      if (typeof window !== "undefined" && window.Pi) {
+        if (!window.__pi_initialized) {
+          const isTestnet = process.env.NEXT_PUBLIC_PI_ENV === "testnet";
+          window.Pi.init({ version: "2.0", sandbox: isTestnet });
+          window.__pi_initialized = true;
+          console.log(`✅ Pi SDK initialized (${isTestnet ? "TESTNET" : "MAINNET"})`);
+        }
+        clearInterval(checkPi);
+      }
+    }, 400);
+    return () => clearInterval(checkPi);
   }, []);
-
   return null;
 }
