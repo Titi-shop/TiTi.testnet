@@ -55,12 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         await waitForPi();
 
-        if (!window.__pi_initialized) {
-          const isTestnet = process.env.NEXT_PUBLIC_PI_ENV === "testnet";
-          window.Pi.init({ version: "2.0", sandbox: isTestnet });
-          window.__pi_initialized = true;
-          console.log(`✅ Pi.init done (${isTestnet ? "TESTNET" : "MAINNET"})`);
-        } else {
+        console.log("ℹ️ Pi SDK ready (init done by PiProvider)");
           console.log("ℹ️ Pi SDK đã init trước đó, bỏ qua...");
         }
 
