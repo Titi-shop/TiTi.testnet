@@ -1,49 +1,40 @@
 "use client";
 
-import { useLanguage } from "../context/LanguageContext";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 import { Clock, Package, Truck, Star, LogOut, User } from "lucide-react";
 
 export default function CustomerDashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, piReady } = useAuth();
   const { translate } = useLanguage();
   const router = useRouter();
 
-  const [username, setUsername] = useState("guest_user");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  // ✅ Kiểm tra đăng nhập Pi
+  // ✅ Nếu chưa đăng nhập → chuyển về /pilogin
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const info =
-      localStorage.getItem("pi_user") || localStorage.getItem("user_info");
-    const logged = localStorage.getItem("titi_is_logged_in");
-
-    if (!info || logged !== "true") {
-      router.replace("/pilogin");
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(info);
-      const uname =
-        parsed?.user?.username || parsed?.username || "guest_user";
-      setUsername(uname);
-      setIsLoggedIn(true);
-    } catch {
-      console.warn("⚠️ Lỗi parse dữ liệu user");
-      setIsLoggedIn(false);
+    if (piReady && !user) {
       router.replace("/pilogin");
     }
-  }, [router]);
+  }, [piReady, user, router]);
 
-  const goTo = (path: string) => router.push(path);
+  // 🚫 Khi chưa có user → hiển thị chờ hoặc nhắc đăng nhập
+  if (!user)
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center bg-gray-100 text-center">
+        <h2 className="text-2xl font-bold text-red-600 mb-3">
+          🔐 {translate("login_required") || "Vui lòng đăng nhập bằng Pi Network để tiếp tục"}
+        </h2>
+        <button
+          onClick={() => router.push("/pilogin")}
+          className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded"
+        >
+          👉 {translate("go_to_login") || "Đăng nhập ngay"}
+        </button>
+      </main>
+    );
 
-  // ✅ Đăng xuất khỏi Pi Network và localStorage
+  // ✅ Hàm đăng xuất đồng bộ
   const handleLogoutPi = async () => {
     try {
       if (typeof window !== "undefined" && window.Pi?.logout) {
@@ -53,29 +44,10 @@ export default function CustomerDashboard() {
     } catch (err) {
       console.error("⚠️ Lỗi logout Pi:", err);
     } finally {
-      localStorage.removeItem("pi_user");
-      localStorage.removeItem("user_info");
-      localStorage.removeItem("titi_is_logged_in");
-      if (logout) logout();
+      logout(); // dùng hàm context
       router.replace("/pilogin");
     }
   };
-
-  // 🚫 Nếu chưa đăng nhập
-  if (!isLoggedIn)
-    return (
-      <main className="min-h-screen flex flex-col items-center justify-center bg-gray-100 text-center">
-        <h2 className="text-2xl font-bold text-red-600 mb-3">
-          🔐 {translate("login_required") || "Vui lòng đăng nhập bằng Pi Network để tiếp tục"}
-        </h2>
-        <button
-          onClick={() => router.push("/pilogin")}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-        >
-          👉 {translate("go_to_login") || "Đăng nhập ngay"}
-        </button>
-      </main>
-    );
 
   // ✅ Nếu đã đăng nhập
   return (
@@ -87,9 +59,9 @@ export default function CustomerDashboard() {
           onClick={() => router.push("/customer/profile")}
         >
           <div className="w-16 h-16 bg-white rounded-full mb-3 flex items-center justify-center text-orange-500 font-bold text-xl">
-            {username.charAt(0).toUpperCase()}
+            {user.username.charAt(0).toUpperCase()}
           </div>
-          <h1 className="text-xl font-semibold">{username}</h1>
+          <h1 className="text-xl font-semibold">{user.username}</h1>
           <p className="text-sm opacity-90 mt-1">
             {translate("customer_title") || "Khách hàng TiTi Mall"}
           </p>
@@ -124,35 +96,43 @@ export default function CustomerDashboard() {
         {/* ===== Các trạng thái đơn hàng ===== */}
         <div className="grid grid-cols-5 text-center py-4">
           <button
-            onClick={() => goTo("/customer/pending")}
+            onClick={() => router.push("/customer/pending")}
             className="flex flex-col items-center text-gray-700 hover:text-orange-500"
           >
             <Clock size={28} />
-            <span className="text-sm mt-1">{translate("waiting_confirm") || "Chờ xác nhận"}</span>
+            <span className="text-sm mt-1">
+              {translate("waiting_confirm") || "Chờ xác nhận"}
+            </span>
           </button>
 
           <button
-            onClick={() => goTo("/customer/pickup")}
+            onClick={() => router.push("/customer/pickup")}
             className="flex flex-col items-center text-gray-700 hover:text-orange-500"
           >
             <Package size={28} />
-            <span className="text-sm mt-1">{translate("waiting_pickup") || "Chờ lấy hàng"}</span>
+            <span className="text-sm mt-1">
+              {translate("waiting_pickup") || "Chờ lấy hàng"}
+            </span>
           </button>
 
           <button
-            onClick={() => goTo("/customer/shipping")}
+            onClick={() => router.push("/customer/shipping")}
             className="flex flex-col items-center text-gray-700 hover:text-orange-500"
           >
             <Truck size={28} />
-            <span className="text-sm mt-1">{translate("delivering") || "Đang giao"}</span>
+            <span className="text-sm mt-1">
+              {translate("delivering") || "Đang giao"}
+            </span>
           </button>
 
           <button
-            onClick={() => goTo("/customer/review")}
+            onClick={() => router.push("/customer/review")}
             className="flex flex-col items-center text-gray-700 hover:text-orange-500"
           >
             <Star size={28} />
-            <span className="text-sm mt-1">{translate("review") || "Đánh giá"}</span>
+            <span className="text-sm mt-1">
+              {translate("review") || "Đánh giá"}
+            </span>
           </button>
 
           <button
@@ -160,7 +140,9 @@ export default function CustomerDashboard() {
             className="flex flex-col items-center text-red-600 hover:text-red-700"
           >
             <LogOut size={28} />
-            <span className="text-sm mt-1">{translate("logout") || "Đăng xuất"}</span>
+            <span className="text-sm mt-1">
+              {translate("logout") || "Đăng xuất"}
+            </span>
           </button>
         </div>
       </div>
@@ -169,7 +151,7 @@ export default function CustomerDashboard() {
       <div className="bg-white mx-3 mt-4 p-4 rounded-lg shadow text-center">
         <p className="text-gray-700">
           💰 {translate("wallet_label") || "Ví Pi"}:{" "}
-          <b>{user?.wallet ?? "CUSTOMER-MOCK"}</b>
+          <b>{user?.wallet_address || "Chưa liên kết"}</b>
         </p>
       </div>
     </div>
