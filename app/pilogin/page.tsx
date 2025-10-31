@@ -22,7 +22,7 @@ export default function PiLoginPage() {
       setStatus(`🎉 Xin chào ${user.username}`);
       // ✅ Tự động chuyển sang trang customer sau 1.2s
       setTimeout(() => {
-        router.push("/customer");
+        router.push("/account");
       }, 1200);
       return;
     }
