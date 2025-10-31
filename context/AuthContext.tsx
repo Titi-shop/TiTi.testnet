@@ -58,49 +58,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  // ✅ Hàm pilogin - phiên bản ổn định cho SDK Pi mới (callback)
-  const pilogin = async () => {
-    if (typeof window === "undefined" || !window.Pi) {
-      alert("⚠️ Vui lòng mở trong Pi Browser");
+  // ✅ Hàm pilogin - phiên bản ổn định SDK Pi mới (Promise)
+const pilogin = async () => {
+  if (typeof window === "undefined" || !window.Pi) {
+    alert("⚠️ Vui lòng mở trong Pi Browser");
+    return;
+  }
+
+  try {
+    const scopes = ["username", "payments"];
+    const onIncompletePayment = (payment: any) => {
+      console.log("⚠️ Payment chưa hoàn tất:", payment);
+    };
+
+    // 🧩 SDK mới trả về Promise (không còn callback thứ 3)
+    const authResult = await window.Pi.authenticate(scopes, onIncompletePayment);
+
+    if (!authResult) {
+      alert("❌ Không nhận được phản hồi từ Pi Network");
       return;
     }
 
-    try {
-      const scopes = ["username", "payments"];
-      const onIncompletePayment = (payment: any) => {
-        console.log("⚠️ Payment chưa hoàn tất:", payment);
-      };
+    const username = authResult.user?.username || "guest";
+    const accessToken = authResult.accessToken || "";
 
-      // 👉 Dùng callback gốc của SDK Pi, không bọc Promise
-      window.Pi.authenticate(
-        scopes,
-        onIncompletePayment,
-        (authResult: any) => {
-          if (!authResult || authResult.error) {
-            console.error("❌ Lỗi xác thực:", authResult?.error);
-            alert("Đăng nhập thất bại, vui lòng thử lại.");
-            return;
-          }
+    const piUser: PiUser = { username, accessToken };
+    setUser(piUser);
 
-          const username = authResult.user?.username || "guest";
-          const accessToken = authResult.accessToken || "";
+    // ✅ Lưu thông tin vào localStorage
+    localStorage.setItem("pi_user", JSON.stringify(authResult));
+    localStorage.setItem("titi_is_logged_in", "true");
 
-          const piUser: PiUser = { username, accessToken };
-
-          // ✅ Lưu state và localStorage đồng bộ
-          setUser(piUser);
-          localStorage.setItem("pi_user", JSON.stringify(authResult));
-          localStorage.setItem("titi_is_logged_in", "true");
-
-          console.log("✅ Đăng nhập thành công:", piUser);
-          alert(`🎉 Xin chào ${username}`);
-        }
-      );
-    } catch (err) {
-      console.error("❌ Lỗi đăng nhập:", err);
-      alert("Đăng nhập thất bại, vui lòng thử lại.");
-    }
-  };
+    console.log("✅ Đăng nhập thành công:", piUser);
+    alert(`🎉 Xin chào ${username}`);
+  } catch (err: any) {
+    console.error("❌ Lỗi đăng nhập:", err);
+    alert("Đăng nhập thất bại, vui lòng thử lại.");
+  }
+};
 
   // ✅ Hàm logout
   const logout = () => {
