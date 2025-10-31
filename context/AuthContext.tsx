@@ -10,14 +10,14 @@ interface PiUser {
 interface AuthContextType {
   user: PiUser | null;
   piReady: boolean;
-  login: () => Promise<void>;
+  pilogin: () => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   piReady: false,
-  login: async () => {},
+  pilogin: async () => {},
   logout: () => {},
 });
 
@@ -53,8 +53,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  // ✅ Hàm login
-  const login = async () => {
+  // ✅ Hàm pilogin
+  const pilogin = async () => {
     if (!window.Pi) {
       alert("⚠️ Vui lòng mở trong Pi Browser");
       return;
@@ -86,7 +86,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, piReady, login, logout }}>
+    <AuthContext.Provider value={{ user, piReady, pilogin, logout }}>
       {children}
     </AuthContext.Provider>
   );
