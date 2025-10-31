@@ -1,32 +1,62 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const API_KEY = process.env.PI_API_KEY!;
-  const PAYMENT_ID = "⚠️_THAY_BẰNG_PAYMENT_ID_BỊ_KẸT_⚠️";
-
   try {
-    const approve = await fetch(`https://api.minepi.com/v2/payments/${PAYMENT_ID}/approve`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Key ${API_KEY}`,
-      },
+    const API_KEY = process.env.PI_API_KEY;
+    const API_URL = process.env.PI_API_URL || "https://api.minepi.com/v2/sandbox/payments";
+
+    if (!API_KEY) {
+      return NextResponse.json({ error: "❌ Missing PI_API_KEY" }, { status: 400 });
+    }
+
+    // 1️⃣ Lấy danh sách tất cả payment
+    const res = await fetch(API_URL, {
+      headers: { Authorization: `Key ${API_KEY}` },
     });
-    const complete = await fetch(`https://api.minepi.com/v2/payments/${PAYMENT_ID}/complete`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Key ${API_KEY}`,
-      },
-      body: JSON.stringify({ txid: "dummy" }),
-    });
+    const data = await res.json();
+
+    const pending = data?.data?.filter((p: any) => p.status === "pending") || [];
+
+    if (pending.length === 0) {
+      return NextResponse.json({ message: "✅ Không có giao dịch pending nào." });
+    }
+
+    // 2️⃣ In ra danh sách pending
+    const results: any[] = [];
+    for (const p of pending) {
+      const pid = p.identifier;
+      console.log("🧾 Đang reset:", pid);
+
+      const approve = await fetch(`${API_URL}/${pid}/approve`, {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const complete = await fetch(`${API_URL}/${pid}/complete`, {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ txid: "fix_" + Date.now() }),
+      });
+
+      results.push({
+        paymentId: pid,
+        approveStatus: approve.status,
+        completeStatus: complete.status,
+      });
+    }
 
     return NextResponse.json({
-      message: "✅ Payment reset done!",
-      approveStatus: approve.status,
-      completeStatus: complete.status,
+      message: "🎉 Đã xử lý tất cả giao dịch pending!",
+      results,
     });
   } catch (err: any) {
+    console.error("💥 FIX ERROR:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
