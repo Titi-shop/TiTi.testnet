@@ -1,9 +1,6 @@
 import "./globals.css";
 import Script from "next/script";
-import dynamic from "next/dynamic";
-
-// ✅ Import Client Layout (chứa PiProvider, Navbar, PiStatus...)
-const PiLayoutClient = dynamic(() => import("./PiLayoutClient"), { ssr: false });
+import PiRootClient from "./PiRootClient"; // 👈 Import client layout
 
 export const metadata = {
   title: "🛍️ TiTi Shop",
@@ -14,15 +11,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi">
       <head>
-        {/* ✅ Tải Pi SDK sau khi trang client render */}
         <Script
           src="https://sdk.minepi.com/pi-sdk.js"
           strategy="afterInteractive"
-          onLoad={() => console.log("✅ Pi SDK script loaded!")}
+          onLoad={() => console.log("✅ Pi SDK script loaded")}
         />
       </head>
-      <body className="relative min-h-screen bg-gray-50 text-gray-800 pb-16">
-        <PiLayoutClient>{children}</PiLayoutClient>
+      <body>
+        <PiRootClient>{children}</PiRootClient>
       </body>
     </html>
   );
