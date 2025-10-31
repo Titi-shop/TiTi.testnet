@@ -1,6 +1,6 @@
 import "./globals.css";
 import Script from "next/script";
-import PiRootClient from "./PiRootClient"; // 👈 Import client layout
+import PiRootClient from "./PiRootClient";
 
 export const metadata = {
   title: "🛍️ TiTi Shop",
@@ -11,11 +11,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi">
       <head>
-        <Script
-          src="https://sdk.minepi.com/pi-sdk.js"
-          strategy="afterInteractive"
-          onLoad={() => console.log("✅ Pi SDK script loaded")}
-        />
+        {/* ✅ Chỉ load Pi SDK, không dùng onLoad trong Server Component */}
+        <Script src="https://sdk.minepi.com/pi-sdk.js" strategy="afterInteractive" />
       </head>
       <body>
         <PiRootClient>{children}</PiRootClient>
