@@ -1,18 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export default function PiLoginPage() {
-  const [status, setStatus] = useState("⏳ Đang tải Pi SDK...");
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-  const timer = setInterval(() => {
-    if (typeof window !== "undefined") {
-      console.log("🔍 window.Pi =", window.Pi);
-    }
-  }, 2000);
-  return () => clearInterval(timer);
-}, []);
+  const [status, setStatus] = useState("⏳ Đang tải...");
 
   const handleLogin = async () => {
     if (!window.Pi) {
@@ -24,33 +14,30 @@ export default function PiLoginPage() {
       setStatus("🔐 Đang đăng nhập...");
       const scopes = ["username", "payments", "wallet_address"];
       const auth = await window.Pi.authenticate(scopes, (payment) => {
-        console.log("💸 Callback:", payment);
+        console.log("💸 Payment callback:", payment);
       });
 
+      console.log("✅ Đăng nhập thành công:", auth);
       const username = auth?.user?.username || "guest";
       localStorage.setItem("pi_user", JSON.stringify(auth));
-      localStorage.setItem("titi_is_logged_in", "true");
-
+      alert(`🎉 Xin chào ${username}`);
       setStatus(`🎉 Xin chào ${username}`);
-      alert(`🎉 Đăng nhập thành công: ${username}`);
-    } catch (e) {
-      console.error("❌ Lỗi đăng nhập:", e);
-      setStatus("❌ Lỗi đăng nhập: " + e.message);
+    } catch (err) {
+      console.error("❌ Lỗi đăng nhập:", err);
+      setStatus("❌ Lỗi đăng nhập: " + err.message);
     }
   };
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
-      <h1 className="text-2xl font-bold text-orange-600 mb-4">🔐 Đăng nhập bằng Pi Network</h1>
-      <p className="mb-6 text-gray-700">{status}</p>
-      {ready && (
-        <button
-          onClick={handleLogin}
-          className="bg-orange-500 text-white px-6 py-3 rounded-lg text-lg font-semibold hover:bg-orange-600 transition"
-        >
-          Đăng nhập với Pi
-        </button>
-      )}
+    <main className="flex flex-col items-center justify-center min-h-screen p-6">
+      <h1 className="text-2xl font-bold mb-4 text-orange-600">🔐 Đăng nhập bằng Pi Network</h1>
+      <p className="mb-4">{status}</p>
+      <button
+        onClick={handleLogin}
+        className="bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition"
+      >
+        Đăng nhập với Pi
+      </button>
     </main>
   );
 }
