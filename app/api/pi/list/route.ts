@@ -9,8 +9,7 @@ import { NextResponse } from "next/server";
 export async function GET() {
   try {
     const API_KEY = process.env.PI_API_KEY;
-    const API_URL =
-      process.env.PI_API_URL || "https://api.minepi.com/v2/sandbox/payments";
+    const API_URL = "https://api.minepi.com/v2/sandbox/payments"; // testnet cố định
 
     if (!API_KEY) {
       console.error("❌ Thiếu biến môi trường PI_API_KEY");
