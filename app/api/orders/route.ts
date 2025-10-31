@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
 
-// 🔹 Helper: Đọc danh sách đơn hàng an toàn
+// ----------------------------
+// 🔸 Helper: Đọc danh sách đơn hàng
+// ----------------------------
 async function readOrders() {
   try {
     const stored = await kv.get("orders");
@@ -11,7 +13,7 @@ async function readOrders() {
     try {
       return JSON.parse(stored);
     } catch {
-      console.warn("⚠️ orders trong KV không phải JSON hợp lệ, reset lại.");
+      console.warn("⚠️ Dữ liệu orders trong KV không hợp lệ, reset lại.");
       return [];
     }
   } catch (err) {
@@ -20,7 +22,9 @@ async function readOrders() {
   }
 }
 
-// 🔹 Helper: Ghi danh sách đơn hàng an toàn
+// ----------------------------
+// 🔸 Helper: Ghi danh sách đơn hàng
+// ----------------------------
 async function writeOrders(orders: any[]) {
   try {
     await kv.set("orders", JSON.stringify(orders));
@@ -32,7 +36,7 @@ async function writeOrders(orders: any[]) {
 }
 
 // ----------------------------
-// 🔹 GET: Lấy danh sách đơn
+// 🔹 GET: Lấy danh sách đơn hàng
 // ----------------------------
 export async function GET() {
   try {
@@ -45,7 +49,7 @@ export async function GET() {
 }
 
 // ----------------------------
-// 🔹 POST: Tạo đơn mới
+// 🔹 POST: Tạo đơn hàng mới
 // ----------------------------
 export async function POST(req: Request) {
   try {
@@ -53,18 +57,23 @@ export async function POST(req: Request) {
     const orders = await readOrders();
 
     const newOrder = {
-  id: order.id ?? Date.now(),
-  buyer: order.buyer || "unknown",
-  items: order.items ?? [],
-  total: order.total ?? 0,
-  status: order.status ?? "Chờ xác nhận",
-  note: order.note ?? "",
-  shipping: order.shipping ?? {}, // ✅ thêm dòng này
-  createdAt: new Date().toISOString(),
-};
+      id: order.id ?? `ORD-${Date.now()}`,
+      buyer: order.buyer || "unknown",
+      items: order.items ?? [],
+      total: Number(order.total ?? 0),
+      status: order.status ?? "Chờ xác nhận",
+      note: order.note ?? "",
+      shipping: order.shipping ?? {},
+      paymentId: order.paymentId ?? "", // ✅ thêm để liên kết với giao dịch Pi
+      txid: order.txid ?? "", // ✅ thêm mã giao dịch blockchain
+      createdAt: order.createdAt ?? new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
     orders.unshift(newOrder);
     await writeOrders(orders);
+
+    console.log("🧾 [ORDER CREATED]:", newOrder);
 
     return NextResponse.json({ success: true, order: newOrder });
   } catch (err) {
@@ -74,11 +83,11 @@ export async function POST(req: Request) {
 }
 
 // ----------------------------
-// 🔹 PUT: Cập nhật trạng thái đơn
+// 🔹 PUT: Cập nhật trạng thái đơn hàng
 // ----------------------------
 export async function PUT(req: Request) {
   try {
-    const { id, status } = await req.json();
+    const { id, status, txid } = await req.json();
     const orders = await readOrders();
 
     const index = orders.findIndex((o) => String(o.id) === String(id));
@@ -92,10 +101,13 @@ export async function PUT(req: Request) {
     orders[index] = {
       ...orders[index],
       status: status || orders[index].status,
+      txid: txid || orders[index].txid, // ✅ cập nhật txid nếu có
       updatedAt: new Date().toISOString(),
     };
 
     await writeOrders(orders);
+
+    console.log("🔄 [ORDER UPDATED]:", orders[index]);
 
     return NextResponse.json({ success: true, order: orders[index] });
   } catch (err) {
