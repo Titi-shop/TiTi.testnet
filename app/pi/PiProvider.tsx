@@ -6,16 +6,18 @@ export default function PiProvider() {
     const timer = setInterval(() => {
       if (typeof window !== "undefined" && window.Pi) {
         if (!window.__pi_initialized) {
-          window.Pi.init({ version: "2.0", sandbox: true });
-          window.__pi_initialized = true;
-          console.log("✅ Pi SDK initialized (TESTNET)");
+          try {
+            // ⚠️ Dùng sandbox = false khi test trên Pi Testnet chính thức
+            window.Pi.init({ version: "2.0", sandbox: false });
+            window.__pi_initialized = true;
+            console.log("✅ Pi SDK initialized (Production/Testnet real browser context)");
+          } catch (err) {
+            console.error("❌ Lỗi init Pi SDK:", err);
+          }
         }
         clearInterval(timer);
-      } else {
-        console.log("⏳ Pi SDK chưa sẵn sàng...");
       }
     }, 500);
-
     return () => clearInterval(timer);
   }, []);
 
