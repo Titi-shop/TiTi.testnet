@@ -9,7 +9,7 @@ export default function PiLoginPage() {
   const { user, piReady, login } = useAuth();
   const [status, setStatus] = useState("⏳ Đang tải...");
 
-  // Theo dõi trạng thái Pi SDK & user
+  // Theo dõi SDK Pi & trạng thái user
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -20,7 +20,7 @@ export default function PiLoginPage() {
 
     if (user) {
       setStatus(`🎉 Xin chào ${user.username}`);
-      // ✅ Tự động chuyển sang trang chờ đơn hàng
+      // ✅ Tự động chuyển sang trang customer sau 1.2s
       setTimeout(() => {
         router.push("/customer");
       }, 1200);
@@ -30,6 +30,7 @@ export default function PiLoginPage() {
     setStatus("🔐 Sẵn sàng đăng nhập bằng Pi Network");
   }, [piReady, user, router]);
 
+  // Xử lý đăng nhập
   const handleLogin = async () => {
     if (!piReady || !window.Pi) {
       alert("⚠️ Vui lòng mở bằng Pi Browser và chờ SDK load xong!");
@@ -41,7 +42,7 @@ export default function PiLoginPage() {
       await login();
       setStatus("✅ Đăng nhập thành công!");
       setTimeout(() => {
-        router.push("/customer/pending");
+        router.push("/customer");
       }, 1200);
     } catch (err: any) {
       console.error("❌ Lỗi đăng nhập:", err);
@@ -71,7 +72,7 @@ export default function PiLoginPage() {
 
       <p className="mt-6 text-sm text-gray-500">
         Sau khi đăng nhập, bạn sẽ được chuyển đến trang{" "}
-        <span className="font-semibold">"Đơn hàng chờ xác nhận"</span>.
+        <span className="font-semibold">"Tài khoản / Customer"</span>.
       </p>
     </main>
   );
