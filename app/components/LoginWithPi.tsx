@@ -3,7 +3,7 @@
 import { useAuth } from "@/context/AuthContext";
 
 function LoginWithPi() {
-  const { user, piReady, piLogin } = useAuth();
+  const { user, piReady, login } = useAuth();
 
   if (user) {
     return (
@@ -26,7 +26,7 @@ function LoginWithPi() {
   return (
     <div className="flex flex-col items-center mt-4">
       <button
-        onClick={piLogin}
+        onClick={login}
         className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600"
       >
         User login
