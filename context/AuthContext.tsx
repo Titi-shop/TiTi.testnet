@@ -1,59 +1,4 @@
-"use client";
-import { createContext, useContext, useState, useEffect } from "react";
-
-interface PiUser {
-  username: string;
-  uid?: string;
-  accessToken: string;
-}
-
-interface AuthContextType {
-  user: PiUser | null;
-  piReady: boolean;
-  pilogin: () => Promise<void>;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  piReady: false,
-  pilogin: async () => {},
-  logout: () => {},
-});
-
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<PiUser | null>(null);
-  const [piReady, setPiReady] = useState(false);
-
-  // ✅ Kiểm tra SDK
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (typeof window !== "undefined" && window.Pi) {
-        setPiReady(true);
-        clearInterval(timer);
-      }
-    }, 500);
-    return () => clearInterval(timer);
-  }, []);
-
-  // ✅ Load user từ localStorage
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("pi_user");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const username = parsed?.user?.username || parsed?.username || null;
-        const accessToken = parsed?.accessToken || "";
-        if (username && accessToken) {
-          setUser({ username, accessToken });
-        }
-      }
-    } catch (err) {
-      console.error("❌ Lỗi đọc pi_user:", err);
-    }
-  }, []);
-
-  // ✅ Hàm pilogin
+// ✅ Hàm pilogin - cập nhật cho SDK mới
   const pilogin = async () => {
     if (!window.Pi) {
       alert("⚠️ Vui lòng mở trong Pi Browser");
@@ -62,34 +7,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     try {
       const scopes = ["username", "payments"];
-      const auth = await window.Pi.authenticate(scopes, (payment) => {
+      const onIncompletePayment = (payment: any) => {
         console.log("⚠️ Payment chưa hoàn tất:", payment);
+      };
+
+      // 👉 SDK mới không trả promise nữa, phải dùng callback
+      await new Promise<void>((resolve, reject) => {
+        window.Pi.authenticate(scopes, onIncompletePayment, (authResult: any) => {
+          if (!authResult || authResult.error) {
+            console.error("❌ Lỗi xác thực:", authResult?.error);
+            reject(authResult?.error || "Đăng nhập thất bại");
+          } else {
+            const username = authResult.user?.username || "guest";
+            const accessToken = authResult.accessToken || "";
+
+            const piUser: PiUser = { username, accessToken };
+            setUser(piUser);
+            localStorage.setItem("pi_user", JSON.stringify(authResult));
+            localStorage.setItem("titi_is_logged_in", "true");
+
+            console.log("✅ Đăng nhập thành công:", piUser);
+            resolve();
+          }
+        });
       });
-
-      const username = auth?.user?.username || "guest";
-      const accessToken = auth?.accessToken || "";
-
-      const piUser: PiUser = { username, accessToken };
-      setUser(piUser);
-      localStorage.setItem("pi_user", JSON.stringify(auth)); // ✅ giữ cấu trúc gốc của Pi SDK
-
-      alert(`🎉 Xin chào ${username}`);
     } catch (err) {
       console.error("❌ Lỗi đăng nhập:", err);
-      alert("Lỗi đăng nhập Pi Network");
+      alert("Đăng nhập thất bại, vui lòng thử lại.");
     }
   };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("pi_user");
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, piReady, pilogin, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = () => useContext(AuthContext);
