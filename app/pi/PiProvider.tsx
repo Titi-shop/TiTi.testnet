@@ -11,8 +11,11 @@ export default function PiProvider() {
           console.log("✅ Pi SDK initialized (TESTNET)");
         }
         clearInterval(timer);
+      } else {
+        console.log("⏳ Pi SDK chưa sẵn sàng...");
       }
-    }, 400);
+    }, 500);
+
     return () => clearInterval(timer);
   }, []);
 
