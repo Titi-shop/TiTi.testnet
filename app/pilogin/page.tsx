@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 
 export default function PiLoginPage() {
   const router = useRouter();
-  const { user, piReady, login } = useAuth();
+  const { user, piReady, pilogin } = useAuth();
   const [status, setStatus] = useState("⏳ Đang tải...");
 
   // Theo dõi SDK Pi & trạng thái user
@@ -39,7 +39,7 @@ export default function PiLoginPage() {
 
     try {
       setStatus("🔑 Đang xác thực tài khoản...");
-      await login();
+      await pilogin();
       setStatus("✅ Đăng nhập thành công!");
       setTimeout(() => {
         router.push("/customer");
