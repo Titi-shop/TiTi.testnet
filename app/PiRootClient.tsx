@@ -6,7 +6,7 @@ import { LanguageProvider } from "@/app/context/LanguageContext";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import PiProvider from "@/app/pi/PiProvider";
-import PiStatus from "@/components/PiStatus";
+import PiStatus from "@/app/components/PiStatus";
 
 export default function PiRootClient({ children }: { children: React.ReactNode }) {
   return (
