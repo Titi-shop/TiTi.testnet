@@ -1,40 +1,54 @@
 "use client";
-import { useState } from "react";
+
+import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function PiLoginPage() {
+  const { user, piReady, login } = useAuth();
   const [status, setStatus] = useState("⏳ Đang tải...");
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!piReady) {
+      setStatus("⚠️ Chờ Pi SDK khởi động...");
+    } else if (user) {
+      setStatus(`🎉 Xin chào ${user.username}`);
+    } else {
+      setStatus("🔐 Chưa đăng nhập");
+    }
+  }, [piReady, user]);
+
   const handleLogin = async () => {
-    if (!window.Pi) {
-      alert("⚠️ Vui lòng mở bằng Pi Browser!");
+    if (!piReady || !window.Pi) {
+      alert("⚠️ Vui lòng mở bằng Pi Browser và chờ SDK load xong!");
       return;
     }
 
     try {
       setStatus("🔐 Đang đăng nhập...");
-      const scopes = ["username", "payments", "wallet_address"];
-      const auth = await window.Pi.authenticate(scopes, (payment) => {
-        console.log("💸 Payment callback:", payment);
-      });
-
-      console.log("✅ Đăng nhập thành công:", auth);
-      const username = auth?.user?.username || "guest";
-      localStorage.setItem("pi_user", JSON.stringify(auth));
-      alert(`🎉 Xin chào ${username}`);
-      setStatus(`🎉 Xin chào ${username}`);
-    } catch (err) {
+      await login();
+      setStatus("🎉 Đăng nhập thành công!");
+    } catch (err: any) {
       console.error("❌ Lỗi đăng nhập:", err);
-      setStatus("❌ Lỗi đăng nhập: " + err.message);
+      setStatus("❌ Lỗi đăng nhập: " + (err.message || "Không rõ nguyên nhân"));
     }
   };
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen p-6">
-      <h1 className="text-2xl font-bold mb-4 text-orange-600">🔐 Đăng nhập bằng Pi Network</h1>
+    <main className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
+      <h1 className="text-2xl font-bold mb-4 text-orange-600">
+        🔐 Đăng nhập bằng Pi Network
+      </h1>
       <p className="mb-4">{status}</p>
+
       <button
         onClick={handleLogin}
-        className="bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition"
+        disabled={!piReady}
+        className={`px-6 py-3 rounded-lg text-white transition ${
+          piReady
+            ? "bg-orange-500 hover:bg-orange-600"
+            : "bg-gray-400 cursor-not-allowed"
+        }`}
       >
         Đăng nhập với Pi
       </button>
