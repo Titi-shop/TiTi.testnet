@@ -6,14 +6,21 @@ export default function PiProvider() {
     const timer = setInterval(() => {
       if (typeof window !== "undefined" && window.Pi) {
         if (!window.__pi_initialized) {
-          const isTestnet = process.env.NEXT_PUBLIC_PI_ENV === "testnet";
-          window.Pi.init({ version: "2.0", sandbox: isTestnet });
-          window.__pi_initialized = true;
-          console.log(`✅ Pi SDK initialized (${isTestnet ? "TESTNET" : "MAINNET"})`);
+          try {
+            window.Pi.init({
+              version: "2.0",
+              sandbox: true, // ⚡ Testnet mode
+            });
+            window.__pi_initialized = true;
+            console.log("✅ Pi SDK initialized (TESTNET)");
+          } catch (err) {
+            console.error("❌ Lỗi init Pi SDK:", err);
+          }
         }
         clearInterval(timer);
       }
-    }, 400);
+    }, 500);
+
     return () => clearInterval(timer);
   }, []);
 
