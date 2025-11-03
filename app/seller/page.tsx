@@ -74,8 +74,9 @@ export default function SellerDashboard() {
   }
 
   if (!isLoggedIn || role !== "seller") {
-    return (
-      <main className="p-6 text-center">
+     return (
+  <main className="p-6 pb-24 max-w-6xl mx-auto">
+
         <h2 className="text-xl font-bold text-red-600 mb-3">
           🔐 {translate("login_required") ||
             "Vui lòng đăng nhập để truy cập khu vực Người Bán"}
@@ -101,7 +102,7 @@ export default function SellerDashboard() {
       </div>
 
       {/* Danh mục chức năng */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5 text-center">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5 text-center mt-2">
         <Link
           href="/seller/post"
           className="bg-amber-500 hover:bg-amber-600 text-white p-6 rounded-lg shadow transition"
