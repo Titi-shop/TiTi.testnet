@@ -3,7 +3,7 @@
 import { useAuth } from "@/context/AuthContext";
 
 function LoginWithPi() {
-  const { user, piReady, login } = useAuth();
+  <button onClick={pilogin}>Đăng nhập với Pi</button>
 
   if (user) {
     return (
