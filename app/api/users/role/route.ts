@@ -6,19 +6,26 @@ import { kv } from "@vercel/kv";
  * Lưu & lấy thông tin phân quyền người dùng (seller / buyer)
  */
 
-const DEFAULT_SELLERS = ["nguyenminhduc1991111"]; // ✅ Danh sách tài khoản mặc định là người bán
+const normalize = (s: string) => s.trim().toLowerCase();
 
-export async function POST(req: Request) {
-  try {
-    const { username, role } = await req.json();
-    if (!username || !role)
-      return NextResponse.json({ error: "missing data" }, { status: 400 });
+const DEFAULT_SELLERS = ["nguyenminhduc1991111"];
 
-    const key = `user_role:${username.toLowerCase()}`;
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const username = searchParams.get("username");
+  if (!username)
+    return NextResponse.json({ error: "missing username" }, { status: 400 });
+
+  const key = `user_role:${normalize(username)}`;
+  let role = (await kv.get(key)) || "buyer";
+
+  if (DEFAULT_SELLERS.includes(normalize(username))) {
+    role = "seller";
     await kv.set(key, role);
+  }
 
-    return NextResponse.json({ success: true, username, role });
-  } catch (err: any) {
+  return NextResponse.json({ username: normalize(username), role });
+ } catch (err: any) {
     console.error("❌ Lỗi lưu quyền:", err);
     return NextResponse.json(
       { success: false, error: err.message },
