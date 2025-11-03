@@ -20,182 +20,153 @@ export default function SellerStockPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
   const [sellerUser, setSellerUser] = useState<string>("");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [role, setRole] = useState<string>("buyer");
 
-  // ✅ Lấy thông tin người bán (Pi login)
+  // ✅ Lấy thông tin người bán và xác thực quyền
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("pi_user");
-      const logged = localStorage.getItem("titi_is_logged_in");
-      if (stored && logged === "true") {
-        const parsed = JSON.parse(stored);
-        const username = parsed?.user?.username || parsed?.username || "guest_user";
-        setSellerUser(username);
-        setIsLoggedIn(true);
-      } else {
-        setIsLoggedIn(false);
-      }
-    } catch (err) {
-      console.error("❌ Lỗi đọc thông tin Pi:", err);
-      setIsLoggedIn(false);
-    }
-  }, []);
+    async function loadUser() {
+      try {
+        const stored = localStorage.getItem("pi_user");
+        const logged = localStorage.getItem("titi_is_logged_in");
 
-  // ✅ Lấy danh sách sản phẩm
-  const fetchProducts = async () => {
+        if (!stored || logged !== "true") {
+          router.push("/pilogin");
+          return;
+        }
+
+        const parsed = JSON.parse(stored);
+        const username = (parsed?.user?.username || parsed?.username || "").trim().toLowerCase();
+
+        if (!username) {
+          router.push("/pilogin");
+          return;
+        }
+
+        setSellerUser(username);
+
+        const res = await fetch(`/api/users/role?username=${username}`);
+        const data = await res.json();
+        setRole(data.role || "buyer");
+
+        if (data.role !== "seller") {
+          alert("🚫 Bạn không có quyền truy cập khu vực kho hàng!");
+          router.push("/customer");
+        } else {
+          fetchProducts(username);
+        }
+      } catch (err) {
+        console.error("❌ Lỗi xác thực:", err);
+        router.push("/pilogin");
+      }
+    }
+
+    loadUser();
+  }, [router]);
+
+  // ✅ Lấy danh sách sản phẩm của seller
+  const fetchProducts = async (username: string) => {
     try {
       const res = await fetch("/api/products", { cache: "no-store" });
-      if (!res.ok) throw new Error("Fetch failed");
       const data = await res.json();
 
-      // ✅ Lọc sản phẩm theo người bán hiện tại
-      const filtered = data.filter(
-        (p: any) => !p.seller || p.seller?.toLowerCase() === sellerUser.toLowerCase()
-      );
-
-      setProducts(Array.isArray(filtered) ? filtered : []);
+      const filtered = data.filter((p: any) => p.seller?.toLowerCase() === username);
+      setProducts(filtered);
     } catch (err) {
       console.error("❌ Lỗi tải sản phẩm:", err);
-      setMessage(translate("load_error") || "Không thể tải sản phẩm.");
+      setMessage("Không thể tải sản phẩm.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (isLoggedIn) fetchProducts();
-    else setLoading(false);
-  }, [isLoggedIn]);
-
   // ❌ Xoá sản phẩm
   const handleDelete = async (id: number) => {
-    const confirmDelete = window.confirm(
-      translate("confirm_delete") || "Bạn có chắc muốn xóa sản phẩm này?"
-    );
+    const confirmDelete = window.confirm("Bạn có chắc muốn xóa sản phẩm này?");
     if (!confirmDelete) return;
 
     try {
-      setRefreshing(true);
       const res = await fetch(`/api/products?id=${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seller: sellerUser }), // ✅ Gửi seller để backend xác thực
+        body: JSON.stringify({ seller: sellerUser }),
       });
       const result = await res.json();
 
       if (result.success) {
-        setMessage(translate("delete_success") || "✅ Đã xóa sản phẩm.");
-        await fetchProducts();
+        setMessage("✅ Đã xóa sản phẩm!");
+        fetchProducts(sellerUser);
       } else {
         setMessage(result.message || "Không thể xóa sản phẩm.");
       }
     } catch (err) {
       console.error("❌ DELETE Error:", err);
-      setMessage(translate("delete_error") || "Lỗi khi xóa sản phẩm.");
-    } finally {
-      setRefreshing(false);
+      setMessage("Lỗi khi xóa sản phẩm.");
     }
   };
 
-  // 🔒 Nếu chưa đăng nhập
-  if (!isLoggedIn)
+  if (loading)
     return (
       <main className="p-6 text-center">
-        <h2 className="text-xl text-red-600 mb-3">
-          🔐 {translate("login_required") || "Vui lòng đăng nhập bằng Pi Network để quản lý kho hàng"}
-        </h2>
-        <button
-          onClick={() => router.push("/pilogin")}
-          className="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-        >
-          👉 {translate("go_to_login") || "Đăng nhập ngay"}
-        </button>
+        <p>⏳ Đang tải dữ liệu...</p>
+      </main>
+    );
+
+  if (role !== "seller")
+    return (
+      <main className="p-6 text-center">
+        <h2>🔒 Bạn không có quyền truy cập khu vực này.</h2>
       </main>
     );
 
   return (
     <main className="p-4 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-center mb-4">
-        📦 {translate("stock_manager_title") || "Quản lý kho hàng"}
-      </h1>
-
+      <h1 className="text-2xl font-bold text-center mb-4">📦 Quản lý kho hàng</h1>
       <p className="text-center text-sm text-gray-500 mb-3">
-        👤 {translate("seller_label") || "Người bán"}: <b>{sellerUser}</b>
+        👤 Người bán: <b>{sellerUser}</b>
       </p>
 
-      {message && (
-        <p
-          className={`text-center mb-3 font-medium ${
-            message.includes("xóa") || message.includes("Lỗi")
-              ? "text-red-600"
-              : "text-green-600"
-          }`}
-        >
-          {message}
-        </p>
-      )}
+      {message && <p className="text-center mb-3 text-orange-600">{message}</p>}
 
-      {loading ? (
-        <p className="text-center text-gray-500">
-          {translate("loading_products") || "Đang tải sản phẩm..."}
-        </p>
-      ) : products.length === 0 ? (
-        <p className="text-center text-gray-500">
-          {translate("no_products") || "Không có sản phẩm nào."}
-        </p>
+      {products.length === 0 ? (
+        <p className="text-center text-gray-500">Không có sản phẩm nào.</p>
       ) : (
         <div className="grid gap-4">
-          {products.map((product) => {
-            const img = product.images?.[0] || "";
-
-            return (
-              <div
-                key={product.id}
-                className="bg-white shadow-md rounded-lg p-4 border border-gray-200"
-              >
-                {img ? (
-                  <Image
-                    src={img}
-                    alt={product.name}
-                    width={400}
-                    height={300}
-                    className="w-full h-48 object-cover rounded-md mb-3"
-                  />
-                ) : (
-                  <div className="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-400 rounded-md mb-3">
-                    {translate("no_image") || "Không có ảnh"}
-                  </div>
-                )}
-
-                <h2 className="text-lg font-semibold text-gray-800">{product.name}</h2>
-                <p className="text-orange-600 font-bold mt-1">
-                  💰 {product.price} Pi
-                </p>
-                {product.description && (
-                  <p className="text-gray-500 mt-1">{product.description}</p>
-                )}
-
-                <div className="flex gap-2 mt-4">
-                  <button
-                    onClick={() => router.push(`/seller/edit/${product.id}`)}
-                    className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md font-medium transition"
-                  >
-                    ✏️ {translate("edit") || "Sửa"}
-                  </button>
-
-                  <button
-                    onClick={() => handleDelete(product.id)}
-                    disabled={refreshing}
-                    className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-md font-medium transition"
-                  >
-                    {refreshing ? "⏳ Đang xóa..." : "❌ " + (translate("delete") || "Xóa")}
-                  </button>
+          {products.map((product) => (
+            <div key={product.id} className="bg-white shadow-md rounded-lg p-4 border border-gray-200">
+              {product.images?.[0] ? (
+                <Image
+                  src={product.images[0]}
+                  alt={product.name}
+                  width={400}
+                  height={300}
+                  className="w-full h-48 object-cover rounded-md mb-3"
+                />
+              ) : (
+                <div className="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-400 rounded-md mb-3">
+                  Không có ảnh
                 </div>
+              )}
+              <h2 className="text-lg font-semibold text-gray-800">{product.name}</h2>
+              <p className="text-orange-600 font-bold mt-1">💰 {product.price} Pi</p>
+              {product.description && <p className="text-gray-500 mt-1">{product.description}</p>}
+
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={() => router.push(`/seller/edit/${product.id}`)}
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md"
+                >
+                  ✏️ Sửa
+                </button>
+                <button
+                  onClick={() => handleDelete(product.id)}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-md"
+                >
+                  ❌ Xóa
+                </button>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
     </main>
