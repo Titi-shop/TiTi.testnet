@@ -160,9 +160,9 @@ export default function SellerDashboard() {
           <span className="mt-2 font-semibold block">
             💰 {translate("wallet") || "Ví Pi"}
           </span>
-        </Link>
-        </button>
-      </div>
+         </Link>
+         </button>
+         </div>
     </main>
   );
 }
