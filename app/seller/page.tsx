@@ -16,10 +16,13 @@ import {
 export default function SellerDashboard() {
   const { translate } = useLanguage();
   const router = useRouter();
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [sellerUser, setSellerUser] = useState<string>("");
   const [role, setRole] = useState<string>("buyer");
+  const [loading, setLoading] = useState(true);
 
+  // ✅ Kiểm tra quyền truy cập
   useEffect(() => {
     async function checkAccess() {
       try {
@@ -39,27 +42,38 @@ export default function SellerDashboard() {
         setSellerUser(username);
         setIsLoggedIn(true);
 
-        // 🔹 Kiểm tra quyền người dùng qua API
+        // 🔹 Gọi API kiểm tra quyền động
         const res = await fetch(`/api/users/role?username=${username}`);
         const data = await res.json();
 
-        if (data?.role === "seller" && username === "nguyenminhduc1991111") {
+        if (data?.role === "seller") {
           setRole("seller");
         } else {
-          // ❌ Nếu không phải seller hoặc username không đúng -> chặn truy cập
-          alert("🚫 Tài khoản của bạn không có quyền truy cập trang Người Bán!");
-          router.push("/");
+          alert("🚫 Bạn không có quyền truy cập khu vực Người Bán!");
+          router.push("/customer");
         }
       } catch (err) {
         console.error("❌ Lỗi xác thực:", err);
         router.push("/pilogin");
+      } finally {
+        setLoading(false);
       }
     }
 
     checkAccess();
   }, [router]);
 
-  if (!isLoggedIn) {
+  if (loading) {
+    return (
+      <main className="p-6 text-center">
+        <h2 className="text-xl font-semibold text-gray-600">
+          ⏳ Đang xác thực tài khoản...
+        </h2>
+      </main>
+    );
+  }
+
+  if (!isLoggedIn || role !== "seller") {
     return (
       <main className="p-6 text-center">
         <h2 className="text-xl font-bold text-red-600 mb-3">
@@ -76,10 +90,9 @@ export default function SellerDashboard() {
     );
   }
 
-  if (role !== "seller") return null;
-
   return (
     <main className="p-6 max-w-6xl mx-auto">
+      {/* Header */}
       <div className="bg-yellow-400 text-white text-xl font-bold p-3 rounded-t-lg mb-4 flex justify-between items-center shadow">
         <span>👑 {translate("seller_dashboard") || "Khu vực Người Bán"}</span>
         <span className="text-sm bg-white text-yellow-700 px-3 py-1 rounded shadow">
@@ -87,35 +100,70 @@ export default function SellerDashboard() {
         </span>
       </div>
 
-      {/* Các mục chức năng */}
+      {/* Danh mục chức năng */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5 text-center">
-        <Link href="/seller/post" className="bg-amber-500 hover:bg-amber-600 text-white p-6 rounded-lg shadow">
+        <Link
+          href="/seller/post"
+          className="bg-amber-500 hover:bg-amber-600 text-white p-6 rounded-lg shadow transition"
+        >
           <PackagePlus size={36} />
-          <span className="mt-2 font-semibold">📦 {translate("post_product") || "Đăng sản phẩm"}</span>
+          <span className="mt-2 font-semibold block">
+            📦 {translate("post_product") || "Đăng sản phẩm"}
+          </span>
         </Link>
-        <Link href="/seller/stock" className="bg-blue-500 hover:bg-blue-600 text-white p-6 rounded-lg shadow">
+
+        <Link
+          href="/seller/stock"
+          className="bg-blue-500 hover:bg-blue-600 text-white p-6 rounded-lg shadow transition"
+        >
           <Package size={36} />
-          <span className="mt-2 font-semibold">🏬 {translate("manage_stock") || "Kho hàng"}</span>
+          <span className="mt-2 font-semibold block">
+            🏬 {translate("manage_stock") || "Kho hàng"}
+          </span>
         </Link>
-        <Link href="/seller/orders" className="bg-green-500 hover:bg-green-600 text-white p-6 rounded-lg shadow">
+
+        <Link
+          href="/seller/orders"
+          className="bg-green-500 hover:bg-green-600 text-white p-6 rounded-lg shadow transition"
+        >
           <ClipboardList size={36} />
-          <span className="mt-2 font-semibold">🧾 {translate("process_orders") || "Xử lý đơn"}</span>
+          <span className="mt-2 font-semibold block">
+            🧾 {translate("process_orders") || "Xử lý đơn"}
+          </span>
         </Link>
-        <Link href="/seller/status" className="bg-purple-500 hover:bg-purple-600 text-white p-6 rounded-lg shadow">
+
+        <Link
+          href="/seller/status"
+          className="bg-purple-500 hover:bg-purple-600 text-white p-6 rounded-lg shadow transition"
+        >
           <RefreshCcw size={36} />
-          <span className="mt-2 font-semibold">📊 {translate("update_status") || "Cập nhật trạng thái"}</span>
+          <span className="mt-2 font-semibold block">
+            📊 {translate("update_status") || "Cập nhật trạng thái"}
+          </span>
         </Link>
-        <Link href="/seller/delivery" className="bg-orange-500 hover:bg-orange-600 text-white p-6 rounded-lg shadow">
+
+        <Link
+          href="/seller/delivery"
+          className="bg-orange-500 hover:bg-orange-600 text-white p-6 rounded-lg shadow transition"
+        >
           <Truck size={36} />
-          <span className="mt-2 font-semibold">🚚 {translate("delivery") || "Giao hàng"}</span>
+          <span className="mt-2 font-semibold block">
+            🚚 {translate("delivery") || "Giao hàng"}
+          </span>
         </Link>
-        <Link href="/seller/wallet" className="bg-emerald-500 hover:bg-emerald-600 text-white p-6 rounded-lg shadow">
+
+        <Link
+          href="/seller/wallet"
+          className="bg-emerald-500 hover:bg-emerald-600 text-white p-6 rounded-lg shadow transition"
+        >
           <Wallet size={36} />
-          <span className="mt-2 font-semibold">💰 {translate("wallet") || "Ví Pi"}</span>
+          <span className="mt-2 font-semibold block">
+            💰 {translate("wallet") || "Ví Pi"}
+          </span>
         </Link>
       </div>
 
-      {/* Đăng xuất */}
+      {/* Nút Đăng xuất */}
       <div className="text-center mt-8">
         <button
           onClick={() => {
@@ -123,7 +171,7 @@ export default function SellerDashboard() {
             localStorage.removeItem("titi_is_logged_in");
             router.push("/pilogin");
           }}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition"
         >
           🚪 {translate("logout") || "Đăng xuất"}
         </button>
