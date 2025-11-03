@@ -161,19 +161,6 @@ export default function SellerDashboard() {
             💰 {translate("wallet") || "Ví Pi"}
           </span>
         </Link>
-      </div>
-
-      {/* Nút Đăng xuất */}
-      <div className="text-center mt-8">
-        <button
-          onClick={() => {
-            localStorage.removeItem("pi_user");
-            localStorage.removeItem("titi_is_logged_in");
-            router.push("/pilogin");
-          }}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition"
-        >
-          🚪 {translate("logout") || "Đăng xuất"}
         </button>
       </div>
     </main>
