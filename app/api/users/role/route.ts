@@ -6,31 +6,25 @@ import { kv } from "@vercel/kv";
  * Lưu & lấy thông tin phân quyền người dùng (seller / buyer)
  */
 
-const normalize = (s: string) => s.trim().toLowerCase();
+const DEFAULT_SELLERS = ["nguyenminhduc1991111"]; // Danh sách người bán mặc định
 
-const DEFAULT_SELLERS = ["nguyenminhduc1991111"];
+function normalize(str: string) {
+  return str.trim().toLowerCase();
+}
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const username = searchParams.get("username");
-  if (!username)
-    return NextResponse.json({ error: "missing username" }, { status: 400 });
+export async function POST(req: Request) {
+  try {
+    const { username, role } = await req.json();
+    if (!username || !role)
+      return NextResponse.json({ error: "missing data" }, { status: 400 });
 
-  const key = `user_role:${normalize(username)}`;
-  let role = (await kv.get(key)) || "buyer";
-
-  if (DEFAULT_SELLERS.includes(normalize(username))) {
-    role = "seller";
+    const key = `user_role:${normalize(username)}`;
     await kv.set(key, role);
-  }
 
-  return NextResponse.json({ username: normalize(username), role });
- } catch (err: any) {
+    return NextResponse.json({ success: true, username: normalize(username), role });
+  } catch (err: any) {
     console.error("❌ Lỗi lưu quyền:", err);
-    return NextResponse.json(
-      { success: false, error: err.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
 
@@ -41,14 +35,14 @@ export async function GET(req: Request) {
   if (!username)
     return NextResponse.json({ error: "missing username" }, { status: 400 });
 
-  const key = `user_role:${username.toLowerCase()}`;
+  const key = `user_role:${normalize(username)}`;
   let role = (await kv.get(key)) || "buyer";
 
-  // ✅ Nếu tài khoản nằm trong danh sách mặc định => tự động là seller
-  if (DEFAULT_SELLERS.includes(username.toLowerCase())) {
+  // ✅ Nếu nằm trong danh sách mặc định → ép role thành seller
+  if (DEFAULT_SELLERS.includes(normalize(username))) {
     role = "seller";
-    await kv.set(key, role); // đồng bộ lại trong KV
+    await kv.set(key, role);
   }
 
-  return NextResponse.json({ username, role });
+  return NextResponse.json({ username: normalize(username), role });
 }
