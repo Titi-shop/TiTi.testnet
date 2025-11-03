@@ -36,7 +36,10 @@ export default function SellerStockPage() {
         }
 
         const parsed = JSON.parse(stored);
-        const username = (parsed?.user?.username || parsed?.username || "").trim().toLowerCase();
+        const username =
+          (parsed?.user?.username || parsed?.username || "")
+            .trim()
+            .toLowerCase();
 
         if (!username) {
           router.push("/pilogin");
@@ -53,7 +56,7 @@ export default function SellerStockPage() {
           alert("🚫 Bạn không có quyền truy cập khu vực kho hàng!");
           router.push("/customer");
         } else {
-          fetchProducts(username);
+          await fetchProducts(username);
         }
       } catch (err) {
         console.error("❌ Lỗi xác thực:", err);
@@ -70,7 +73,12 @@ export default function SellerStockPage() {
       const res = await fetch("/api/products", { cache: "no-store" });
       const data = await res.json();
 
-      const filtered = data.filter((p: any) => p.seller?.toLowerCase() === username);
+      const filtered = data.filter(
+        (p: any) =>
+          (p.seller || "").trim().toLowerCase() ===
+          (username || "").trim().toLowerCase()
+      );
+
       setProducts(filtered);
     } catch (err) {
       console.error("❌ Lỗi tải sản phẩm:", err);
@@ -95,7 +103,7 @@ export default function SellerStockPage() {
 
       if (result.success) {
         setMessage("✅ Đã xóa sản phẩm!");
-        fetchProducts(sellerUser);
+        await fetchProducts(sellerUser);
       } else {
         setMessage(result.message || "Không thể xóa sản phẩm.");
       }
@@ -105,6 +113,9 @@ export default function SellerStockPage() {
     }
   };
 
+  // ==============================
+  // 🧩 Giao diện
+  // ==============================
   if (loading)
     return (
       <main className="p-6 text-center">
@@ -121,7 +132,9 @@ export default function SellerStockPage() {
 
   return (
     <main className="p-4 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-center mb-4">📦 Quản lý kho hàng</h1>
+      <h1 className="text-2xl font-bold text-center mb-4">
+        📦 Quản lý kho hàng
+      </h1>
       <p className="text-center text-sm text-gray-500 mb-3">
         👤 Người bán: <b>{sellerUser}</b>
       </p>
@@ -133,7 +146,10 @@ export default function SellerStockPage() {
       ) : (
         <div className="grid gap-4">
           {products.map((product) => (
-            <div key={product.id} className="bg-white shadow-md rounded-lg p-4 border border-gray-200">
+            <div
+              key={product.id}
+              className="bg-white shadow-md rounded-lg p-4 border border-gray-200"
+            >
               {product.images?.[0] ? (
                 <Image
                   src={product.images[0]}
@@ -147,9 +163,15 @@ export default function SellerStockPage() {
                   Không có ảnh
                 </div>
               )}
-              <h2 className="text-lg font-semibold text-gray-800">{product.name}</h2>
-              <p className="text-orange-600 font-bold mt-1">💰 {product.price} Pi</p>
-              {product.description && <p className="text-gray-500 mt-1">{product.description}</p>}
+              <h2 className="text-lg font-semibold text-gray-800">
+                {product.name}
+              </h2>
+              <p className="text-orange-600 font-bold mt-1">
+                💰 {product.price} Pi
+              </p>
+              {product.description && (
+                <p className="text-gray-500 mt-1">{product.description}</p>
+              )}
 
               <div className="flex gap-2 mt-4">
                 <button
