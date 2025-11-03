@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import { del, put, list } from "@vercel/blob";
+import { headers } from "next/headers";
 
 /**
  * ====================================
  * 🧩 TiTi Shop - API Quản lý sản phẩm
  * ------------------------------------
- * ✅ Tương thích Next.js 15.5.4
- * ✅ Chạy tốt trên Pi Browser
- * ✅ Không cần baseUrl phức tạp
- * ✅ Tự động kiểm tra role người bán
- * ✅ Lưu trữ sản phẩm vào Vercel Blob
+ * ✅ Dành cho Next.js 15 / Edge runtime
+ * ✅ Chạy ổn định trên Pi Browser + Vercel
+ * ✅ Không lỗi "ERR_INVALID_URL"
+ * ✅ Dễ hiểu, gọn, chú thích rõ
  * ====================================
  */
 
@@ -49,14 +49,20 @@ async function writeProducts(products: any[]) {
 /** Kiểm tra role người dùng có phải seller không */
 async function isSeller(username: string): Promise<boolean> {
   try {
-    // 🚀 Gọi nội bộ (Next.js sẽ tự hiểu domain hiện tại)
-    const res = await fetch(`/api/users/role?username=${username}`, {
+    // ✅ Lấy domain thật từ header (hoạt động trên cả server & client)
+    const host = headers().get("host");
+    const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
+    const baseUrl = `${protocol}://${host}`;
+
+    const res = await fetch(`${baseUrl}/api/users/role?username=${username}`, {
       cache: "no-store",
     });
+
     if (!res.ok) {
       console.warn("⚠️ Không xác minh được quyền người bán:", res.status);
       return false;
     }
+
     const data = await res.json();
     return data.role === "seller";
   } catch (err) {
