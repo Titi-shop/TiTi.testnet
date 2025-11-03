@@ -22,7 +22,6 @@ export default function SellerDashboard() {
   const [role, setRole] = useState<string>("buyer");
   const [loading, setLoading] = useState(true);
 
-  // ✅ Kiểm tra quyền truy cập
   useEffect(() => {
     async function checkAccess() {
       try {
@@ -42,7 +41,6 @@ export default function SellerDashboard() {
         setSellerUser(username);
         setIsLoggedIn(true);
 
-        // 🔹 Gọi API kiểm tra quyền động
         const res = await fetch(`/api/users/role?username=${username}`);
         const data = await res.json();
 
@@ -74,9 +72,8 @@ export default function SellerDashboard() {
   }
 
   if (!isLoggedIn || role !== "seller") {
-     return (
-  <main className="p-6 pb-24 max-w-6xl mx-auto">
-
+    return (
+      <main className="p-6 text-center">
         <h2 className="text-xl font-bold text-red-600 mb-3">
           🔐 {translate("login_required") ||
             "Vui lòng đăng nhập để truy cập khu vực Người Bán"}
@@ -92,13 +89,11 @@ export default function SellerDashboard() {
   }
 
   return (
-    <main className="p-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="bg-yellow-400 text-white text-xl font-bold p-3 rounded-t-lg mb-4 flex justify-between items-center shadow">
-        <span>👑 {translate("seller_dashboard") || "Khu vực Người Bán"}</span>
-        <span className="text-sm bg-white text-yellow-700 px-3 py-1 rounded shadow">
-          👤 {translate("seller_label") || "Người bán"}: <b>{sellerUser}</b>
-        </span>
+    <main className="p-6 pb-24 max-w-6xl mx-auto">
+      {/* Hiển thị chỉ tên người bán */}
+      <div className="text-right text-sm text-gray-700 mb-4">
+        👤 {translate("seller_label") || "Người bán"}:{" "}
+        <b>{sellerUser}</b>
       </div>
 
       {/* Danh mục chức năng */}
@@ -152,17 +147,17 @@ export default function SellerDashboard() {
             🚚 {translate("delivery") || "Giao hàng"}
           </span>
         </Link>
-<Link
-  href="/seller/wallet"
-  className="bg-emerald-500 hover:bg-emerald-600 text-white p-6 rounded-lg shadow transition"
->
-  <Wallet size={36} />
-  <span className="mt-2 font-semibold block">
-    💰 {translate("wallet") || "Ví Pi"}
-  </span>
-</Link>
-</div>
 
-</main>
-);
+        <Link
+          href="/seller/wallet"
+          className="bg-emerald-500 hover:bg-emerald-600 text-white p-6 rounded-lg shadow transition"
+        >
+          <Wallet size={36} />
+          <span className="mt-2 font-semibold block">
+            💰 {translate("wallet") || "Ví Pi"}
+          </span>
+        </Link>
+      </div>
+    </main>
+  );
 }
