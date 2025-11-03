@@ -151,19 +151,17 @@ export default function SellerDashboard() {
             🚚 {translate("delivery") || "Giao hàng"}
           </span>
         </Link>
-
-        <Link
-          href="/seller/wallet"
-          className="bg-emerald-500 hover:bg-emerald-600 text-white p-6 rounded-lg shadow transition"
-        >
-          <Wallet size={36} />
-          <span className="mt-2 font-semibold block">
-            💰 {translate("wallet") || "Ví Pi"}
-          </span>
+<Link
+  href="/seller/wallet"
+  className="bg-emerald-500 hover:bg-emerald-600 text-white p-6 rounded-lg shadow transition"
+>
+  <Wallet size={36} />
+  <span className="mt-2 font-semibold block">
+    💰 {translate("wallet") || "Ví Pi"}
+  </span>
 </Link>
-</button>
 </div>
 
-    </main>
-  );
+</main>
+);
 }
