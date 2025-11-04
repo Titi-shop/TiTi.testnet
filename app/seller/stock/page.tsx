@@ -23,7 +23,6 @@ export default function SellerStockPage() {
   const [sellerUser, setSellerUser] = useState<string>("");
   const [role, setRole] = useState<string>("buyer");
 
-  // ✅ Lấy thông tin người bán và xác thực quyền
   useEffect(() => {
     async function loadUser() {
       try {
@@ -67,7 +66,6 @@ export default function SellerStockPage() {
     loadUser();
   }, [router]);
 
-  // ✅ Lấy danh sách sản phẩm của seller
   const fetchProducts = async (username: string) => {
     try {
       const res = await fetch("/api/products", { cache: "no-store" });
@@ -88,7 +86,6 @@ export default function SellerStockPage() {
     }
   };
 
-  // ❌ Xoá sản phẩm
   const handleDelete = async (id: number) => {
     const confirmDelete = window.confirm("Bạn có chắc muốn xóa sản phẩm này?");
     if (!confirmDelete) return;
@@ -113,9 +110,6 @@ export default function SellerStockPage() {
     }
   };
 
-  // ==============================
-  // 🧩 Giao diện
-  // ==============================
   if (loading)
     return (
       <main className="p-6 text-center">
@@ -131,10 +125,8 @@ export default function SellerStockPage() {
     );
 
   return (
-    <main className="p-4 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-center mb-4">
-        📦 Quản lý kho hàng
-      </h1>
+    <main className="p-4 max-w-3xl mx-auto pb-24">
+      <h1 className="text-2xl font-bold text-center mb-4">📦 Quản lý kho hàng</h1>
       <p className="text-center text-sm text-gray-500 mb-3">
         👤 Người bán: <b>{sellerUser}</b>
       </p>
