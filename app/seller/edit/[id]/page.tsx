@@ -54,18 +54,22 @@ export default function EditProductPage() {
       });
   }, [id]);
 
-  // ✅ Hàm upload ảnh
+  // ✅ Upload ảnh qua Blob API
   async function handleFileUpload(file: File): Promise<string | null> {
-    const formData = new FormData();
-    formData.append("file", file);
     try {
+      const arrayBuffer = await file.arrayBuffer();
       const res = await fetch("/api/upload", {
         method: "POST",
-        body: formData,
+        headers: {
+          "x-filename": encodeURIComponent(file.name),
+          "Content-Type": file.type || "application/octet-stream",
+        },
+        body: arrayBuffer,
       });
+
       const data = await res.json();
-      if (data.success) return data.url;
-      throw new Error(data.message);
+      if (data.url) return data.url;
+      throw new Error("Upload thất bại");
     } catch (err) {
       console.error("❌ Upload lỗi:", err);
       setError("Không thể tải ảnh lên.");
@@ -73,7 +77,22 @@ export default function EditProductPage() {
     }
   }
 
-  // ✅ Hàm lưu sản phẩm
+  // ✅ Khi người dùng chọn ảnh mới → upload ngay & cập nhật preview
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSaving(true);
+    const url = await handleFileUpload(file);
+    if (url) {
+      setProduct((prev: any) => ({ ...prev, images: [url] }));
+      setError("");
+    } else {
+      setError("Tải ảnh thất bại, vui lòng thử lại!");
+    }
+    setSaving(false);
+  };
+
+  // ✅ Lưu sản phẩm (PUT)
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
@@ -84,15 +103,6 @@ export default function EditProductPage() {
     const price = parseFloat((form.price as any).value);
     const description = (form.description as any).value;
 
-    let imageUrls = product.images || [];
-
-    // Nếu người dùng chọn ảnh mới → upload lên Blob
-    if (fileInputRef.current?.files?.length) {
-      const file = fileInputRef.current.files[0];
-      const url = await handleFileUpload(file);
-      if (url) imageUrls = [url];
-    }
-
     try {
       const res = await fetch("/api/products", {
         method: "PUT",
@@ -102,7 +112,7 @@ export default function EditProductPage() {
           name,
           price,
           description,
-          images: imageUrls,
+          images: product.images || [],
           seller: sellerUser,
         }),
       });
@@ -122,18 +132,14 @@ export default function EditProductPage() {
     }
   }
 
-  // 🧩 Nếu đang tải
   if (loading)
-    return <p className="text-center mt-10 text-gray-600">Đang tải dữ liệu...</p>;
+    return <p className="text-center mt-10 text-gray-600">⏳ Đang tải dữ liệu...</p>;
 
   if (!product)
     return <p className="text-center mt-10 text-red-500">Không tìm thấy sản phẩm!</p>;
 
   return (
-    <main
-      className="max-w-lg mx-auto p-6 bg-white rounded-xl shadow mt-10 pb-32"
-      style={{ scrollMarginBottom: "80px" }}
-    >
+    <main className="max-w-lg mx-auto p-6 bg-white rounded-xl shadow mt-10 pb-32">
       <h1 className="text-xl font-bold mb-4 text-center text-gray-800">
         ✏️ {translate("edit_product") || "Chỉnh sửa sản phẩm"}
       </h1>
@@ -176,7 +182,13 @@ export default function EditProductPage() {
 
         <div>
           <label className="block font-medium mb-1">Ảnh sản phẩm</label>
-          <input ref={fileInputRef} type="file" accept="image/*" className="w-full" />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="w-full"
+          />
           {product.images?.[0] && (
             <img
               src={product.images[0]}
