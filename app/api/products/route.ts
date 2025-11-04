@@ -1,19 +1,18 @@
 import { NextResponse } from "next/server";
 import { del, put, list } from "@vercel/blob";
 import { headers } from "next/headers";
+import { revalidatePath } from "next/cache"; // ✅ thêm dòng này
 
 /**
  * ====================================
- * 🧩 TiTi Shop - API Quản lý sản phẩm
+ * 🧩 TiTi Shop - API Quản lý sản phẩm (Tối ưu tốc độ)
  * ------------------------------------
- * ✅ Dành cho Next.js 15 / Edge runtime
- * ✅ Chạy ổn định trên Pi Browser + Vercel
- * ✅ Không lỗi "ERR_INVALID_URL"
- * ✅ Dễ hiểu, gọn, chú thích rõ
+ * ✅ Không cache, phản hồi tức thì
+ * ✅ Fix delay 1–2 phút khi đăng/xóa/sửa
+ * ✅ Hoạt động ổn định trên Vercel & Pi Browser
  * ====================================
  */
 
-/** Đọc danh sách sản phẩm từ Blob */
 async function readProducts() {
   try {
     const { blobs } = await list();
@@ -27,7 +26,6 @@ async function readProducts() {
   }
 }
 
-/** Ghi danh sách sản phẩm vào Blob */
 async function writeProducts(products: any[]) {
   try {
     const data = JSON.stringify(products, null, 2);
@@ -41,15 +39,17 @@ async function writeProducts(products: any[]) {
     });
 
     console.log("✅ Đã lưu products.json:", products.length);
+
+    // ✅ Yêu cầu Next.js và Vercel revalidate ngay lập tức
+    revalidatePath("/api/products");
+    revalidatePath("/seller/stock");
   } catch (err) {
     console.error("❌ Lỗi ghi file:", err);
   }
 }
 
-/** Kiểm tra role người dùng có phải seller không */
 async function isSeller(username: string): Promise<boolean> {
   try {
-    // ✅ Lấy domain thật từ header (hoạt động trên cả server & client)
     const host = headers().get("host");
     const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
     const baseUrl = `${protocol}://${host}`;
@@ -58,11 +58,7 @@ async function isSeller(username: string): Promise<boolean> {
       cache: "no-store",
     });
 
-    if (!res.ok) {
-      console.warn("⚠️ Không xác minh được quyền người bán:", res.status);
-      return false;
-    }
-
+    if (!res.ok) return false;
     const data = await res.json();
     return data.role === "seller";
   } catch (err) {
@@ -71,13 +67,15 @@ async function isSeller(username: string): Promise<boolean> {
   }
 }
 
-/** 🔹 GET - Lấy toàn bộ sản phẩm */
+/** 🔹 GET */
 export async function GET() {
   const products = await readProducts();
-  return NextResponse.json(products);
+  return NextResponse.json(products, {
+    headers: { "Cache-Control": "no-store" },
+  });
 }
 
-/** 🔹 POST - Tạo sản phẩm mới (chỉ seller được phép) */
+/** 🔹 POST */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -92,13 +90,11 @@ export async function POST(req: Request) {
 
     const sellerLower = seller.trim().toLowerCase();
     const canPost = await isSeller(sellerLower);
-
-    if (!canPost) {
+    if (!canPost)
       return NextResponse.json(
         { success: false, message: "Tài khoản không có quyền đăng sản phẩm" },
         { status: 403 }
       );
-    }
 
     const products = await readProducts();
     const newProduct = {
@@ -124,32 +120,28 @@ export async function POST(req: Request) {
   }
 }
 
-/** 🔹 PUT - Cập nhật sản phẩm (chỉ chính chủ seller) */
+/** 🔹 PUT */
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
     const { id, name, price, description, images, seller } = body;
 
-    if (!id || !seller || !name || !price) {
+    if (!id || !seller || !name || !price)
       return NextResponse.json(
         { success: false, message: "Thiếu dữ liệu sản phẩm" },
         { status: 400 }
       );
-    }
 
     const sellerLower = seller.trim().toLowerCase();
     const canEdit = await isSeller(sellerLower);
-
-    if (!canEdit) {
+    if (!canEdit)
       return NextResponse.json(
         { success: false, message: "Không có quyền sửa sản phẩm" },
         { status: 403 }
       );
-    }
 
     const products = await readProducts();
     const index = products.findIndex((p: any) => p.id === id);
-
     if (index === -1)
       return NextResponse.json(
         { success: false, message: "Không tìm thấy sản phẩm" },
@@ -182,7 +174,7 @@ export async function PUT(req: Request) {
   }
 }
 
-/** 🔹 DELETE - Xóa sản phẩm (chỉ chính chủ seller) */
+/** 🔹 DELETE */
 export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -219,6 +211,10 @@ export async function DELETE(req: Request) {
 
     const updated = products.filter((p) => p.id !== id);
     await writeProducts(updated);
+
+    // ✅ Ép hệ thống cập nhật cache ngay
+    revalidatePath("/api/products");
+    revalidatePath("/seller/stock");
 
     return NextResponse.json({ success: true });
   } catch (err) {
