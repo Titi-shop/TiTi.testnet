@@ -5,82 +5,89 @@ import { headers } from "next/headers";
 
 /**
  * =========================================
- * 🛍️ TiTi Marketplace - API Quản lý sản phẩm
+ * 🛍️ TiTi Marketplace - API Quản lý sản phẩm (Final)
  * -----------------------------------------
- * ✅ Hỗ trợ Next.js 15 / Edge Runtime
- * ✅ Có backup khi ghi file
- * ✅ Không lỗi cache / mất sản phẩm
+ * ✅ Hỗ trợ nhiều người bán (mỗi người 1 file riêng)
+ * ✅ Backup an toàn, không mất sản phẩm
+ * ✅ Nhanh và ổn định trên Pi Browser + Vercel
+ * ✅ Chạy tốt với Next.js 15 (Edge runtime)
  * =========================================
  */
 
-/** Đọc file sản phẩm từ Blob */
-async function readProducts() {
+/** Đọc file sản phẩm của người bán */
+async function readProducts(seller?: string) {
   try {
     const { blobs } = await list();
-    const file = blobs.find((b) => b.pathname === "products.json");
+    const filename = seller
+      ? `products-${seller.toLowerCase()}.json`
+      : "products.json";
+    const file = blobs.find((b) => b.pathname === filename);
     if (!file) return [];
     const res = await fetch(file.url, { cache: "no-store" });
     return await res.json();
   } catch (err) {
-    console.error("❌ Lỗi đọc products.json:", err);
+    console.error("❌ Lỗi đọc sản phẩm:", err);
     return [];
   }
 }
 
-/** Ghi danh sách sản phẩm và tạo bản sao backup */
-async function writeProducts(products: any[]) {
+/** Ghi file sản phẩm + tạo bản backup */
+async function writeProducts(products: any[], seller?: string) {
   try {
-    const json = JSON.stringify(products, null, 2);
-    const { blobs } = await list();
-    const old = blobs.find((b) => b.pathname === "products.json");
+    const filename = seller
+      ? `products-${seller.toLowerCase()}.json`
+      : "products.json";
+    const data = JSON.stringify(products, null, 2);
 
-    // 🔹 Backup file cũ trước khi ghi mới
+    // 🔹 Backup file cũ
+    const { blobs } = await list();
+    const old = blobs.find((b) => b.pathname === filename);
     if (old) {
-      await put(`backup-${Date.now()}-products.json`, await (await fetch(old.url)).text(), {
+      await put(`backup-${Date.now()}-${filename}`, await (await fetch(old.url)).text(), {
         access: "public",
       });
+      await del(filename);
     }
 
-    // 🔹 Ghi file mới (ghi đè luôn)
-    await put("products.json", json, {
+    // 🔹 Ghi file mới
+    await put(filename, data, {
       access: "public",
       addRandomSuffix: false,
     });
 
-    console.log("✅ Đã lưu products.json:", products.length);
+    console.log(`✅ Đã lưu ${filename}:`, products.length);
   } catch (err) {
-    console.error("❌ Lỗi ghi products.json:", err);
+    console.error("❌ Lỗi ghi sản phẩm:", err);
   }
 }
 
-
-/** Kiểm tra quyền người bán */
+/** Kiểm tra người dùng có phải seller không */
 async function isSeller(username: string): Promise<boolean> {
   try {
     const host = headers().get("host");
     const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
     const baseUrl = `${protocol}://${host}`;
-
     const res = await fetch(`${baseUrl}/api/users/role?username=${username}`, {
       cache: "no-store",
     });
-
     if (!res.ok) return false;
     const data = await res.json();
     return data.role === "seller";
   } catch (err) {
-    console.error("❌ Lỗi kiểm tra quyền:", err);
+    console.error("❌ Lỗi xác minh quyền:", err);
     return false;
   }
 }
 
-/** GET - Lấy toàn bộ sản phẩm */
-export async function GET() {
-  const products = await readProducts();
+/** 🔹 GET - Lấy toàn bộ sản phẩm (hoặc theo seller) */
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const seller = searchParams.get("seller")?.toLowerCase() || "";
+  const products = await readProducts(seller || undefined);
   return NextResponse.json(products);
 }
 
-/** POST - Thêm sản phẩm */
+/** 🔹 POST - Thêm sản phẩm mới */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -93,7 +100,7 @@ export async function POST(req: Request) {
     if (!(await isSeller(username)))
       return NextResponse.json({ success: false, message: "Không có quyền đăng" }, { status: 403 });
 
-    const products = await readProducts();
+    const products = await readProducts(username);
     const newProduct = {
       id: Date.now(),
       name,
@@ -105,7 +112,7 @@ export async function POST(req: Request) {
     };
 
     products.unshift(newProduct);
-    await writeProducts(products);
+    await writeProducts(products, username);
     return NextResponse.json({ success: true, product: newProduct });
   } catch (err) {
     console.error("❌ POST error:", err);
@@ -113,7 +120,7 @@ export async function POST(req: Request) {
   }
 }
 
-/** PUT - Cập nhật sản phẩm */
+/** 🔹 PUT - Cập nhật sản phẩm */
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
@@ -126,13 +133,10 @@ export async function PUT(req: Request) {
     if (!(await isSeller(username)))
       return NextResponse.json({ success: false, message: "Không có quyền sửa" }, { status: 403 });
 
-    const products = await readProducts();
+    const products = await readProducts(username);
     const index = products.findIndex((p: any) => p.id === id);
     if (index === -1)
       return NextResponse.json({ success: false, message: "Không tìm thấy sản phẩm" }, { status: 404 });
-
-    if (products[index].seller.toLowerCase() !== username)
-      return NextResponse.json({ success: false, message: "Không thể sửa sản phẩm của người khác" }, { status: 403 });
 
     products[index] = {
       ...products[index],
@@ -143,7 +147,7 @@ export async function PUT(req: Request) {
       updatedAt: new Date().toISOString(),
     };
 
-    await writeProducts(products);
+    await writeProducts(products, username);
     return NextResponse.json({ success: true, product: products[index] });
   } catch (err) {
     console.error("❌ PUT error:", err);
@@ -151,13 +155,12 @@ export async function PUT(req: Request) {
   }
 }
 
-/** DELETE - Xóa sản phẩm */
+/** 🔹 DELETE - Xóa sản phẩm */
 export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const id = Number(searchParams.get("id"));
-    const body = await req.json();
-    const seller = (body?.seller || "").toLowerCase();
+    const seller = searchParams.get("seller")?.toLowerCase() || "";
 
     if (!id || !seller)
       return NextResponse.json({ success: false, message: "Thiếu ID hoặc seller" }, { status: 400 });
@@ -165,16 +168,9 @@ export async function DELETE(req: Request) {
     if (!(await isSeller(seller)))
       return NextResponse.json({ success: false, message: "Không có quyền xóa" }, { status: 403 });
 
-    const products = await readProducts();
-    const product = products.find((p: any) => p.id === id);
-    if (!product)
-      return NextResponse.json({ success: false, message: "Không tìm thấy sản phẩm" }, { status: 404 });
-
-    if (product.seller.toLowerCase() !== seller)
-      return NextResponse.json({ success: false, message: "Không thể xóa sản phẩm của người khác" }, { status: 403 });
-
+    const products = await readProducts(seller);
     const updated = products.filter((p) => p.id !== id);
-    await writeProducts(updated);
+    await writeProducts(updated, seller);
 
     return NextResponse.json({ success: true });
   } catch (err) {
