@@ -1,46 +1,46 @@
 import { NextResponse } from "next/server";
-import { del, put, list } from "@vercel/blob";
+import { put, list, del } from "@vercel/blob";
 import { headers } from "next/headers";
-import { revalidatePath } from "next/cache"; // ✅ thêm dòng này
+import { revalidatePath } from "next/cache";
 
 /**
- * ====================================
- * 🧩 TiTi Shop - API Quản lý sản phẩm (Tối ưu tốc độ)
- * ------------------------------------
- * ✅ Không cache, phản hồi tức thì
- * ✅ Fix delay 1–2 phút khi đăng/xóa/sửa
- * ✅ Hoạt động ổn định trên Vercel & Pi Browser
- * ====================================
+ * ==============================================
+ * 🧩 TiTi Shop - API sản phẩm (multi-seller tối ưu)
+ * ✅ Mỗi người bán 1 file riêng → không xung đột
+ * ✅ Lưu cực nhanh, không delay CDN
+ * ✅ Tự động nhận diện seller từ /api/users/role
+ * ==============================================
  */
 
-async function readProducts() {
+/** 🔹 Đọc sản phẩm của 1 seller */
+async function readSellerProducts(seller: string) {
   try {
+    const filename = `products-${seller}.json`;
     const { blobs } = await list();
-    const file = blobs.find((b) => b.pathname === "products.json");
+    const file = blobs.find((b) => b.pathname === filename);
     if (!file) return [];
     const res = await fetch(file.url, { cache: "no-store" });
     return await res.json();
   } catch (err) {
-    console.error("❌ Lỗi đọc products.json:", err);
+    console.error(`❌ Lỗi đọc file của ${seller}:`, err);
     return [];
   }
 }
 
-async function writeProducts(products: any[]) {
+/** 🔹 Ghi file riêng của seller */
+async function writeSellerProducts(seller: string, products: any[]) {
   try {
+    const filename = `products-${seller}.json`;
     const data = JSON.stringify(products, null, 2);
     const { blobs } = await list();
-    const old = blobs.find((b) => b.pathname === "products.json");
-    if (old) await del("products.json");
+    const old = blobs.find((b) => b.pathname === filename);
+    if (old) await del(filename);
 
-    await put("products.json", data, {
-      access: "public",
-      addRandomSuffix: false,
-    });
+    await put(filename, data, { access: "public", addRandomSuffix: false });
 
-    console.log("✅ Đã lưu products.json:", products.length);
+    console.log(`✅ Đã ghi ${filename} (${products.length} sản phẩm)`);
 
-    // ✅ Yêu cầu Next.js và Vercel revalidate ngay lập tức
+    // revalidate riêng, không toàn bộ
     revalidatePath("/api/products");
     revalidatePath("/seller/stock");
   } catch (err) {
@@ -48,55 +48,67 @@ async function writeProducts(products: any[]) {
   }
 }
 
-async function isSeller(username: string): Promise<boolean> {
+/** 🔹 Lấy danh sách tất cả sản phẩm của mọi seller */
+async function readAllProducts() {
+  try {
+    const { blobs } = await list();
+    const productFiles = blobs.filter((b) => b.pathname.startsWith("products-"));
+    const all: any[] = [];
+    for (const file of productFiles) {
+      const res = await fetch(file.url, { cache: "no-store" });
+      const items = await res.json();
+      all.push(...items);
+    }
+    return all;
+  } catch (err) {
+    console.error("❌ Lỗi đọc tất cả sản phẩm:", err);
+    return [];
+  }
+}
+
+/** 🔹 Xác định role thật của user từ /api/users/role */
+async function getUserRole(username: string) {
   try {
     const host = headers().get("host");
     const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
     const baseUrl = `${protocol}://${host}`;
-
     const res = await fetch(`${baseUrl}/api/users/role?username=${username}`, {
       cache: "no-store",
     });
-
-    if (!res.ok) return false;
+    if (!res.ok) return null;
     const data = await res.json();
-    return data.role === "seller";
+    return data.role || null;
   } catch (err) {
-    console.error("❌ Lỗi xác minh role seller:", err);
-    return false;
+    console.error("❌ Lỗi lấy role người dùng:", err);
+    return null;
   }
 }
 
-/** 🔹 GET */
+/* =======================================
+   🔹 GET – Lấy toàn bộ sản phẩm marketplace
+   ======================================= */
 export async function GET() {
-  const products = await readProducts();
-  return NextResponse.json(products, {
-    headers: { "Cache-Control": "no-store" },
-  });
+  const all = await readAllProducts();
+  return NextResponse.json(all, { headers: { "Cache-Control": "no-store" } });
 }
 
-/** 🔹 POST */
+/* =======================================
+   🔹 POST – Đăng sản phẩm mới
+   ======================================= */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { name, price, description, images, seller } = body;
 
-    if (!name || !price || !seller) {
-      return NextResponse.json(
-        { success: false, message: "Thiếu tên, giá hoặc người bán" },
-        { status: 400 }
-      );
-    }
+    if (!name || !price || !seller)
+      return NextResponse.json({ success: false, message: "Thiếu dữ liệu" }, { status: 400 });
 
     const sellerLower = seller.trim().toLowerCase();
-    const canPost = await isSeller(sellerLower);
-    if (!canPost)
-      return NextResponse.json(
-        { success: false, message: "Tài khoản không có quyền đăng sản phẩm" },
-        { status: 403 }
-      );
+    const role = await getUserRole(sellerLower);
+    if (role !== "seller")
+      return NextResponse.json({ success: false, message: "Không có quyền đăng sản phẩm" }, { status: 403 });
 
-    const products = await readProducts();
+    const sellerProducts = await readSellerProducts(sellerLower);
     const newProduct = {
       id: Date.now(),
       name,
@@ -107,55 +119,38 @@ export async function POST(req: Request) {
       createdAt: new Date().toISOString(),
     };
 
-    products.unshift(newProduct);
-    await writeProducts(products);
+    sellerProducts.unshift(newProduct);
+    await writeSellerProducts(sellerLower, sellerProducts);
 
     return NextResponse.json({ success: true, product: newProduct });
   } catch (err) {
     console.error("❌ POST error:", err);
-    return NextResponse.json(
-      { success: false, message: "Lỗi khi thêm sản phẩm" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: "Lỗi khi đăng sản phẩm" }, { status: 500 });
   }
 }
 
-/** 🔹 PUT */
+/* =======================================
+   🔹 PUT – Sửa sản phẩm (theo seller)
+   ======================================= */
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
     const { id, name, price, description, images, seller } = body;
-
-    if (!id || !seller || !name || !price)
-      return NextResponse.json(
-        { success: false, message: "Thiếu dữ liệu sản phẩm" },
-        { status: 400 }
-      );
+    if (!id || !seller)
+      return NextResponse.json({ success: false, message: "Thiếu dữ liệu" }, { status: 400 });
 
     const sellerLower = seller.trim().toLowerCase();
-    const canEdit = await isSeller(sellerLower);
-    if (!canEdit)
-      return NextResponse.json(
-        { success: false, message: "Không có quyền sửa sản phẩm" },
-        { status: 403 }
-      );
+    const role = await getUserRole(sellerLower);
+    if (role !== "seller")
+      return NextResponse.json({ success: false, message: "Không có quyền sửa" }, { status: 403 });
 
-    const products = await readProducts();
-    const index = products.findIndex((p: any) => p.id === id);
+    const sellerProducts = await readSellerProducts(sellerLower);
+    const index = sellerProducts.findIndex((p) => p.id === id);
     if (index === -1)
-      return NextResponse.json(
-        { success: false, message: "Không tìm thấy sản phẩm" },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, message: "Không tìm thấy sản phẩm" }, { status: 404 });
 
-    if (products[index].seller.toLowerCase() !== sellerLower)
-      return NextResponse.json(
-        { success: false, message: "Không được sửa sản phẩm người khác" },
-        { status: 403 }
-      );
-
-    products[index] = {
-      ...products[index],
+    sellerProducts[index] = {
+      ...sellerProducts[index],
       name,
       price,
       description,
@@ -163,65 +158,42 @@ export async function PUT(req: Request) {
       updatedAt: new Date().toISOString(),
     };
 
-    await writeProducts(products);
-    return NextResponse.json({ success: true, product: products[index] });
+    await writeSellerProducts(sellerLower, sellerProducts);
+    return NextResponse.json({ success: true, product: sellerProducts[index] });
   } catch (err) {
     console.error("❌ PUT error:", err);
-    return NextResponse.json(
-      { success: false, message: "Không thể cập nhật sản phẩm" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: "Lỗi khi cập nhật" }, { status: 500 });
   }
 }
 
-/** 🔹 DELETE */
+/* =======================================
+   🔹 DELETE – Xóa sản phẩm của seller
+   ======================================= */
 export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const id = Number(searchParams.get("id"));
     const body = await req.json();
-    const seller = (body?.seller || "").toLowerCase();
+    const seller = (body?.seller || "").trim().toLowerCase();
 
     if (!id || !seller)
-      return NextResponse.json(
-        { success: false, message: "Thiếu ID hoặc seller" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "Thiếu ID hoặc seller" }, { status: 400 });
 
-    const canDelete = await isSeller(seller);
-    if (!canDelete)
-      return NextResponse.json(
-        { success: false, message: "Không có quyền xóa sản phẩm" },
-        { status: 403 }
-      );
+    const role = await getUserRole(seller);
+    if (role !== "seller")
+      return NextResponse.json({ success: false, message: "Không có quyền xóa" }, { status: 403 });
 
-    const products = await readProducts();
-    const product = products.find((p: any) => p.id === id);
-    if (!product)
-      return NextResponse.json(
-        { success: false, message: "Không tìm thấy sản phẩm" },
-        { status: 404 }
-      );
+    const sellerProducts = await readSellerProducts(seller);
+    const exists = sellerProducts.find((p) => p.id === id);
+    if (!exists)
+      return NextResponse.json({ success: false, message: "Không tìm thấy sản phẩm" }, { status: 404 });
 
-    if (product.seller.toLowerCase() !== seller)
-      return NextResponse.json(
-        { success: false, message: "Không được xóa sản phẩm của người khác" },
-        { status: 403 }
-      );
-
-    const updated = products.filter((p) => p.id !== id);
-    await writeProducts(updated);
-
-    // ✅ Ép hệ thống cập nhật cache ngay
-    revalidatePath("/api/products");
-    revalidatePath("/seller/stock");
+    const updated = sellerProducts.filter((p) => p.id !== id);
+    await writeSellerProducts(seller, updated);
 
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("❌ DELETE error:", err);
-    return NextResponse.json(
-      { success: false, message: "Lỗi khi xóa sản phẩm" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: "Lỗi khi xóa" }, { status: 500 });
   }
 }
