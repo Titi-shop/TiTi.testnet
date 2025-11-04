@@ -9,7 +9,10 @@ export default function SellerPostPage() {
   const router = useRouter();
   const [sellerUser, setSellerUser] = useState<string>("");
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState<{ text: string; type: "success" | "error" | "" }>({
+    text: "",
+    type: "",
+  });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -32,7 +35,7 @@ export default function SellerPostPage() {
     }
   }, [router]);
 
-  // ✅ Hàm upload ảnh
+  // ✅ Upload ảnh
   async function handleFileUpload(file: File): Promise<string | null> {
     try {
       const arrayBuffer = await file.arrayBuffer();
@@ -50,12 +53,11 @@ export default function SellerPostPage() {
       throw new Error("Upload thất bại");
     } catch (err) {
       console.error("❌ Upload lỗi:", err);
-      setMessage("Không thể tải ảnh lên.");
+      setMessage({ text: "Không thể tải ảnh lên.", type: "error" });
       return null;
     }
   }
 
-  // ✅ Khi chọn ảnh
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -63,19 +65,30 @@ export default function SellerPostPage() {
     setImagePreview(url);
   };
 
-  // ✅ Gửi form đăng sản phẩm
+  // ✅ Đăng sản phẩm
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSaving(true);
-    setMessage("");
+    setMessage({ text: "", type: "" });
 
     const form = e.currentTarget;
+    let rawPrice = (form.price as any).value;
+    rawPrice = rawPrice.replace(",", ".");
+    const price = parseFloat(rawPrice);
     const name = (form.name as any).value.trim();
-    const price = parseFloat((form.price as any).value);
     const description = (form.description as any).value.trim();
 
+    if (isNaN(price) || price <= 0) {
+      setMessage({
+        text: "⚠️ Vui lòng nhập giá hợp lệ (số dương, có thể nhỏ hơn 1).",
+        type: "error",
+      });
+      setSaving(false);
+      return;
+    }
+
     if (!fileInputRef.current?.files?.length) {
-      setMessage("Vui lòng chọn ảnh!");
+      setMessage({ text: "Vui lòng chọn ảnh!", type: "error" });
       setSaving(false);
       return;
     }
@@ -102,14 +115,17 @@ export default function SellerPostPage() {
 
       const result = await res.json();
       if (result.success) {
-        alert("✅ Sản phẩm đã đăng thành công!");
-        router.push("/seller/stock");
+        setMessage({ text: "✅ Đăng sản phẩm thành công!", type: "success" });
+        setTimeout(() => router.push("/seller/stock"), 1500);
       } else {
-        setMessage(result.message || "Không thể đăng sản phẩm.");
+        setMessage({
+          text: result.message || "❌ Đăng sản phẩm thất bại!",
+          type: "error",
+        });
       }
     } catch (err) {
       console.error("❌ POST Error:", err);
-      setMessage("Lỗi khi đăng sản phẩm.");
+      setMessage({ text: "Lỗi khi đăng sản phẩm.", type: "error" });
     } finally {
       setSaving(false);
     }
@@ -124,6 +140,16 @@ export default function SellerPostPage() {
       <p className="text-center text-gray-500 mb-3">
         👤 Người bán: <b>{sellerUser}</b>
       </p>
+
+      {message.text && (
+        <p
+          className={`text-center font-medium mb-2 ${
+            message.type === "success" ? "text-green-600" : "text-red-500"
+          }`}
+        >
+          {message.text}
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -175,10 +201,6 @@ export default function SellerPostPage() {
             />
           )}
         </div>
-
-        {message && (
-          <p className="text-center text-red-500 font-medium">{message}</p>
-        )}
 
         <button
           type="submit"
