@@ -99,10 +99,11 @@ export default function SellerStockPage() {
     try {
      await fetch(`/api/products?id=${id}&seller=${sellerUser}`, {
   method: "DELETE",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ seller: sellerUser }),
 });
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seller: sellerUser }),
-      });
       const result = await res.json();
 
       if (result.success) {
