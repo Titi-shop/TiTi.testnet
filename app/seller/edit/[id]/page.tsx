@@ -99,9 +99,17 @@ export default function EditProductPage() {
     setError("");
 
     const form = e.currentTarget;
+    let rawPrice = (form.price as any).value;
+    rawPrice = rawPrice.replace(",", "."); // 🔧 Chuyển dấu phẩy thành dấu chấm
+    const price = parseFloat(rawPrice);
     const name = (form.name as any).value;
-    const price = parseFloat((form.price as any).value);
     const description = (form.description as any).value;
+
+    if (isNaN(price) || price <= 0) {
+      setError("⚠️ Vui lòng nhập giá hợp lệ (số dương, có thể nhỏ hơn 1).");
+      setSaving(false);
+      return;
+    }
 
     try {
       const res = await fetch("/api/products", {
@@ -133,10 +141,18 @@ export default function EditProductPage() {
   }
 
   if (loading)
-    return <p className="text-center mt-10 text-gray-600">⏳ Đang tải dữ liệu...</p>;
+    return (
+      <p className="text-center mt-10 text-gray-600">
+        ⏳ Đang tải dữ liệu...
+      </p>
+    );
 
   if (!product)
-    return <p className="text-center mt-10 text-red-500">Không tìm thấy sản phẩm!</p>;
+    return (
+      <p className="text-center mt-10 text-red-500">
+        Không tìm thấy sản phẩm!
+      </p>
+    );
 
   return (
     <main className="max-w-lg mx-auto p-6 bg-white rounded-xl shadow mt-10 pb-32">
@@ -164,9 +180,13 @@ export default function EditProductPage() {
           <input
             name="price"
             type="number"
+            step="any" // 🔧 Cho phép nhập mọi số thập phân
+            min="0.000001" // 🔧 Cho phép giá nhỏ hơn 1
             defaultValue={product.price}
             required
+            inputMode="decimal" // 🔧 Giúp bàn phím số chấp nhận dấu chấm trên mobile
             className="w-full border rounded-md p-2"
+            placeholder="VD: 0.5 hoặc 0.0001"
           />
         </div>
 
@@ -198,7 +218,9 @@ export default function EditProductPage() {
           )}
         </div>
 
-        {error && <p className="text-red-500 text-center font-medium">{error}</p>}
+        {error && (
+          <p className="text-red-500 text-center font-medium">{error}</p>
+        )}
 
         <button
           type="submit"
