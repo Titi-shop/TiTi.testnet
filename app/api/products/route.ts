@@ -41,19 +41,18 @@ async function writeProducts(products: any[]) {
       });
     }
 
-    // 🔹 Ghi file mới
+    // 🔹 Ghi file mới (ghi đè luôn)
     await put("products.json", json, {
       access: "public",
       addRandomSuffix: false,
     });
 
-    // 🔹 Xóa file cũ (nếu cần) sau khi thành công
-    if (old) await del("products.json");
     console.log("✅ Đã lưu products.json:", products.length);
   } catch (err) {
     console.error("❌ Lỗi ghi products.json:", err);
   }
 }
+
 
 /** Kiểm tra quyền người bán */
 async function isSeller(username: string): Promise<boolean> {
