@@ -19,10 +19,15 @@ export default function SellerStockPage() {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState<{ text: string; type: "success" | "error" | "" }>({
+    text: "",
+    type: "",
+  });
   const [sellerUser, setSellerUser] = useState<string>("");
   const [role, setRole] = useState<string>("buyer");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
+  // ✅ Xác thực người dùng
   useEffect(() => {
     async function loadUser() {
       try {
@@ -36,9 +41,7 @@ export default function SellerStockPage() {
 
         const parsed = JSON.parse(stored);
         const username =
-          (parsed?.user?.username || parsed?.username || "")
-            .trim()
-            .toLowerCase();
+          (parsed?.user?.username || parsed?.username || "").trim().toLowerCase();
 
         if (!username) {
           router.push("/pilogin");
@@ -52,8 +55,8 @@ export default function SellerStockPage() {
         setRole(data.role || "buyer");
 
         if (data.role !== "seller") {
-          alert("🚫 Bạn không có quyền truy cập khu vực kho hàng!");
-          router.push("/customer");
+          setMessage({ text: "🚫 Bạn không có quyền truy cập khu vực kho hàng!", type: "error" });
+          setTimeout(() => router.push("/customer"), 2000);
         } else {
           await fetchProducts(username);
         }
@@ -66,6 +69,7 @@ export default function SellerStockPage() {
     loadUser();
   }, [router]);
 
+  // ✅ Tải danh sách sản phẩm
   const fetchProducts = async (username: string) => {
     try {
       const res = await fetch("/api/products", { cache: "no-store" });
@@ -80,15 +84,24 @@ export default function SellerStockPage() {
       setProducts(filtered);
     } catch (err) {
       console.error("❌ Lỗi tải sản phẩm:", err);
-      setMessage("Không thể tải sản phẩm.");
+      setMessage({ text: "Không thể tải sản phẩm.", type: "error" });
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ Xử lý xóa sản phẩm
   const handleDelete = async (id: number) => {
-    const confirmDelete = window.confirm("Bạn có chắc muốn xóa sản phẩm này?");
-    if (!confirmDelete) return;
+    setMessage({ text: "", type: "" });
+
+    // Hiển thị xác nhận nhẹ trong giao diện thay vì popup
+    const product = products.find((p) => p.id === id);
+    if (!product) return;
+
+    const confirmed = confirm(`Bạn có chắc muốn xóa "${product.name}" không?`);
+    if (!confirmed) return;
+
+    setDeletingId(id);
 
     try {
       const res = await fetch(`/api/products?id=${id}`, {
@@ -96,17 +109,23 @@ export default function SellerStockPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ seller: sellerUser }),
       });
+
       const result = await res.json();
 
       if (result.success) {
-        setMessage("✅ Đã xóa sản phẩm!");
+        setMessage({ text: "✅ Đã xóa sản phẩm!", type: "success" });
         await fetchProducts(sellerUser);
       } else {
-        setMessage(result.message || "Không thể xóa sản phẩm.");
+        setMessage({
+          text: result.message || "❌ Không thể xóa sản phẩm.",
+          type: "error",
+        });
       }
     } catch (err) {
       console.error("❌ DELETE Error:", err);
-      setMessage("Lỗi khi xóa sản phẩm.");
+      setMessage({ text: "Lỗi khi xóa sản phẩm.", type: "error" });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -131,7 +150,15 @@ export default function SellerStockPage() {
         👤 Người bán: <b>{sellerUser}</b>
       </p>
 
-      {message && <p className="text-center mb-3 text-orange-600">{message}</p>}
+      {message.text && (
+        <p
+          className={`text-center mb-3 font-medium ${
+            message.type === "success" ? "text-green-600" : "text-red-500"
+          }`}
+        >
+          {message.text}
+        </p>
+      )}
 
       {products.length === 0 ? (
         <p className="text-center text-gray-500">Không có sản phẩm nào.</p>
@@ -155,12 +182,9 @@ export default function SellerStockPage() {
                   Không có ảnh
                 </div>
               )}
-              <h2 className="text-lg font-semibold text-gray-800">
-                {product.name}
-              </h2>
-              <p className="text-orange-600 font-bold mt-1">
-                💰 {product.price} Pi
-              </p>
+
+              <h2 className="text-lg font-semibold text-gray-800">{product.name}</h2>
+              <p className="text-orange-600 font-bold mt-1">💰 {product.price} Pi</p>
               {product.description && (
                 <p className="text-gray-500 mt-1">{product.description}</p>
               )}
@@ -174,9 +198,14 @@ export default function SellerStockPage() {
                 </button>
                 <button
                   onClick={() => handleDelete(product.id)}
-                  className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-md"
+                  disabled={deletingId === product.id}
+                  className={`flex-1 ${
+                    deletingId === product.id
+                      ? "bg-gray-400"
+                      : "bg-red-500 hover:bg-red-600"
+                  } text-white py-2 rounded-md`}
                 >
-                  ❌ Xóa
+                  {deletingId === product.id ? "⏳ Đang xóa..." : "❌ Xóa"}
                 </button>
               </div>
             </div>
