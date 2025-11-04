@@ -34,7 +34,11 @@ async function writeSellerProducts(seller: string, products: any[]) {
     const data = JSON.stringify(products, null, 2);
     const { blobs } = await list();
     const old = blobs.find((b) => b.pathname === filename);
-   await put(filename, data, { access: "public", addRandomSuffix: false", overwrite: false });
+   await put(filename, data, {
+  access: "public",
+  addRandomSuffix: false
+});
+
 
 
     console.log(`✅ Đã ghi ${filename} (${products.length} sản phẩm)`);
