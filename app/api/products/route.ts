@@ -1,231 +1,193 @@
-import { NextResponse } from "next/server";
-import { del, put, list } from "@vercel/blob";
-import { headers } from "next/headers";
+"use client";
 
-/**
- * ====================================
- * 🧩 TiTi Shop - API Quản lý sản phẩm
- * ------------------------------------
- * ✅ Dành cho Next.js 15 / Edge runtime
- * ✅ Chạy ổn định trên Pi Browser + Vercel
- * ✅ Không lỗi "ERR_INVALID_URL"
- * ✅ Dễ hiểu, gọn, chú thích rõ
- * ====================================
- */
+import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useLanguage } from "../../context/LanguageContext";
 
-/** Đọc danh sách sản phẩm từ Blob */
-async function readProducts() {
-  try {
-    const { blobs } = await list();
-    const file = blobs.find((b) => b.pathname === "products.json");
-    if (!file) return [];
-    const res = await fetch(file.url, { cache: "no-store" });
-    return await res.json();
-  } catch (err) {
-    console.error("❌ Lỗi đọc products.json:", err);
-    return [];
+export default function SellerPostPage() {
+  const { translate } = useLanguage();
+  const router = useRouter();
+  const [sellerUser, setSellerUser] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  // ✅ Xác thực người dùng Pi
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("pi_user");
+      const logged = localStorage.getItem("titi_is_logged_in");
+      if (!stored || logged !== "true") {
+        router.push("/pilogin");
+        return;
+      }
+      const parsed = JSON.parse(stored);
+      const username =
+        (parsed?.user?.username || parsed?.username || "").trim().toLowerCase();
+      setSellerUser(username);
+    } catch (err) {
+      console.error("❌ Lỗi xác thực Pi:", err);
+      router.push("/pilogin");
+    }
+  }, [router]);
+
+  // ✅ Hàm upload ảnh
+  async function handleFileUpload(file: File): Promise<string | null> {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: {
+          "x-filename": encodeURIComponent(file.name),
+          "Content-Type": file.type || "application/octet-stream",
+        },
+        body: arrayBuffer,
+      });
+
+      const data = await res.json();
+      if (data.url) return data.url;
+      throw new Error("Upload thất bại");
+    } catch (err) {
+      console.error("❌ Upload lỗi:", err);
+      setMessage("Không thể tải ảnh lên.");
+      return null;
+    }
   }
-}
 
-/** Ghi danh sách sản phẩm vào Blob */
-async function writeProducts(products: any[]) {
-  try {
-    const data = JSON.stringify(products, null, 2);
-    const { blobs } = await list();
-    const old = blobs.find((b) => b.pathname === "products.json");
-    if (old) await del("products.json");
+  // ✅ Khi chọn ảnh
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setImagePreview(url);
+  };
 
-    await put("products.json", data, {
-      access: "public",
-      addRandomSuffix: false,
-    });
+  // ✅ Gửi form đăng sản phẩm
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSaving(true);
+    setMessage("");
 
-    console.log("✅ Đã lưu products.json:", products.length);
-  } catch (err) {
-    console.error("❌ Lỗi ghi file:", err);
-  }
-}
+    const form = e.currentTarget;
+    const name = (form.name as any).value.trim();
+    const price = parseFloat((form.price as any).value);
+    const description = (form.description as any).value.trim();
 
-/** Kiểm tra role người dùng có phải seller không */
-async function isSeller(username: string): Promise<boolean> {
-  try {
-    // ✅ Lấy domain thật từ header (hoạt động trên cả server & client)
-    const host = headers().get("host");
-    const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-    const baseUrl = `${protocol}://${host}`;
-
-    const res = await fetch(`${baseUrl}/api/users/role?username=${username}`, {
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      console.warn("⚠️ Không xác minh được quyền người bán:", res.status);
-      return false;
+    if (!fileInputRef.current?.files?.length) {
+      setMessage("Vui lòng chọn ảnh!");
+      setSaving(false);
+      return;
     }
 
-    const data = await res.json();
-    return data.role === "seller";
-  } catch (err) {
-    console.error("❌ Lỗi xác minh role seller:", err);
-    return false;
-  }
-}
-
-/** 🔹 GET - Lấy toàn bộ sản phẩm */
-export async function GET() {
-  const products = await readProducts();
-  return NextResponse.json(products);
-}
-
-/** 🔹 POST - Tạo sản phẩm mới (chỉ seller được phép) */
-export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-    const { name, price, description, images, seller } = body;
-
-    if (!name || !price || !seller) {
-      return NextResponse.json(
-        { success: false, message: "Thiếu tên, giá hoặc người bán" },
-        { status: 400 }
-      );
+    const file = fileInputRef.current.files[0];
+    const uploadedUrl = await handleFileUpload(file);
+    if (!uploadedUrl) {
+      setSaving(false);
+      return;
     }
 
-    const sellerLower = seller.trim().toLowerCase();
-    const canPost = await isSeller(sellerLower);
+    try {
+      const res = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          price,
+          description,
+          images: [uploadedUrl],
+          seller: sellerUser,
+        }),
+      });
 
-    if (!canPost) {
-      return NextResponse.json(
-        { success: false, message: "Tài khoản không có quyền đăng sản phẩm" },
-        { status: 403 }
-      );
+      const result = await res.json();
+      if (result.success) {
+        alert("✅ Sản phẩm đã đăng thành công!");
+        router.push("/seller/stock");
+      } else {
+        setMessage(result.message || "Không thể đăng sản phẩm.");
+      }
+    } catch (err) {
+      console.error("❌ POST Error:", err);
+      setMessage("Lỗi khi đăng sản phẩm.");
+    } finally {
+      setSaving(false);
     }
+  };
 
-    const products = await readProducts();
-    const newProduct = {
-      id: Date.now(),
-      name,
-      price,
-      description: description || "",
-      images: images || [],
-      seller: sellerLower,
-      createdAt: new Date().toISOString(),
-    };
+  return (
+    <main className="max-w-lg mx-auto p-6 pb-32 bg-white shadow rounded-lg mt-8">
+      <h1 className="text-2xl font-bold text-center mb-4">
+        🛒 {translate("post_product") || "Đăng sản phẩm mới"}
+      </h1>
 
-    products.unshift(newProduct);
-    await writeProducts(products);
+      <p className="text-center text-gray-500 mb-3">
+        👤 Người bán: <b>{sellerUser}</b>
+      </p>
 
-    return NextResponse.json({ success: true, product: newProduct });
-  } catch (err) {
-    console.error("❌ POST error:", err);
-    return NextResponse.json(
-      { success: false, message: "Lỗi khi thêm sản phẩm" },
-      { status: 500 }
-    );
-  }
-}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block font-medium mb-1">Tên sản phẩm</label>
+          <input
+            name="name"
+            type="text"
+            required
+            className="w-full border rounded-md p-2"
+          />
+        </div>
 
-/** 🔹 PUT - Cập nhật sản phẩm (chỉ chính chủ seller) */
-export async function PUT(req: Request) {
-  try {
-    const body = await req.json();
-    const { id, name, price, description, images, seller } = body;
+        <div>
+          <label className="block font-medium mb-1">Giá (Pi)</label>
+          <input
+            name="price"
+            type="number"
+            step="any"
+            min="0.000001"
+            required
+            placeholder="VD: 0.2 hoặc 0.0005"
+            className="w-full border rounded-md p-2"
+          />
+        </div>
 
-    if (!id || !seller || !name || !price) {
-      return NextResponse.json(
-        { success: false, message: "Thiếu dữ liệu sản phẩm" },
-        { status: 400 }
-      );
-    }
+        <div>
+          <label className="block font-medium mb-1">Mô tả sản phẩm</label>
+          <textarea
+            name="description"
+            rows={3}
+            className="w-full border rounded-md p-2"
+          ></textarea>
+        </div>
 
-    const sellerLower = seller.trim().toLowerCase();
-    const canEdit = await isSeller(sellerLower);
+        <div>
+          <label className="block font-medium mb-1">Ảnh sản phẩm</label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="w-full"
+          />
+          {imagePreview && (
+            <img
+              src={imagePreview}
+              alt="preview"
+              className="w-full h-48 object-cover mt-2 rounded-md"
+            />
+          )}
+        </div>
 
-    if (!canEdit) {
-      return NextResponse.json(
-        { success: false, message: "Không có quyền sửa sản phẩm" },
-        { status: 403 }
-      );
-    }
+        {message && (
+          <p className="text-center text-red-500 font-medium">{message}</p>
+        )}
 
-    const products = await readProducts();
-    const index = products.findIndex((p: any) => p.id === id);
-
-    if (index === -1)
-      return NextResponse.json(
-        { success: false, message: "Không tìm thấy sản phẩm" },
-        { status: 404 }
-      );
-
-    if (products[index].seller.toLowerCase() !== sellerLower)
-      return NextResponse.json(
-        { success: false, message: "Không được sửa sản phẩm người khác" },
-        { status: 403 }
-      );
-
-    products[index] = {
-      ...products[index],
-      name,
-      price,
-      description,
-      images,
-      updatedAt: new Date().toISOString(),
-    };
-
-    await writeProducts(products);
-    return NextResponse.json({ success: true, product: products[index] });
-  } catch (err) {
-    console.error("❌ PUT error:", err);
-    return NextResponse.json(
-      { success: false, message: "Không thể cập nhật sản phẩm" },
-      { status: 500 }
-    );
-  }
-}
-
-/** 🔹 DELETE - Xóa sản phẩm (chỉ chính chủ seller) */
-export async function DELETE(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const id = Number(searchParams.get("id"));
-    const body = await req.json();
-    const seller = (body?.seller || "").toLowerCase();
-
-    if (!id || !seller)
-      return NextResponse.json(
-        { success: false, message: "Thiếu ID hoặc seller" },
-        { status: 400 }
-      );
-
-    const canDelete = await isSeller(seller);
-    if (!canDelete)
-      return NextResponse.json(
-        { success: false, message: "Không có quyền xóa sản phẩm" },
-        { status: 403 }
-      );
-
-    const products = await readProducts();
-    const product = products.find((p: any) => p.id === id);
-    if (!product)
-      return NextResponse.json(
-        { success: false, message: "Không tìm thấy sản phẩm" },
-        { status: 404 }
-      );
-
-    if (product.seller.toLowerCase() !== seller)
-      return NextResponse.json(
-        { success: false, message: "Không được xóa sản phẩm của người khác" },
-        { status: 403 }
-      );
-
-    const updated = products.filter((p) => p.id !== id);
-    await writeProducts(updated);
-
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error("❌ DELETE error:", err);
-    return NextResponse.json(
-      { success: false, message: "Lỗi khi xóa sản phẩm" },
-      { status: 500 }
-    );
-  }
+        <button
+          type="submit"
+          disabled={saving}
+          className="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-3 rounded-lg font-semibold"
+        >
+          {saving ? "⏳ Đang đăng..." : "📦 Đăng sản phẩm"}
+        </button>
+      </form>
+    </main>
+  );
 }
