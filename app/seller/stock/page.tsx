@@ -97,8 +97,9 @@ export default function SellerStockPage() {
     setDeletingId(id);
 
     try {
-      const res = await fetch(`/api/products?id=${id}`, {
-        method: "DELETE",
+     await fetch(`/api/products?id=${id}&seller=${sellerUser}`, {
+  method: "DELETE",
+});
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ seller: sellerUser }),
       });
