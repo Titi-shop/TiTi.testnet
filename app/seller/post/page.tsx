@@ -1,192 +1,191 @@
 "use client";
 
-import { useState, ChangeEvent, FormEvent, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { useLanguage } from "../../context/LanguageContext";
 
 export default function SellerPostPage() {
-  const router = useRouter();
   const { translate } = useLanguage();
-
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
-  const [description, setDescription] = useState("");
-  const [images, setImages] = useState<File[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-  const [message, setMessage] = useState("");
-  const [uploading, setUploading] = useState(false);
+  const router = useRouter();
   const [sellerUser, setSellerUser] = useState<string>("");
-  const [role, setRole] = useState<string>("buyer");
-  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  // ✅ Lấy thông tin người dùng từ localStorage & xác thực quyền
+  // ✅ Xác thực người dùng Pi
   useEffect(() => {
-    async function checkAccess() {
-      try {
-        const stored = localStorage.getItem("pi_user");
-        const logged = localStorage.getItem("titi_is_logged_in");
-
-        if (!stored || logged !== "true") {
-          router.push("/pilogin");
-          return;
-        }
-
-        const parsed = JSON.parse(stored);
-        const username = (parsed?.user?.username || parsed?.username || "").trim().toLowerCase();
-
-        if (!username) {
-          router.push("/pilogin");
-          return;
-        }
-
-        setSellerUser(username);
-
-        const res = await fetch(`/api/users/role?username=${username}`);
-        const data = await res.json();
-
-        if (data.role === "seller") {
-          setRole("seller");
-        } else {
-          alert("🚫 Bạn không có quyền đăng sản phẩm!");
-          router.push("/customer");
-        }
-      } catch (err) {
-        console.error("❌ Lỗi xác thực:", err);
+    try {
+      const stored = localStorage.getItem("pi_user");
+      const logged = localStorage.getItem("titi_is_logged_in");
+      if (!stored || logged !== "true") {
         router.push("/pilogin");
-      } finally {
-        setLoading(false);
+        return;
       }
+      const parsed = JSON.parse(stored);
+      const username =
+        (parsed?.user?.username || parsed?.username || "").trim().toLowerCase();
+      setSellerUser(username);
+    } catch (err) {
+      console.error("❌ Lỗi xác thực Pi:", err);
+      router.push("/pilogin");
     }
-
-    checkAccess();
   }, [router]);
 
-  if (loading) {
-    return <main className="p-6 text-center">⏳ Đang xác thực...</main>;
+  // ✅ Hàm upload ảnh
+  async function handleFileUpload(file: File): Promise<string | null> {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: {
+          "x-filename": encodeURIComponent(file.name),
+          "Content-Type": file.type || "application/octet-stream",
+        },
+        body: arrayBuffer,
+      });
+
+      const data = await res.json();
+      if (data.url) return data.url;
+      throw new Error("Upload thất bại");
+    } catch (err) {
+      console.error("❌ Upload lỗi:", err);
+      setMessage("Không thể tải ảnh lên.");
+      return null;
+    }
   }
 
-  if (role !== "seller") {
-    return (
-      <main className="p-6 text-center">
-        🔒 Bạn không có quyền đăng sản phẩm.
-      </main>
-    );
-  }
-
-  // 🖼 Xử lý chọn ảnh
-  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-    const selected = Array.from(files).slice(0, 6);
-    setImages(selected);
-    setPreviewUrls(selected.map((f) => URL.createObjectURL(f)));
+  // ✅ Khi chọn ảnh
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setImagePreview(url);
   };
 
-  // ☁️ Upload ảnh lên API
-  const uploadToBlob = async (file: File): Promise<string> => {
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      headers: {
-        "Content-Type": file.type,
-        "x-filename": file.name,
-      },
-      body: file,
-    });
-    if (!res.ok) throw new Error("Upload thất bại");
-    const data = await res.json();
-    return data.url;
-  };
-
-  // 🧾 Gửi dữ liệu sản phẩm
-  const handleSubmit = async (e: FormEvent) => {
+  // ✅ Gửi form đăng sản phẩm
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!name || !price) {
-      alert("⚠️ Vui lòng nhập đủ tên và giá sản phẩm!");
+    setSaving(true);
+    setMessage("");
+
+    const form = e.currentTarget;
+    const name = (form.name as any).value.trim();
+    const price = parseFloat((form.price as any).value);
+    const description = (form.description as any).value.trim();
+
+    if (!fileInputRef.current?.files?.length) {
+      setMessage("Vui lòng chọn ảnh!");
+      setSaving(false);
+      return;
+    }
+
+    const file = fileInputRef.current.files[0];
+    const uploadedUrl = await handleFileUpload(file);
+    if (!uploadedUrl) {
+      setSaving(false);
       return;
     }
 
     try {
-      setUploading(true);
-      setMessage("📤 Đang tải ảnh lên...");
-
-      const uploadedUrls = await Promise.all(images.map(uploadToBlob));
-
-      setMessage("📦 Đang lưu sản phẩm...");
-
-      const product = {
-        name,
-        price: Number(price),
-        description,
-        images: uploadedUrls,
-        createdAt: new Date().toISOString(),
-        seller: sellerUser,
-      };
-
       const res = await fetch("/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(product),
+        body: JSON.stringify({
+          name,
+          price,
+          description,
+          images: [uploadedUrl],
+          seller: sellerUser,
+        }),
       });
 
-      if (!res.ok) throw new Error("Lưu sản phẩm thất bại");
-
-      setMessage("✅ Đăng sản phẩm thành công!");
-      setTimeout(() => router.push("/seller/stock"), 1500);
+      const result = await res.json();
+      if (result.success) {
+        alert("✅ Sản phẩm đã đăng thành công!");
+        router.push("/seller/stock");
+      } else {
+        setMessage(result.message || "Không thể đăng sản phẩm.");
+      }
     } catch (err) {
-      console.error(err);
-      setMessage("❌ Đăng sản phẩm thất bại!");
+      console.error("❌ POST Error:", err);
+      setMessage("Lỗi khi đăng sản phẩm.");
     } finally {
-      setUploading(false);
+      setSaving(false);
     }
   };
 
-  // ✅ Giao diện
   return (
-    <main className="p-6 max-w-lg mx-auto">
-      <h1 className="text-2xl font-bold text-center mb-4">🛒 Đăng sản phẩm mới</h1>
-      <p className="text-center text-sm text-gray-600 mb-3">
+    <main className="max-w-lg mx-auto p-6 pb-32 bg-white shadow rounded-lg mt-8">
+      <h1 className="text-2xl font-bold text-center mb-4">
+        🛒 {translate("post_product") || "Đăng sản phẩm mới"}
+      </h1>
+
+      <p className="text-center text-gray-500 mb-3">
         👤 Người bán: <b>{sellerUser}</b>
       </p>
 
-      {message && <p className="text-center mb-3 text-orange-600">{message}</p>}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block font-medium mb-1">Tên sản phẩm</label>
+          <input
+            name="name"
+            type="text"
+            required
+            className="w-full border rounded-md p-2"
+          />
+        </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3 bg-white shadow p-4 rounded-lg">
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Tên sản phẩm"
-          className="border p-2 rounded"
-          required
-        />
-        <input
-          type="number"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          placeholder="Giá (Pi)"
-          className="border p-2 rounded"
-          required
-        />
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Mô tả sản phẩm"
-          className="border p-2 rounded h-24"
-        />
-        <label className="cursor-pointer bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded inline-block text-center">
-          📁 Chọn ảnh
-          <input type="file" multiple accept="image/*" onChange={handleImageChange} className="hidden" />
-        </label>
-        {previewUrls.length > 0 && (
-          <div className="grid grid-cols-3 gap-3 mt-3">
-            {previewUrls.map((url, i) => (
-              <Image key={i} src={url} alt={`Ảnh ${i + 1}`} width={120} height={120} className="object-cover rounded border" />
-            ))}
-          </div>
+        <div>
+          <label className="block font-medium mb-1">Giá (Pi)</label>
+          <input
+            name="price"
+            type="number"
+            step="any"
+            min="0.000001"
+            required
+            placeholder="VD: 0.2 hoặc 0.0005"
+            className="w-full border rounded-md p-2"
+          />
+        </div>
+
+        <div>
+          <label className="block font-medium mb-1">Mô tả sản phẩm</label>
+          <textarea
+            name="description"
+            rows={3}
+            className="w-full border rounded-md p-2"
+          ></textarea>
+        </div>
+
+        <div>
+          <label className="block font-medium mb-1">Ảnh sản phẩm</label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="w-full"
+          />
+          {imagePreview && (
+            <img
+              src={imagePreview}
+              alt="preview"
+              className="w-full h-48 object-cover mt-2 rounded-md"
+            />
+          )}
+        </div>
+
+        {message && (
+          <p className="text-center text-red-500 font-medium">{message}</p>
         )}
-        <button type="submit" disabled={uploading} className="bg-yellow-500 hover:bg-yellow-600 text-white py-2 rounded mt-4">
-          {uploading ? "⏳ Đang đăng..." : "📦 Đăng sản phẩm"}
+
+        <button
+          type="submit"
+          disabled={saving}
+          className="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-3 rounded-lg font-semibold"
+        >
+          {saving ? "⏳ Đang đăng..." : "📦 Đăng sản phẩm"}
         </button>
       </form>
     </main>
