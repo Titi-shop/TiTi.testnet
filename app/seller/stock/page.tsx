@@ -25,7 +25,6 @@ export default function SellerStockPage() {
   });
   const [sellerUser, setSellerUser] = useState<string>("");
   const [role, setRole] = useState<string>("buyer");
-  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   // ✅ Xác thực người dùng
@@ -70,10 +69,10 @@ export default function SellerStockPage() {
     loadUser();
   }, [router]);
 
-  // ✅ Tải sản phẩm
+  // ✅ Tải danh sách sản phẩm
   const fetchProducts = async (username: string) => {
     try {
-      fetch(`/api/products?seller=${sellerUser}`, { cache: "no-store" })
+      const res = await fetch("/api/products", { cache: "no-store" });
       const data = await res.json();
 
       const filtered = data.filter(
@@ -91,19 +90,26 @@ export default function SellerStockPage() {
     }
   };
 
-  // ✅ Xử lý xóa
+  // ✅ Xử lý xóa sản phẩm
   const handleDelete = async (id: number) => {
     setMessage({ text: "", type: "" });
+
+    // Hiển thị xác nhận nhẹ trong giao diện thay vì popup
+    const product = products.find((p) => p.id === id);
+    if (!product) return;
+
+    const confirmed = confirm(`Bạn có chắc muốn xóa "${product.name}" không?`);
+    if (!confirmed) return;
+
     setDeletingId(id);
 
     try {
-     await fetch(`/api/products?id=${id}&seller=${sellerUser}`, {
-  method: "DELETE",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({ seller: sellerUser }),
-});
+      const res = await fetch(`/api/products?id=${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ seller: sellerUser }),
+      });
+
       const result = await res.json();
 
       if (result.success) {
@@ -120,7 +126,6 @@ export default function SellerStockPage() {
       setMessage({ text: "Lỗi khi xóa sản phẩm.", type: "error" });
     } finally {
       setDeletingId(null);
-      setConfirmDeleteId(null);
     }
   };
 
@@ -191,31 +196,17 @@ export default function SellerStockPage() {
                 >
                   ✏️ Sửa
                 </button>
-
-                {confirmDeleteId === product.id ? (
-                  <div className="flex-1 flex gap-2">
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      disabled={deletingId === product.id}
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-md"
-                    >
-                      {deletingId === product.id ? "⏳ Đang xóa..." : "Xóa ngay"}
-                    </button>
-                    <button
-                      onClick={() => setConfirmDeleteId(null)}
-                      className="flex-1 bg-gray-400 hover:bg-gray-500 text-white py-2 rounded-md"
-                    >
-                      Hủy
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setConfirmDeleteId(product.id)}
-                    className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-md"
-                  >
-                    ❌ Xóa
-                  </button>
-                )}
+                <button
+                  onClick={() => handleDelete(product.id)}
+                  disabled={deletingId === product.id}
+                  className={`flex-1 ${
+                    deletingId === product.id
+                      ? "bg-gray-400"
+                      : "bg-red-500 hover:bg-red-600"
+                  } text-white py-2 rounded-md`}
+                >
+                  {deletingId === product.id ? "⏳ Đang xóa..." : "❌ Xóa"}
+                </button>
               </div>
             </div>
           ))}
