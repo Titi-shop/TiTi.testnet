@@ -73,7 +73,7 @@ export default function SellerStockPage() {
   // ✅ Tải sản phẩm
   const fetchProducts = async (username: string) => {
     try {
-      const res = await fetch("/api/products", { cache: "no-store" });
+      fetch(`/api/products?seller=${sellerUser}`, { cache: "no-store" })
       const data = await res.json();
 
       const filtered = data.filter(
