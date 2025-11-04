@@ -12,7 +12,10 @@ export default function EditProductPage() {
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [message, setMessage] = useState<{ text: string; type: "success" | "error" | "" }>({
+    text: "",
+    type: "",
+  });
   const [sellerUser, setSellerUser] = useState<string>("");
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -49,7 +52,7 @@ export default function EditProductPage() {
       })
       .catch((err) => {
         console.error("❌ Lỗi tải sản phẩm:", err);
-        setError("Không thể tải thông tin sản phẩm.");
+        setMessage({ text: "Không thể tải thông tin sản phẩm.", type: "error" });
         setLoading(false);
       });
   }, [id]);
@@ -72,12 +75,11 @@ export default function EditProductPage() {
       throw new Error("Upload thất bại");
     } catch (err) {
       console.error("❌ Upload lỗi:", err);
-      setError("Không thể tải ảnh lên.");
+      setMessage({ text: "Không thể tải ảnh lên.", type: "error" });
       return null;
     }
   }
 
-  // ✅ Khi người dùng chọn ảnh mới → upload ngay & cập nhật preview
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -85,28 +87,31 @@ export default function EditProductPage() {
     const url = await handleFileUpload(file);
     if (url) {
       setProduct((prev: any) => ({ ...prev, images: [url] }));
-      setError("");
+      setMessage({ text: "Ảnh đã được cập nhật.", type: "success" });
     } else {
-      setError("Tải ảnh thất bại, vui lòng thử lại!");
+      setMessage({ text: "Tải ảnh thất bại, vui lòng thử lại!", type: "error" });
     }
     setSaving(false);
   };
 
-  // ✅ Lưu sản phẩm (PUT)
+  // ✅ Lưu sản phẩm
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
-    setError("");
+    setMessage({ text: "", type: "" });
 
     const form = e.currentTarget;
     let rawPrice = (form.price as any).value;
-    rawPrice = rawPrice.replace(",", "."); // 🔧 Chuyển dấu phẩy thành dấu chấm
+    rawPrice = rawPrice.replace(",", ".");
     const price = parseFloat(rawPrice);
     const name = (form.name as any).value;
     const description = (form.description as any).value;
 
     if (isNaN(price) || price <= 0) {
-      setError("⚠️ Vui lòng nhập giá hợp lệ (số dương, có thể nhỏ hơn 1).");
+      setMessage({
+        text: "⚠️ Vui lòng nhập giá hợp lệ (số dương, có thể nhỏ hơn 1).",
+        type: "error",
+      });
       setSaving(false);
       return;
     }
@@ -127,32 +132,27 @@ export default function EditProductPage() {
 
       const result = await res.json();
       if (result.success) {
-        alert("✅ Cập nhật sản phẩm thành công!");
-        router.push("/seller/stock");
+        setMessage({ text: "✅ Cập nhật sản phẩm thành công!", type: "success" });
+        setTimeout(() => router.push("/seller/stock"), 1500);
       } else {
-        setError(result.message || "Không thể cập nhật sản phẩm.");
+        setMessage({
+          text: result.message || "❌ Không thể cập nhật sản phẩm.",
+          type: "error",
+        });
       }
     } catch (err) {
       console.error("❌ PUT error:", err);
-      setError("Không thể cập nhật sản phẩm.");
+      setMessage({ text: "Không thể cập nhật sản phẩm.", type: "error" });
     } finally {
       setSaving(false);
     }
   }
 
   if (loading)
-    return (
-      <p className="text-center mt-10 text-gray-600">
-        ⏳ Đang tải dữ liệu...
-      </p>
-    );
+    return <p className="text-center mt-10 text-gray-600">⏳ Đang tải dữ liệu...</p>;
 
   if (!product)
-    return (
-      <p className="text-center mt-10 text-red-500">
-        Không tìm thấy sản phẩm!
-      </p>
-    );
+    return <p className="text-center mt-10 text-red-500">Không tìm thấy sản phẩm!</p>;
 
   return (
     <main className="max-w-lg mx-auto p-6 bg-white rounded-xl shadow mt-10 pb-32">
@@ -163,6 +163,16 @@ export default function EditProductPage() {
       <p className="text-center text-gray-500 mb-3">
         👤 Người bán: <b>{sellerUser}</b>
       </p>
+
+      {message.text && (
+        <p
+          className={`text-center font-medium mb-2 ${
+            message.type === "success" ? "text-green-600" : "text-red-500"
+          }`}
+        >
+          {message.text}
+        </p>
+      )}
 
       <form onSubmit={handleSave} className="space-y-4">
         <div>
@@ -180,11 +190,11 @@ export default function EditProductPage() {
           <input
             name="price"
             type="number"
-            step="any" // 🔧 Cho phép nhập mọi số thập phân
-            min="0.000001" // 🔧 Cho phép giá nhỏ hơn 1
+            step="any"
+            min="0.000001"
             defaultValue={product.price}
             required
-            inputMode="decimal" // 🔧 Giúp bàn phím số chấp nhận dấu chấm trên mobile
+            inputMode="decimal"
             className="w-full border rounded-md p-2"
             placeholder="VD: 0.5 hoặc 0.0001"
           />
@@ -217,10 +227,6 @@ export default function EditProductPage() {
             />
           )}
         </div>
-
-        {error && (
-          <p className="text-red-500 text-center font-medium">{error}</p>
-        )}
 
         <button
           type="submit"
