@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useLanguage } from "../../../context/LanguageContext";
 
@@ -14,8 +14,8 @@ export default function EditProductPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [sellerUser, setSellerUser] = useState<string>("");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [unauthorized, setUnauthorized] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // ✅ Lấy thông tin đăng nhập Pi
   useEffect(() => {
@@ -24,22 +24,22 @@ export default function EditProductPage() {
       const logged = localStorage.getItem("titi_is_logged_in");
       if (stored && logged === "true") {
         const parsed = JSON.parse(stored);
-        const username = parsed?.user?.username || parsed?.username || "guest_user";
+        const username = (parsed?.user?.username || parsed?.username || "")
+          .trim()
+          .toLowerCase();
         setSellerUser(username);
-        setIsLoggedIn(true);
       } else {
-        setIsLoggedIn(false);
+        router.push("/pilogin");
       }
     } catch (err) {
       console.error("❌ Lỗi đọc Pi user:", err);
-      setIsLoggedIn(false);
+      router.push("/pilogin");
     }
-  }, []);
+  }, [router]);
 
-  // 🧩 Tải thông tin sản phẩm theo ID
+  // 🧩 Tải thông tin sản phẩm
   useEffect(() => {
     if (!id) return;
-
     fetch("/api/products", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
@@ -54,73 +54,60 @@ export default function EditProductPage() {
       });
   }, [id]);
 
-  // 🧩 Nếu chưa đăng nhập
-  if (!isLoggedIn && !loading)
-    return (
-      <main className="text-center p-6">
-        <h2 className="text-xl text-red-600 mb-3">
-          🔐 {translate("login_required") || "Vui lòng đăng nhập bằng Pi Network để chỉnh sửa sản phẩm"}
-        </h2>
-        <button
-          onClick={() => router.push("/pilogin")}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          👉 {translate("go_to_login") || "Đăng nhập ngay"}
-        </button>
-      </main>
-    );
+  // ✅ Hàm upload ảnh
+  async function handleFileUpload(file: File): Promise<string | null> {
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) return data.url;
+      throw new Error(data.message);
+    } catch (err) {
+      console.error("❌ Upload lỗi:", err);
+      setError("Không thể tải ảnh lên.");
+      return null;
+    }
+  }
 
-  // 🧩 Nếu đang tải
-  if (loading)
-    return <p className="text-center mt-10 text-gray-600">Đang tải dữ liệu...</p>;
-
-  // 🧩 Nếu không tìm thấy
-  if (!product)
-    return <p className="text-center mt-10 text-red-500">Không tìm thấy sản phẩm!</p>;
-
-  // ✅ Kiểm tra quyền sửa sản phẩm
-  if (product.seller && product.seller.toLowerCase() !== sellerUser.toLowerCase())
-    return (
-      <main className="text-center p-6">
-        <h2 className="text-xl text-red-600 mb-3">
-          🚫 {translate("unauthorized_edit") || "Bạn không có quyền sửa sản phẩm này."}
-        </h2>
-        <button
-          onClick={() => router.push("/seller/stock")}
-          className="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded"
-        >
-          ↩️ {translate("back_seller_area") || "Quay lại khu vực Người Bán"}
-        </button>
-      </main>
-    );
-
-  // 🧩 Hàm lưu sản phẩm
+  // ✅ Hàm lưu sản phẩm
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
     setError("");
 
+    const form = e.currentTarget;
+    const name = (form.name as any).value;
+    const price = parseFloat((form.price as any).value);
+    const description = (form.description as any).value;
+
+    let imageUrls = product.images || [];
+
+    // Nếu người dùng chọn ảnh mới → upload lên Blob
+    if (fileInputRef.current?.files?.length) {
+      const file = fileInputRef.current.files[0];
+      const url = await handleFileUpload(file);
+      if (url) imageUrls = [url];
+    }
+
     try {
-      const form = e.currentTarget;
-      const formData = new FormData(form);
-
-      formData.append("id", String(product.id));
-      formData.append("seller", sellerUser); // ✅ Gắn người bán hiện tại
-
-      const rawImages = (formData.get("images") as string)
-        ?.split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      formData.delete("images");
-      rawImages.forEach((img) => formData.append("images", img));
-
       const res = await fetch("/api/products", {
         method: "PUT",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: product.id,
+          name,
+          price,
+          description,
+          images: imageUrls,
+          seller: sellerUser,
+        }),
       });
 
       const result = await res.json();
-
       if (result.success) {
         alert("✅ Cập nhật sản phẩm thành công!");
         router.push("/seller/stock");
@@ -135,22 +122,29 @@ export default function EditProductPage() {
     }
   }
 
-  // ============================== UI ==============================
+  // 🧩 Nếu đang tải
+  if (loading)
+    return <p className="text-center mt-10 text-gray-600">Đang tải dữ liệu...</p>;
+
+  if (!product)
+    return <p className="text-center mt-10 text-red-500">Không tìm thấy sản phẩm!</p>;
+
   return (
-    <main className="max-w-lg mx-auto p-6 bg-white rounded-xl shadow mt-10">
+    <main
+      className="max-w-lg mx-auto p-6 bg-white rounded-xl shadow mt-10 pb-32"
+      style={{ scrollMarginBottom: "80px" }}
+    >
       <h1 className="text-xl font-bold mb-4 text-center text-gray-800">
         ✏️ {translate("edit_product") || "Chỉnh sửa sản phẩm"}
       </h1>
 
-      <p className="text-center text-gray-500 mb-2">
-        👤 {translate("seller_label") || "Người bán"}: <b>{sellerUser}</b>
+      <p className="text-center text-gray-500 mb-3">
+        👤 Người bán: <b>{sellerUser}</b>
       </p>
 
       <form onSubmit={handleSave} className="space-y-4">
         <div>
-          <label className="block font-medium text-gray-700 mb-1">
-            {translate("product_name") || "Tên sản phẩm"}
-          </label>
+          <label className="block font-medium mb-1">Tên sản phẩm</label>
           <input
             name="name"
             defaultValue={product.name}
@@ -160,9 +154,7 @@ export default function EditProductPage() {
         </div>
 
         <div>
-          <label className="block font-medium text-gray-700 mb-1">
-            {translate("product_price") || "Giá (Pi)"}
-          </label>
+          <label className="block font-medium mb-1">Giá (Pi)</label>
           <input
             name="price"
             type="number"
@@ -173,9 +165,7 @@ export default function EditProductPage() {
         </div>
 
         <div>
-          <label className="block font-medium text-gray-700 mb-1">
-            {translate("product_description") || "Mô tả"}
-          </label>
+          <label className="block font-medium mb-1">Mô tả sản phẩm</label>
           <textarea
             name="description"
             defaultValue={product.description}
@@ -185,24 +175,23 @@ export default function EditProductPage() {
         </div>
 
         <div>
-          <label className="block font-medium text-gray-700 mb-1">
-            {translate("image_urls") || "Ảnh (URL, cách nhau bởi dấu phẩy)"}
-          </label>
-          <input
-            name="images"
-            defaultValue={product.images?.join(", ")}
-            className="w-full border rounded-md p-2"
-          />
+          <label className="block font-medium mb-1">Ảnh sản phẩm</label>
+          <input ref={fileInputRef} type="file" accept="image/*" className="w-full" />
+          {product.images?.[0] && (
+            <img
+              src={product.images[0]}
+              alt="preview"
+              className="w-full h-48 object-cover mt-2 rounded-md"
+            />
+          )}
         </div>
 
-        {error && (
-          <p className="text-red-500 text-center font-medium">{error}</p>
-        )}
+        {error && <p className="text-red-500 text-center font-medium">{error}</p>}
 
         <button
           type="submit"
           disabled={saving}
-          className="w-full bg-green-600 hover:bg-green-700 text-white p-3 rounded-lg font-semibold transition"
+          className="w-full bg-green-600 hover:bg-green-700 text-white p-3 rounded-lg font-semibold"
         >
           {saving ? "💾 Đang lưu..." : "✅ Lưu thay đổi"}
         </button>
