@@ -43,7 +43,7 @@ export default function EditProductPage() {
   // 🧩 Tải thông tin sản phẩm
   useEffect(() => {
     if (!id) return;
-    fetch("/api/products", { cache: "no-store" })
+   fetch(`/api/products?seller=${sellerUser}`, { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         const found = data.find((p: any) => String(p.id) === String(id));
