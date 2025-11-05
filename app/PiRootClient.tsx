@@ -1,4 +1,5 @@
 "use client";
+
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/app/context/CartContext";
 import { LanguageProvider } from "@/app/context/LanguageContext";
@@ -13,16 +14,11 @@ export default function PiRootClient({ children }: { children: React.ReactNode }
       <AuthProvider>
         <CartProvider>
           <PiProvider />
-          {/* ✅ Toaster đặt ở đây, hoạt động toàn cục */}
-          <Toaster position="top-center" reverseOrder={false} />
-
           <Navbar />
-
           <main className="pt-20 px-3">
             <PiStatus />
             {children}
           </main>
-
           <BottomNav />
         </CartProvider>
       </AuthProvider>
