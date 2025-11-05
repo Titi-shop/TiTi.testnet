@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import BannerCarousel from "../components/BannerCarousel"; // 🧩 Thêm dòng này
+import BannerCarousel from "./components/BannerCarousel"; // 🧩 Thêm dòng này
 
 export default function HomePage() {
   const router = useRouter();
