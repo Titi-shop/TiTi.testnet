@@ -11,7 +11,6 @@ export default function BannerCarousel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 🚀 Gọi API để lấy danh sách banner
   useEffect(() => {
     fetch("/api/banners")
       .then((res) => {
@@ -26,29 +25,13 @@ export default function BannerCarousel() {
       .finally(() => setLoading(false));
   }, []);
 
-  // 🧩 Hiển thị trạng thái tải hoặc lỗi
   if (loading)
-    return (
-      <div className="text-center py-10 text-gray-400">
-        ⏳ Đang tải banner...
-      </div>
-    );
-
+    return <p className="text-center py-10 text-gray-400">⏳ Đang tải banner...</p>;
   if (error)
-    return (
-      <div className="text-center py-10 text-red-500">
-        ⚠️ Lỗi tải banner: {error}
-      </div>
-    );
-
+    return <p className="text-center py-10 text-red-500">⚠️ Lỗi tải banner: {error}</p>;
   if (banners.length === 0)
-    return (
-      <div className="text-center py-10 text-gray-400">
-        🚫 Không có banner để hiển thị.
-      </div>
-    );
+    return <p className="text-center py-10 text-gray-400">🚫 Không có banner để hiển thị.</p>;
 
-  // 🖼 Hiển thị Swiper Carousel
   return (
     <div className="w-full overflow-hidden rounded-xl shadow-md bg-white">
       <Swiper
@@ -60,16 +43,17 @@ export default function BannerCarousel() {
       >
         {banners.map((b) => (
           <SwiperSlide key={b.id}>
-            <a href={b.link} className="relative block">
+            <a href={b.link} className="relative block h-full">
               <img
                 src={b.image}
                 alt={b.title || `Banner ${b.id}`}
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
-              {/* Hiển thị title của banner */}
+
+              {/* ✅ Phần hiển thị title trên ảnh */}
               {b.title && (
-                <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-center py-2 text-sm md:text-base">
+                <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-center py-2 text-sm md:text-base font-medium">
                   {b.title}
                 </div>
               )}
