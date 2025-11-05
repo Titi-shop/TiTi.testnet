@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useLanguage } from "../context/LanguageContext";
 import {
   PackagePlus,
   Package,
