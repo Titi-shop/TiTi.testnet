@@ -76,7 +76,7 @@ export default function PiLoginPage() {
               : "bg-gray-300 cursor-not-allowed"
           } text-white font-semibold py-3 px-10 rounded-full text-lg shadow-md transition-all duration-200`}
         >
-          Đăng nhập với Pi
+          Đăng nhập
         </button>
 
         {/* 🔹 Điều khoản */}
