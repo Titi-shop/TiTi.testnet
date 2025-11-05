@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import toast from "react-hot-toast";
+
 export default function PiLoginPage() {
   const router = useRouter();
   const { user, piReady, pilogin } = useAuth();
@@ -12,18 +12,15 @@ export default function PiLoginPage() {
   const [agreed, setAgreed] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
 
-  // ✅ Kiểm tra nếu user đã đăng nhập sẵn
   useEffect(() => {
     if (user) {
       setStatus(`🎉 Xin chào ${user.username}`);
-      toast.success(`🎉 Xin chào ${user.username}!`);
       setTimeout(() => router.push("/customer"), 1200);
     } else {
       setIsChecking(false);
     }
   }, [user, router]);
 
-  // ✅ Theo dõi trạng thái Pi SDK
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!piReady) {
@@ -33,34 +30,26 @@ export default function PiLoginPage() {
     if (!user) setStatus("");
   }, [piReady, user]);
 
-  // ✅ Xử lý đăng nhập
   const handleLogin = async () => {
     if (!agreed) {
-      toast.error("⚠️ Vui lòng đọc và đồng ý với điều khoản trước khi đăng nhập.");
+      alert("⚠️ Vui lòng đọc và đồng ý với điều khoản trước khi đăng nhập.");
       return;
     }
     if (!piReady || typeof window === "undefined" || !window.Pi) {
-      toast.error("⚠️ Vui lòng mở bằng Pi Browser và chờ SDK load xong!");
+      alert("⚠️ Vui lòng mở bằng Pi Browser và chờ SDK load xong!");
       return;
     }
-
     try {
       setStatus("🔑 Đang xác thực tài khoản...");
-      toast.loading("🔑 Đang xác thực tài khoản...");
       await pilogin();
-      toast.dismiss();
-      toast.success("✅ Đăng nhập thành công!");
       setStatus("✅ Đăng nhập thành công!");
       setTimeout(() => router.push("/customer"), 1200);
     } catch (err: any) {
       console.error("❌ Lỗi đăng nhập:", err);
-      toast.dismiss();
-      toast.error("❌ Lỗi đăng nhập: " + (err.message || "Không rõ nguyên nhân"));
       setStatus("❌ Lỗi đăng nhập: " + (err.message || "Không rõ nguyên nhân"));
     }
   };
 
-  // ✅ Trang kiểm tra đăng nhập
   if (isChecking) {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen bg-white text-gray-500 text-lg">
@@ -69,7 +58,6 @@ export default function PiLoginPage() {
     );
   }
 
-  // ✅ Giao diện chính
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-white text-center px-6 relative">
       {/* 🔹 Trạng thái nhỏ, cố định phía trên nút */}
