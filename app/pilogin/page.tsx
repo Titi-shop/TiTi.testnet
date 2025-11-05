@@ -12,51 +12,38 @@ export default function PiLoginPage() {
   const [agreed, setAgreed] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
 
-  // ✅ Kiểm tra nếu user đã đăng nhập sẵn
   useEffect(() => {
     if (user) {
       setStatus(`🎉 Xin chào ${user.username}`);
-      setTimeout(() => {
-        router.push("/customer");
-      }, 1200);
+      setTimeout(() => router.push("/customer"), 1200);
     } else {
       setIsChecking(false);
     }
   }, [user, router]);
 
-  // ✅ Theo dõi trạng thái Pi SDK
   useEffect(() => {
     if (typeof window === "undefined") return;
-
     if (!piReady) {
       setStatus("⚙️ Đang khởi động Pi SDK...");
       return;
     }
-
-    if (!user) {
-      setStatus(""); // loại bỏ dòng "Sẵn sàng đăng nhập..."
-    }
+    if (!user) setStatus("");
   }, [piReady, user]);
 
-  // ✅ Xử lý đăng nhập
   const handleLogin = async () => {
     if (!agreed) {
       alert("⚠️ Vui lòng đọc và đồng ý với điều khoản trước khi đăng nhập.");
       return;
     }
-
     if (!piReady || typeof window === "undefined" || !window.Pi) {
       alert("⚠️ Vui lòng mở bằng Pi Browser và chờ SDK load xong!");
       return;
     }
-
     try {
       setStatus("🔑 Đang xác thực tài khoản...");
       await pilogin();
       setStatus("✅ Đăng nhập thành công!");
-      setTimeout(() => {
-        router.push("/customer");
-      }, 1200);
+      setTimeout(() => router.push("/customer"), 1200);
     } catch (err: any) {
       console.error("❌ Lỗi đăng nhập:", err);
       setStatus("❌ Lỗi đăng nhập: " + (err.message || "Không rõ nguyên nhân"));
@@ -71,18 +58,15 @@ export default function PiLoginPage() {
     );
   }
 
-  // ✅ Giao diện chính (giữ nút cố định, không dịch chuyển)
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-white text-center px-6 relative">
-      {/* 🔹 Trạng thái (hiển thị nhỏ phía trên nút, không đẩy nút xuống) */}
+      {/* 🔹 Trạng thái nhỏ, cố định phía trên nút */}
       {status && (
-        <p className="text-gray-700 mb-2 text-sm absolute top-[40%]">
-          {status}
-        </p>
+        <p className="text-gray-700 text-sm absolute top-[35%]">{status}</p>
       )}
 
-      {/* 🔹 Nút đăng nhập */}
-      <div className="flex flex-col items-center justify-center space-y-4">
+      {/* 🔹 Khu vực nút đăng nhập (được đẩy lên cao hơn một chút) */}
+      <div className="flex flex-col items-center justify-center space-y-4 mt-[-60px]">
         <button
           onClick={handleLogin}
           disabled={!piReady || !agreed}
@@ -95,7 +79,7 @@ export default function PiLoginPage() {
           Đăng nhập với Pi
         </button>
 
-        {/* 🔹 Điều khoản sử dụng */}
+        {/* 🔹 Điều khoản */}
         <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
           <input
             type="checkbox"
