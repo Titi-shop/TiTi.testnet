@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import toast from "react-hot-toast"; // ✅ thêm dòng này để dùng toast
 
 export default function PiLoginPage() {
   const router = useRouter();
@@ -16,8 +15,9 @@ export default function PiLoginPage() {
   // ✅ Kiểm tra nếu user đã đăng nhập sẵn
   useEffect(() => {
     if (user) {
+      // chỉ hiển thị dòng “Xin chào ...” trên trang, không toast
       setStatus(`🎉 Xin chào ${user.username}`);
-      toast.success(`🎉 Xin chào ${user.username}!`);
+      // đợi 1.2s rồi chuyển trang
       setTimeout(() => router.push("/customer"), 1200);
     } else {
       setIsChecking(false);
@@ -37,26 +37,21 @@ export default function PiLoginPage() {
   // ✅ Xử lý đăng nhập
   const handleLogin = async () => {
     if (!agreed) {
-      toast.error("⚠️ Vui lòng đọc và đồng ý với điều khoản trước khi đăng nhập.");
+      setStatus("⚠️ Vui lòng đọc và đồng ý với điều khoản trước khi đăng nhập.");
       return;
     }
     if (!piReady || typeof window === "undefined" || !window.Pi) {
-      toast.error("⚠️ Vui lòng mở bằng Pi Browser và chờ SDK load xong!");
+      setStatus("⚠️ Vui lòng mở bằng Pi Browser và chờ SDK load xong!");
       return;
     }
 
     try {
       setStatus("🔑 Đang xác thực tài khoản...");
-      toast.loading("🔑 Đang xác thực tài khoản...");
       await pilogin();
-      toast.dismiss();
-      toast.success("✅ Đăng nhập thành công!");
       setStatus("✅ Đăng nhập thành công!");
       setTimeout(() => router.push("/customer"), 1200);
     } catch (err: any) {
       console.error("❌ Lỗi đăng nhập:", err);
-      toast.dismiss();
-      toast.error("❌ Lỗi đăng nhập: " + (err.message || "Không rõ nguyên nhân"));
       setStatus("❌ Lỗi đăng nhập: " + (err.message || "Không rõ nguyên nhân"));
     }
   };
@@ -75,7 +70,9 @@ export default function PiLoginPage() {
     <main className="flex flex-col items-center justify-center min-h-screen bg-white text-center px-6 relative">
       {/* 🔹 Trạng thái nhỏ, cố định phía trên nút */}
       {status && (
-        <p className="text-gray-700 text-sm absolute top-[35%]">{status}</p>
+        <p className="text-gray-700 text-sm absolute top-[35%] whitespace-pre-line">
+          {status}
+        </p>
       )}
 
       {/* 🔹 Khu vực nút đăng nhập (được đẩy lên cao hơn một chút) */}
