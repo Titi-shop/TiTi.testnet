@@ -41,25 +41,26 @@ export default function BannerCarousel() {
         loop
         className="h-48 md:h-60 relative"
       >
-        {banners.map((b) => (
-          <SwiperSlide key={b.id}>
-            <a href={b.link} className="relative block h-full">
-              <img
-                src={b.image}
-                alt={b.title || `Banner ${b.id}`}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-
-              {/* ✅ Phần hiển thị title trên ảnh */}
-              {b.title && (
-                <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-center py-2 text-sm md:text-base font-medium">
-                  {b.title}
-                </div>
-              )}
-            </a>
-          </SwiperSlide>
-        ))}
+        {banners.map((b) => {
+          const imageSrc = b.image.startsWith("/") ? b.image : `/${b.image}`;
+          return (
+            <SwiperSlide key={b.id}>
+              <a href={b.link} className="relative block h-full">
+                <img
+                  src={imageSrc}
+                  alt={b.title || `Banner ${b.id}`}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+                {b.title && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-center py-2 text-sm md:text-base font-medium">
+                    {b.title}
+                  </div>
+                )}
+              </a>
+            </SwiperSlide>
+          );
+        })}
       </Swiper>
     </div>
   );
