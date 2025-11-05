@@ -14,6 +14,7 @@ export default function PiRootClient({ children }: { children: React.ReactNode }
       <AuthProvider>
         <CartProvider>
           <PiProvider />
+          <Toaster position="top-center" reverseOrder={false} />
           <Navbar />
           <main className="pt-20 px-3">
             <PiStatus />
