@@ -1,4 +1,4 @@
-import BannerCarousel from "@/components/BannerCarousel";
+import BannerCarousel from "../components/BannerCarousel";
 
 export const metadata = {
   title: "Quảng cáo & Khuyến mãi | TiTi Mall",
