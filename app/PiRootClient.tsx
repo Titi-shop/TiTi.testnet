@@ -1,6 +1,4 @@
 "use client";
-
-import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/app/context/CartContext";
 import { LanguageProvider } from "@/app/context/LanguageContext";
