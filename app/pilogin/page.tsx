@@ -13,17 +13,6 @@ export default function PiLoginPage() {
   const [agreed, setAgreed] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
 
-  // ✅ Kiểm tra nếu user đã đăng nhập sẵn
-  useEffect(() => {
-    if (user) {
-      setStatus(`🎉 Xin chào ${user.username}`);
-      toast.success(`🎉 Xin chào ${user.username}!`);
-      setTimeout(() => router.push("/customer"), 1200);
-    } else {
-      setIsChecking(false);
-    }
-  }, [user, router]);
-
   // ✅ Theo dõi trạng thái Pi SDK
   useEffect(() => {
     if (typeof window === "undefined") return;
