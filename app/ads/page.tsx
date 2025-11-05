@@ -11,15 +11,13 @@ export default function AdsPage() {
         🎉 Ưu đãi đặc biệt hôm nay 🎉
       </h1>
 
-      {/* 🧩 Hiển thị banner quảng cáo */}
       <BannerCarousel />
 
-      {/* 🏷️ Danh sách chương trình nổi bật */}
-      <section className="mt-6 space-y-3">
-        <h2 className="text-lg font-semibold text-gray-800 text-center">
+      <section className="mt-6 space-y-3 text-center">
+        <h2 className="text-lg font-semibold text-gray-800">
           🔥 Chương trình nổi bật
         </h2>
-        <ul className="space-y-2 text-sm text-gray-700 text-center">
+        <ul className="space-y-2 text-sm text-gray-700">
           <li>🎁 Mua 1 tặng 1 – Áp dụng đến 10/11</li>
           <li>🚚 Miễn phí vận chuyển toàn quốc</li>
           <li>💰 Hoàn 5% Pi cho đơn từ 0.05 Pi</li>
