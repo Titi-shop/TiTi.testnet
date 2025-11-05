@@ -34,6 +34,8 @@ export default function PiLoginPage() {
     }
 
     if (!user) {
+      setStatus(""); // loại bỏ dòng "Sẵn sàng đăng nhập..."
+    }
   }, [piReady, user]);
 
   // ✅ Xử lý đăng nhập
@@ -69,57 +71,60 @@ export default function PiLoginPage() {
     );
   }
 
-  // ✅ Giao diện chính
+  // ✅ Giao diện chính (giữ nút cố định, không dịch chuyển)
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen bg-white text-center px-6">
-      <h1 className="text-2xl font-bold text-orange-600 mb-4">
-        🔐 Đăng nhập bằng Pi Network
-      </h1>
-
-      <p className="mb-6 text-gray-700">{status}</p>
+    <main className="flex flex-col items-center justify-center min-h-screen bg-white text-center px-6 relative">
+      {/* 🔹 Trạng thái (hiển thị nhỏ phía trên nút, không đẩy nút xuống) */}
+      {status && (
+        <p className="text-gray-700 mb-2 text-sm absolute top-[40%]">
+          {status}
+        </p>
+      )}
 
       {/* 🔹 Nút đăng nhập */}
-      <button
-        onClick={handleLogin}
-        disabled={!piReady || !agreed}
-        className={`${
-          piReady && agreed
-            ? "bg-orange-500 hover:bg-orange-600 cursor-pointer"
-            : "bg-gray-300 cursor-not-allowed"
-        } text-white font-semibold py-3 px-10 rounded-full text-lg shadow-md transition-all duration-200 mb-6`}
-      >
-        Đăng nhập với Pi
-      </button>
+      <div className="flex flex-col items-center justify-center space-y-4">
+        <button
+          onClick={handleLogin}
+          disabled={!piReady || !agreed}
+          className={`${
+            piReady && agreed
+              ? "bg-orange-500 hover:bg-orange-600 cursor-pointer"
+              : "bg-gray-300 cursor-not-allowed"
+          } text-white font-semibold py-3 px-10 rounded-full text-lg shadow-md transition-all duration-200`}
+        >
+          Đăng nhập với Pi
+        </button>
 
-      {/* 🔹 Điều khoản sử dụng */}
-      <div className="flex items-center justify-center space-x-2 text-sm text-gray-600 mb-6">
-        <input
-          type="checkbox"
-          id="agree"
-          checked={agreed}
-          onChange={() => setAgreed(!agreed)}
-          className="w-4 h-4 accent-orange-500 cursor-pointer"
-        />
-        <label htmlFor="agree" className="select-none">
-          Tôi đã đọc và đồng ý với{" "}
-          <a
-            href="https://www.termsfeed.com/live/7eae894b-14dd-431c-99da-0f94cab5b9ac"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-orange-500 underline"
-          >
-            《Điều khoản sử dụng》
-          </a>{" "}
-          và{" "}
-          <a
-            href="https://www.termsfeed.com/live/32e8bf86-ceaf-4eb6-990e-cd1fa0b0775e"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-orange-500 underline"
-          >
-            《Chính sách bảo mật》
-          </a>
-        </label>
+        {/* 🔹 Điều khoản sử dụng */}
+        <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
+          <input
+            type="checkbox"
+            id="agree"
+            checked={agreed}
+            onChange={() => setAgreed(!agreed)}
+            className="w-4 h-4 accent-orange-500 cursor-pointer"
+          />
+          <label htmlFor="agree" className="select-none">
+            Tôi đã đọc và đồng ý với{" "}
+            <a
+              href="https://www.termsfeed.com/live/7eae894b-14dd-431c-99da-0f94cab5b9ac"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-orange-500 underline"
+            >
+              《Điều khoản sử dụng》
+            </a>{" "}
+            và{" "}
+            <a
+              href="https://www.termsfeed.com/live/32e8bf86-ceaf-4eb6-990e-cd1fa0b0775e"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-orange-500 underline"
+            >
+              《Chính sách bảo mật》
+            </a>
+          </label>
+        </div>
       </div>
 
       {/* 🔹 Footer */}
