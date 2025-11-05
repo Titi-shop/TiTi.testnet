@@ -86,7 +86,7 @@ export default function PiLoginPage() {
               : "bg-gray-300 cursor-not-allowed"
           } text-white font-semibold py-3 px-10 rounded-full text-lg shadow-md transition-all duration-200`}
         >
-          Đăng nhập với Pi
+          Đăng nhập
         </button>
 
         {/* 🔹 Điều khoản */}
@@ -99,7 +99,7 @@ export default function PiLoginPage() {
             className="w-4 h-4 accent-orange-500 cursor-pointer"
           />
           <label htmlFor="agree" className="select-none">
-            Tôi đã đọc và đồng ý với{" "}
+            Tôi đồng ý {" "}
             <a
               href="https://www.termsfeed.com/live/7eae894b-14dd-431c-99da-0f94cab5b9ac"
               target="_blank"
