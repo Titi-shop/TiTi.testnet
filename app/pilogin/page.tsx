@@ -12,6 +12,14 @@ export default function PiLoginPage() {
   const [status, setStatus] = useState("⏳ Đang tải...");
   const [agreed, setAgreed] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  useEffect(() => {
+  if (user) {
+    setTimeout(() => router.push("/customer"), 800);
+  } else {
+    setIsChecking(false);
+  }
+}, [user, router]);
+
 
   // ✅ Theo dõi trạng thái Pi SDK
   useEffect(() => {
