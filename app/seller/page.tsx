@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useLanguage } from "../context/LanguageContext";
+import Link from "next/link";
 import {
   PackagePlus,
   Package,
@@ -14,92 +12,66 @@ import {
 } from "lucide-react";
 
 export default function SellerDashboard() {
-  const { translate } = useLanguage();
-  const router = useRouter();
-
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [sellerUser, setSellerUser] = useState<string>("");
-  const [role, setRole] = useState<string>("buyer");
-  const [loading, setLoading] = useState(true);
+  const [isSeller, setIsSeller] = useState(false);
+  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    async function checkAccess() {
+    const checkSeller = async () => {
       try {
         const stored = localStorage.getItem("pi_user");
         const logged = localStorage.getItem("titi_is_logged_in");
 
         if (!stored || logged !== "true") {
-          setIsLoggedIn(false);
-          router.push("/pilogin");
+          setChecked(true);
           return;
         }
 
         const parsed = JSON.parse(stored);
         const username =
           parsed?.user?.username || parsed?.username || "guest_user";
-
         setSellerUser(username);
-        setIsLoggedIn(true);
 
         const res = await fetch(`/api/users/role?username=${username}`);
         const data = await res.json();
 
         if (data?.role === "seller") {
-          setRole("seller");
-        } else {
-          alert("🚫 Bạn không có quyền truy cập khu vực Người Bán!");
-          router.push("/customer");
+          setIsSeller(true);
         }
       } catch (err) {
         console.error("❌ Lỗi xác thực:", err);
-        router.push("/pilogin");
       } finally {
-        setLoading(false);
+        setChecked(true);
       }
-    }
+    };
 
-    checkAccess();
-  }, [router]);
+    checkSeller();
+  }, []);
 
-  if (loading) {
-    return (
-      <main className="p-6 text-center">
-        <h2 className="text-xl font-semibold text-gray-600">
-          ⏳ Đang xác thực tài khoản...
-        </h2>
-      </main>
-    );
+  // ❗ Chỉ hiển thị nội dung khi đã kiểm tra xong
+  if (!checked) {
+    return null;
   }
 
-  // 🔹 Không hiển thị nút "go_to_login" nữa
-  if (!isLoggedIn || role !== "seller") {
-    return (
-      <main className="p-6 text-center">
-        <h2 className="text-xl font-bold text-red-600">
-          🔐 {translate("login_required") ||
-            "Vui lòng đăng nhập để truy cập khu vực Người Bán"}
-        </h2>
-      </main>
-    );
+  // ❗ Nếu không phải người bán — hiển thị trống (không báo lỗi, không redirect)
+  if (!isSeller) {
+    return null;
   }
 
+  // ✅ Người bán hợp lệ — hiển thị dashboard
   return (
     <main className="p-6 pb-24 max-w-6xl mx-auto">
-      {/* Hiển thị chỉ tên người bán */}
       <div className="text-right text-sm text-gray-700 mb-4">
-        👤 {translate("seller_label") || "Người bán"}: <b>{sellerUser}</b>
+        👤 Người bán: <b>{sellerUser}</b>
       </div>
 
-      {/* Danh mục chức năng */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5 text-center mt-2">
         <Link
           href="/seller/post"
           className="bg-amber-500 hover:bg-amber-600 text-white p-6 rounded-lg shadow transition"
         >
           <PackagePlus size={36} />
-          <span className="mt-2 font-semibold block">
-            📦 {translate("post_product") || "Đăng sản phẩm"}
-          </span>
+          <span className="mt-2 font-semibold block">📦 Đăng sản phẩm</span>
         </Link>
 
         <Link
@@ -107,9 +79,7 @@ export default function SellerDashboard() {
           className="bg-blue-500 hover:bg-blue-600 text-white p-6 rounded-lg shadow transition"
         >
           <Package size={36} />
-          <span className="mt-2 font-semibold block">
-            🏬 {translate("manage_stock") || "Kho hàng"}
-          </span>
+          <span className="mt-2 font-semibold block">🏬 Kho hàng</span>
         </Link>
 
         <Link
@@ -117,9 +87,7 @@ export default function SellerDashboard() {
           className="bg-green-500 hover:bg-green-600 text-white p-6 rounded-lg shadow transition"
         >
           <ClipboardList size={36} />
-          <span className="mt-2 font-semibold block">
-            🧾 {translate("process_orders") || "Xử lý đơn"}
-          </span>
+          <span className="mt-2 font-semibold block">🧾 Xử lý đơn</span>
         </Link>
 
         <Link
@@ -127,9 +95,7 @@ export default function SellerDashboard() {
           className="bg-purple-500 hover:bg-purple-600 text-white p-6 rounded-lg shadow transition"
         >
           <RefreshCcw size={36} />
-          <span className="mt-2 font-semibold block">
-            📊 {translate("update_status") || "Cập nhật trạng thái"}
-          </span>
+          <span className="mt-2 font-semibold block">📊 Trạng thái</span>
         </Link>
 
         <Link
@@ -137,9 +103,7 @@ export default function SellerDashboard() {
           className="bg-orange-500 hover:bg-orange-600 text-white p-6 rounded-lg shadow transition"
         >
           <Truck size={36} />
-          <span className="mt-2 font-semibold block">
-            🚚 {translate("delivery") || "Giao hàng"}
-          </span>
+          <span className="mt-2 font-semibold block">🚚 Giao hàng</span>
         </Link>
 
         <Link
@@ -147,9 +111,7 @@ export default function SellerDashboard() {
           className="bg-emerald-500 hover:bg-emerald-600 text-white p-6 rounded-lg shadow transition"
         >
           <Wallet size={36} />
-          <span className="mt-2 font-semibold block">
-            💰 {translate("wallet") || "Ví Pi"}
-          </span>
+          <span className="mt-2 font-semibold block">💰 Ví Pi</span>
         </Link>
       </div>
     </main>
