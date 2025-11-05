@@ -11,7 +11,6 @@ export default function AdsPage() {
         🎉 Ưu đãi đặc biệt hôm nay 🎉
       </h1>
 
-      {/* Banner quảng cáo */}
       <BannerCarousel />
 
       <section className="mt-6 space-y-3">
