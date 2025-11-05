@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import toast from "react-hot-toast"; // ✅ Giữ lại để gọi toast.*
+import toast from "react-hot-toast"; // ✅ thêm dòng này để dùng toast
 
 export default function PiLoginPage() {
   const router = useRouter();
@@ -12,14 +12,17 @@ export default function PiLoginPage() {
   const [status, setStatus] = useState("⏳ Đang tải...");
   const [agreed, setAgreed] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
-  useEffect(() => {
-  if (user) {
-    setTimeout(() => router.push("/customer"), 800);
-  } else {
-    setIsChecking(false);
-  }
-}, [user, router]);
 
+  // ✅ Kiểm tra nếu user đã đăng nhập sẵn
+  useEffect(() => {
+    if (user) {
+      setStatus(`🎉 Xin chào ${user.username}`);
+      toast.success(`🎉 Xin chào ${user.username}!`);
+      setTimeout(() => router.push("/customer"), 1200);
+    } else {
+      setIsChecking(false);
+    }
+  }, [user, router]);
 
   // ✅ Theo dõi trạng thái Pi SDK
   useEffect(() => {
