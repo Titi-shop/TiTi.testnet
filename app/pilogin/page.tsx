@@ -34,8 +34,6 @@ export default function PiLoginPage() {
     }
 
     if (!user) {
-      setStatus("🔐 Sẵn sàng đăng nhập bằng Pi Network");
-    }
   }, [piReady, user]);
 
   // ✅ Xử lý đăng nhập
