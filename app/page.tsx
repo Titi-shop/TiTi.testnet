@@ -1,6 +1,8 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import BannerCarousel from "../components/BannerCarousel"; // 🧩 Thêm dòng này
 
 export default function HomePage() {
   const router = useRouter();
@@ -37,6 +39,11 @@ export default function HomePage() {
 
   return (
     <main className="bg-gray-50 min-h-screen pb-20">
+      {/* 🧩 Hiển thị banner quảng cáo */}
+      <div className="px-4 pt-4 mb-6">
+        <BannerCarousel />
+      </div>
+
       <h1 className="text-xl font-bold text-center mt-6 mb-4">🛍 Sản phẩm</h1>
 
       {products.length === 0 ? (
