@@ -19,7 +19,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {/* ✅ Bọc AuthProvider ngoài cùng — giữ login khi chuyển trang */}
         <AuthProvider>
-          <PiRootClient>{children}</PiRootClient>
           <Toaster position="top-center" />
         </AuthProvider>
       </body>
