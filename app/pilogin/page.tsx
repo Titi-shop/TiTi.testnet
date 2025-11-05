@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import toast, { Toaster } from "react-hot-toast";
 
 export default function PiLoginPage() {
   const router = useRouter();
@@ -12,40 +13,55 @@ export default function PiLoginPage() {
   const [agreed, setAgreed] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
 
+  // ✅ Kiểm tra nếu user đã đăng nhập sẵn
   useEffect(() => {
     if (user) {
       setStatus(`🎉 Xin chào ${user.username}`);
+      toast.success(`🎉 Xin chào ${user.username}!`);
       setTimeout(() => router.push("/customer"), 1200);
     } else {
       setIsChecking(false);
     }
   }, [user, router]);
 
+  // ✅ Theo dõi trạng thái Pi SDK
   useEffect(() => {
     if (typeof window === "undefined") return;
+
     if (!piReady) {
       setStatus("⚙️ Đang khởi động Pi SDK...");
       return;
     }
-    if (!user) setStatus("");
+
+    if (!user) {
+      setStatus(""); // Không hiển thị dòng “sẵn sàng đăng nhập”
+    }
   }, [piReady, user]);
 
+  // ✅ Xử lý đăng nhập
   const handleLogin = async () => {
     if (!agreed) {
-      alert("⚠️ Vui lòng đọc và đồng ý với điều khoản trước khi đăng nhập.");
+      toast.error("⚠️ Vui lòng đọc và đồng ý với điều khoản trước khi đăng nhập.");
       return;
     }
+
     if (!piReady || typeof window === "undefined" || !window.Pi) {
-      alert("⚠️ Vui lòng mở bằng Pi Browser và chờ SDK load xong!");
+      toast.error("⚠️ Vui lòng mở bằng Pi Browser và chờ SDK load xong!");
       return;
     }
+
     try {
       setStatus("🔑 Đang xác thực tài khoản...");
+      toast.loading("🔑 Đang xác thực tài khoản...");
       await pilogin();
+      toast.dismiss();
+      toast.success("✅ Đăng nhập thành công!");
       setStatus("✅ Đăng nhập thành công!");
       setTimeout(() => router.push("/customer"), 1200);
     } catch (err: any) {
       console.error("❌ Lỗi đăng nhập:", err);
+      toast.dismiss();
+      toast.error("❌ Lỗi đăng nhập: " + (err.message || "Không rõ nguyên nhân"));
       setStatus("❌ Lỗi đăng nhập: " + (err.message || "Không rõ nguyên nhân"));
     }
   };
@@ -54,18 +70,20 @@ export default function PiLoginPage() {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen bg-white text-gray-500 text-lg">
         ⏳ Đang kiểm tra đăng nhập...
+        <Toaster position="top-center" />
       </main>
     );
   }
 
+  // ✅ Giao diện chính
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-white text-center px-6 relative">
-      {/* 🔹 Trạng thái nhỏ, cố định phía trên nút */}
+      {/* Hiển thị trạng thái nhỏ, không làm nhảy layout */}
       {status && (
         <p className="text-gray-700 text-sm absolute top-[35%]">{status}</p>
       )}
 
-      {/* 🔹 Khu vực nút đăng nhập (được đẩy lên cao hơn một chút) */}
+      {/* Nút đăng nhập (được đẩy lên cao hơn một chút) */}
       <div className="flex flex-col items-center justify-center space-y-4 mt-[-60px]">
         <button
           onClick={handleLogin}
@@ -76,10 +94,10 @@ export default function PiLoginPage() {
               : "bg-gray-300 cursor-not-allowed"
           } text-white font-semibold py-3 px-10 rounded-full text-lg shadow-md transition-all duration-200`}
         >
-          Đăng nhập
+          Đăng nhập với Pi
         </button>
 
-        {/* 🔹 Điều khoản */}
+        {/* Điều khoản sử dụng */}
         <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
           <input
             type="checkbox"
@@ -111,10 +129,13 @@ export default function PiLoginPage() {
         </div>
       </div>
 
-      {/* 🔹 Footer */}
+      {/* Footer */}
       <footer className="absolute bottom-6 text-gray-400 text-xs">
         © copyRight 2023 1pi.app
       </footer>
+
+      {/* Toaster hiển thị thông báo */}
+      <Toaster position="top-center" reverseOrder={false} />
     </main>
   );
 }
