@@ -71,19 +71,14 @@ export default function SellerDashboard() {
     );
   }
 
+  // 🔹 Không hiển thị nút "go_to_login" nữa
   if (!isLoggedIn || role !== "seller") {
     return (
       <main className="p-6 text-center">
-        <h2 className="text-xl font-bold text-red-600 mb-3">
+        <h2 className="text-xl font-bold text-red-600">
           🔐 {translate("login_required") ||
             "Vui lòng đăng nhập để truy cập khu vực Người Bán"}
         </h2>
-        <button
-          onClick={() => router.push("/pilogin")}
-          className="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-        >
-          👉 {translate("go_to_login") || "Đăng nhập ngay"}
-        </button>
       </main>
     );
   }
@@ -92,8 +87,7 @@ export default function SellerDashboard() {
     <main className="p-6 pb-24 max-w-6xl mx-auto">
       {/* Hiển thị chỉ tên người bán */}
       <div className="text-right text-sm text-gray-700 mb-4">
-        👤 {translate("seller_label") || "Người bán"}:{" "}
-        <b>{sellerUser}</b>
+        👤 {translate("seller_label") || "Người bán"}: <b>{sellerUser}</b>
       </div>
 
       {/* Danh mục chức năng */}
