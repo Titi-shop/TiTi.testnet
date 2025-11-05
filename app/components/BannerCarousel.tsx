@@ -7,21 +7,18 @@ import "swiper/css";
 import "swiper/css/pagination";
 
 export default function BannerCarousel() {
-  // 🧩 State chứa danh sách banner
   const [banners, setBanners] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 🚀 Fetch dữ liệu từ API khi component được load
+  // 🚀 Gọi API để lấy danh sách banner
   useEffect(() => {
     fetch("/api/banners")
       .then((res) => {
         if (!res.ok) throw new Error("Không thể tải dữ liệu banner");
         return res.json();
       })
-      .then((data) => {
-        setBanners(Array.isArray(data) ? data : []);
-      })
+      .then((data) => setBanners(Array.isArray(data) ? data : []))
       .catch((err) => {
         console.error("❌ Lỗi tải banner:", err);
         setError(err.message);
@@ -29,7 +26,7 @@ export default function BannerCarousel() {
       .finally(() => setLoading(false));
   }, []);
 
-  // 🔄 Trạng thái tải / lỗi
+  // 🧩 Hiển thị trạng thái tải hoặc lỗi
   if (loading)
     return (
       <div className="text-center py-10 text-gray-400">
@@ -51,7 +48,7 @@ export default function BannerCarousel() {
       </div>
     );
 
-  // 🖼 Hiển thị Swiper khi đã có dữ liệu
+  // 🖼 Hiển thị Swiper Carousel
   return (
     <div className="w-full overflow-hidden rounded-xl shadow-md bg-white">
       <Swiper
@@ -59,17 +56,23 @@ export default function BannerCarousel() {
         pagination={{ clickable: true }}
         autoplay={{ delay: 3000, disableOnInteraction: false }}
         loop
-        className="h-48 md:h-60"
+        className="h-48 md:h-60 relative"
       >
         {banners.map((b) => (
           <SwiperSlide key={b.id}>
-            <a href={b.link}>
+            <a href={b.link} className="relative block">
               <img
                 src={b.image}
                 alt={b.title || `Banner ${b.id}`}
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
+              {/* Hiển thị title của banner */}
+              {b.title && (
+                <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-center py-2 text-sm md:text-base">
+                  {b.title}
+                </div>
+              )}
             </a>
           </SwiperSlide>
         ))}
