@@ -22,7 +22,6 @@ export async function GET() {
       headers: { Authorization: `Key ${API_KEY}` },
     });
 
-    // 🧩 Nếu Pi API trả về HTML thay vì JSON (lỗi 401, domain sai...)
     const contentType = pendingRes.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {
       const text = await pendingRes.text();
