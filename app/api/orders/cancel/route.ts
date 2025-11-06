@@ -1,20 +1,19 @@
-import { NextResponse } from "next/server";
+const API_KEY = process.env.PI_API_KEY;
+const API_URL = process.env.NEXT_PUBLIC_PI_ENV === "testnet"
+  ? "https://api.minepi.com/v2/sandbox/payments"
+  : "https://api.minepi.com/v2/payments";
 
-export async function POST(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get("id");
+// Gọi Pi API để hủy
+const piRes = await fetch(`${API_URL}/${id}/cancel`, {
+  method: "POST",
+  headers: { Authorization: `Key ${API_KEY}` },
+});
 
-  if (!id)
-    return NextResponse.json({ ok: false, error: "Thiếu ID đơn hàng" }, { status: 400 });
-
-  try {
-    // Gọi DB hoặc file JSON để xóa đơn hàng (tùy cấu trúc app bạn)
-    console.log("🗑 Hủy đơn hàng ID:", id);
-
-    // Giả lập thành công
-    return NextResponse.json({ ok: true, message: "Đã hủy đơn hàng thành công" });
-  } catch (err: any) {
-    console.error("❌ Lỗi khi hủy đơn:", err);
-    return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
-  }
+if (!piRes.ok) {
+  const text = await piRes.text();
+  console.error("❌ Pi Cancel Error:", text);
+  return NextResponse.json({
+    ok: false,
+    error: `Không thể hủy trên Pi API (${piRes.status})`,
+  });
 }
