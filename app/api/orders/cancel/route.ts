@@ -1,6 +1,22 @@
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
 
+export async function POST(req: Request) {
+  const { id } = await req.json();
+  const stored = (await kv.get("orders")) || [];
+  const orders = Array.isArray(stored) ? stored : JSON.parse(stored);
+  const index = orders.findIndex((o) => String(o.id) === String(id));
+
+  if (index === -1)
+    return NextResponse.json({ success: false, message: "Không tìm thấy đơn" });
+
+  orders[index].status = "Đã hủy";
+  orders[index].updatedAt = new Date().toISOString();
+
+  await kv.set("orders", JSON.stringify(orders));
+  return NextResponse.json({ success: true, message: "Đã hủy đơn hàng" });
+}
+
 // 🧩 Helper đọc đơn
 async function readOrders() {
   try {
