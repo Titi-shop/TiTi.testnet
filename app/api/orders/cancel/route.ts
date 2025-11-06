@@ -1,23 +1,7 @@
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
 
-export async function POST(req: Request) {
-  const { id } = await req.json();
-  const stored = (await kv.get("orders")) || [];
-  const orders = Array.isArray(stored) ? stored : JSON.parse(stored);
-  const index = orders.findIndex((o) => String(o.id) === String(id));
-
-  if (index === -1)
-    return NextResponse.json({ success: false, message: "Không tìm thấy đơn" });
-
-  orders[index].status = "Đã hủy";
-  orders[index].updatedAt = new Date().toISOString();
-
-  await kv.set("orders", JSON.stringify(orders));
-  return NextResponse.json({ success: true, message: "Đã hủy đơn hàng" });
-}
-
-// 🧩 Helper đọc đơn
+// 🧩 Helper: đọc danh sách đơn hàng
 async function readOrders() {
   try {
     const stored = await kv.get("orders");
@@ -30,7 +14,7 @@ async function readOrders() {
   }
 }
 
-// 🧩 Helper ghi đơn
+// 🧩 Helper: ghi danh sách đơn hàng
 async function writeOrders(orders: any[]) {
   try {
     await kv.set("orders", JSON.stringify(orders));
@@ -46,8 +30,13 @@ async function writeOrders(orders: any[]) {
 // -----------------------------
 export async function POST(req: Request) {
   try {
+    // ✅ Lấy id từ query hoặc body đều được
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get("id");
+    const queryId = searchParams.get("id");
+    const body = req.headers.get("content-type")?.includes("application/json")
+      ? await req.json().catch(() => ({}))
+      : {};
+    const id = queryId || body.id;
 
     if (!id) {
       return NextResponse.json(
@@ -56,20 +45,31 @@ export async function POST(req: Request) {
       );
     }
 
+    // ✅ Đọc danh sách đơn hàng
     const orders = await readOrders();
     const index = orders.findIndex((o) => String(o.id) === String(id));
 
     if (index === -1) {
       return NextResponse.json(
-        { ok: false, error: "Không tìm thấy đơn hàng" },
+        { ok: false, error: `Không tìm thấy đơn hàng #${id}` },
         { status: 404 }
       );
     }
 
-    // ✅ Cập nhật trạng thái thay vì xóa hẳn
+    // ✅ Nếu đơn đã bị hủy, trả lại thông báo nhẹ
+    if (orders[index].status === "Đã hủy") {
+      return NextResponse.json({
+        ok: true,
+        message: `Đơn hàng #${id} đã được hủy trước đó.`,
+        order: orders[index],
+      });
+    }
+
+    // ✅ Cập nhật trạng thái đơn
     orders[index].status = "Đã hủy";
     orders[index].updatedAt = new Date().toISOString();
 
+    // ✅ Lưu lại KV
     await writeOrders(orders);
 
     console.log("🗑️ [ORDER CANCELLED]:", orders[index]);
@@ -81,6 +81,9 @@ export async function POST(req: Request) {
     });
   } catch (err: any) {
     console.error("💥 Lỗi khi hủy đơn:", err);
-    return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: err.message || "Lỗi không xác định" },
+      { status: 500 }
+    );
   }
 }
