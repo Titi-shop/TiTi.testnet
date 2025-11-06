@@ -24,7 +24,10 @@ export async function POST(req: Request) {
  */
 export async function GET() {
   const API_KEY = process.env.PI_API_KEY;
-  const BASE_URL = "https://api.minepi.com/v2";
+  const BASE_URL =
+  process.env.NEXT_PUBLIC_PI_ENV === "testnet"
+    ? "https://api.minepi.com/v2/sandbox"
+    : "https://api.minepi.com/v2";
 
   if (!API_KEY) {
     return NextResponse.json(
