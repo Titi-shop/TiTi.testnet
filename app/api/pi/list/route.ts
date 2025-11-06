@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 
+/**
+ * ✅ API: Xóa toàn bộ giao dịch "pending" trên Pi Network (dành cho developer)
+ * - Tự chọn môi trường (sandbox hoặc mainnet)
+ * - Kiểm tra lỗi domain, key, hoặc môi trường sai
+ */
+
 export async function GET() {
   const API_KEY = process.env.PI_API_KEY;
-  const IS_TESTNET = process.env.NEXT_PUBLIC_PI_ENV === "testnet";
+  const ENV = process.env.NEXT_PUBLIC_PI_ENV?.trim();
+  const IS_TESTNET = ENV === "testnet";
 
+  // 🔧 Chọn đúng API endpoint theo môi trường
   const BASE_URL = IS_TESTNET
     ? "https://api.minepi.com/v2/sandbox"
     : "https://api.minepi.com/v2";
@@ -16,12 +24,14 @@ export async function GET() {
   }
 
   try {
-    console.log("🔍 Đang lấy danh sách giao dịch pending từ:", BASE_URL);
+    console.log(`🔍 [Pi LIST] Đang lấy danh sách pending từ: ${BASE_URL}`);
 
+    // 1️⃣ Gọi danh sách payment chưa xử lý
     const pendingRes = await fetch(`${BASE_URL}/payments/incomplete`, {
       headers: { Authorization: `Key ${API_KEY}` },
     });
 
+    // 2️⃣ Nếu trả về không phải JSON → lỗi domain hoặc môi trường
     const contentType = pendingRes.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {
       const text = await pendingRes.text();
@@ -29,34 +39,46 @@ export async function GET() {
       return NextResponse.json(
         {
           ok: false,
-          error: "Pi API trả về HTML, có thể sai key hoặc domain chưa đăng ký",
-          message: text.slice(0, 200),
+          error:
+            "Pi API trả về HTML → Sai môi trường (sandbox/mainnet) hoặc domain chưa đăng ký trong Pi Developer Portal.",
+          message: text.slice(0, 250),
         },
         { status: 502 }
       );
     }
 
+    // 3️⃣ Phân tích kết quả JSON
     const pendingData = await pendingRes.json();
 
     if (!Array.isArray(pendingData) || pendingData.length === 0) {
+      console.log("✅ Không có giao dịch pending.");
       return NextResponse.json({
         ok: true,
         message: "✅ Không có giao dịch pending nào.",
       });
     }
 
+    // 4️⃣ Hủy từng giao dịch pending
     const results = [];
     for (const payment of pendingData) {
-      console.log("🧹 Huỷ payment:", payment.identifier);
-      const cancelRes = await fetch(
-        `${BASE_URL}/payments/${payment.identifier}/cancel`,
-        {
-          method: "POST",
-          headers: { Authorization: `Key ${API_KEY}` },
-        }
-      );
-      const cancelResult = await cancelRes.json();
-      results.push({ id: payment.identifier, result: cancelResult });
+      const pid = payment.identifier;
+      console.log("🧹 Đang huỷ payment:", pid);
+
+      const cancelRes = await fetch(`${BASE_URL}/payments/${pid}/cancel`, {
+        method: "POST",
+        headers: { Authorization: `Key ${API_KEY}` },
+      });
+
+      const cancelType = cancelRes.headers.get("content-type") || "";
+      const cancelResult = cancelType.includes("application/json")
+        ? await cancelRes.json()
+        : await cancelRes.text();
+
+      results.push({
+        id: pid,
+        status: cancelRes.status,
+        result: cancelResult,
+      });
     }
 
     return NextResponse.json({
@@ -66,12 +88,12 @@ export async function GET() {
       results,
     });
   } catch (error: any) {
-    console.error("❌ [Clear Pending Error]:", error);
+    console.error("💥 [Clear Pending Error]:", error);
     return NextResponse.json(
       {
         ok: false,
         error: error.message,
-        message: "Lỗi khi xử lý pending payment",
+        message: "Lỗi khi xử lý pending payment.",
       },
       { status: 500 }
     );
