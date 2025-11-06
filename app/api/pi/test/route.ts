@@ -1,16 +1,8 @@
-// app/api/pi/test/route.ts
 import { NextResponse } from "next/server";
-
-/**
- * ✅ API test đơn giản cho Pi Network SDK
- * Cho phép bạn gọi /api/pi/test để kiểm tra server hoạt động,
- * và nhận POST từ trang /pi/test khi approve hoặc complete thanh toán.
- */
 
 export async function GET() {
   return NextResponse.json({
     message: "✅ Pi Test API is active",
-    info: "Use POST /api/pi/test to simulate approve or complete payment",
     example: {
       approve: { action: "approve", paymentId: "123" },
       complete: { action: "complete", paymentId: "123", txid: "abc123" },
@@ -18,40 +10,35 @@ export async function GET() {
   });
 }
 
-// ✅ Xử lý yêu cầu POST gửi từ client (khi thanh toán test)
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { action, paymentId, txid } = body;
 
-    if (!action || !paymentId) {
+    if (!action || !paymentId)
       return NextResponse.json(
-        { ok: false, error: "Thiếu tham số action hoặc paymentId" },
+        { ok: false, error: "Thiếu action hoặc paymentId" },
         { status: 400 }
       );
-    }
 
-    // ✅ Lấy thông tin môi trường
     const API_KEY = process.env.PI_API_KEY;
     const API_URL =
-  process.env.NEXT_PUBLIC_PI_ENV === "testnet"
-    ? "https://api.minepi.com/v2/sandbox/payments"
-    : "https://api.minepi.com/v2/payments";
+      process.env.NEXT_PUBLIC_PI_ENV === "testnet"
+        ? "https://api.minepi.com/v2/sandbox"
+        : "https://api.minepi.com/v2";
 
-    if (!API_KEY) {
-      console.error("❌ Missing PI_API_KEY in environment variables");
+    if (!API_KEY)
       return NextResponse.json(
-        { ok: false, error: "Thiếu biến môi trường PI_API_KEY" },
+        { ok: false, error: "Thiếu PI_API_KEY trong môi trường" },
         { status: 500 }
       );
-    }
 
     console.log(`🔔 [TEST API] ${action.toUpperCase()} paymentId=${paymentId}`);
 
-    // ✅ Gửi request tới Pi API thật (sandbox hoặc main tùy env)
     let endpoint = "";
-    if (action === "approve") endpoint = `${API_URL}/${paymentId}/approve`;
-    else if (action === "complete") endpoint = `${API_URL}/${paymentId}/complete`;
+    if (action === "approve") endpoint = `${API_URL}/payments/${paymentId}/approve`;
+    else if (action === "complete")
+      endpoint = `${API_URL}/payments/${paymentId}/complete`;
     else
       return NextResponse.json(
         { ok: false, error: "Action không hợp lệ" },
@@ -69,17 +56,24 @@ export async function POST(req: Request) {
 
     const text = await res.text();
 
-    console.log(`✅ [PI ${action.toUpperCase()} RESULT]:`, res.status, text);
+    const isHTML = text.startsWith("<!DOCTYPE");
+    if (isHTML)
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Pi API trả về HTML — domain chưa đăng ký hoặc sai môi trường.",
+          message: text.slice(0, 200),
+        },
+        { status: 502 }
+      );
 
-    if (res.status === 401)
-      console.error("❌ Sai API key hoặc domain chưa được khai báo trong Pi Developer Portal!");
-
-    return new NextResponse(text, {
-      status: res.status,
-      headers: { "Access-Control-Allow-Origin": "*" },
+    return NextResponse.json({
+      ok: true,
+      message: `✅ Pi ${action} processed.`,
+      result: text,
     });
   } catch (err: any) {
-    console.error("💥 [Pi TEST API ERROR]:", err);
     return NextResponse.json(
       { ok: false, error: err.message || "unknown" },
       { status: 500 }
