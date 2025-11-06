@@ -34,7 +34,9 @@ export async function POST(req: Request) {
     // ✅ Lấy thông tin môi trường
     const API_KEY = process.env.PI_API_KEY;
     const API_URL =
-      process.env.PI_API_URL || "https://api.minepi.com/v2/sandbox/payments";
+  process.env.NEXT_PUBLIC_PI_ENV === "testnet"
+    ? "https://api.minepi.com/v2/sandbox/payments"
+    : "https://api.minepi.com/v2/payments";
 
     if (!API_KEY) {
       console.error("❌ Missing PI_API_KEY in environment variables");
