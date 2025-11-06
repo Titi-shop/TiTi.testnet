@@ -1,48 +1,42 @@
 import { NextResponse } from "next/server";
 
-/**
- * ✅ API: Xử lý log từ Pi SDK (khi có payment pending)
- */
-export async function POST(req: Request) {
-  try {
-    const data = await req.json();
-    console.log("📦 [Pending Payment Log]:", data);
-
-    return NextResponse.json({ ok: true, message: "Đã ghi log thành công" });
-  } catch (err: any) {
-    console.error("❌ [API Error]:", err);
-    return NextResponse.json(
-      { ok: false, error: err.message },
-      { status: 500 }
-    );
-  }
-}
-
-/**
- * ✅ API: Xử lý xoá toàn bộ pending payments khi gọi GET
- * (Dành cho developer để reset app)
- */
 export async function GET() {
   const API_KEY = process.env.PI_API_KEY;
-  const BASE_URL =
-  process.env.NEXT_PUBLIC_PI_ENV === "testnet"
+  const IS_TESTNET = process.env.NEXT_PUBLIC_PI_ENV === "testnet";
+
+  const BASE_URL = IS_TESTNET
     ? "https://api.minepi.com/v2/sandbox"
     : "https://api.minepi.com/v2";
 
   if (!API_KEY) {
     return NextResponse.json(
-      { ok: false, error: "Thiếu PI_API_KEY trong .env.local" },
+      { ok: false, error: "❌ Thiếu PI_API_KEY trong .env.local" },
       { status: 500 }
     );
   }
 
   try {
-    console.log("🔍 Đang lấy danh sách giao dịch pending...");
+    console.log("🔍 Đang lấy danh sách giao dịch pending từ:", BASE_URL);
 
-    // 1️⃣ Lấy danh sách các giao dịch chưa xử lý
     const pendingRes = await fetch(`${BASE_URL}/payments/incomplete`, {
       headers: { Authorization: `Key ${API_KEY}` },
     });
+
+    // 🧩 Nếu Pi API trả về HTML thay vì JSON (lỗi 401, domain sai...)
+    const contentType = pendingRes.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      const text = await pendingRes.text();
+      console.error("❌ [Pi API Error - Non-JSON Response]:", text);
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Pi API trả về HTML, có thể sai key hoặc domain chưa đăng ký",
+          message: text.slice(0, 200),
+        },
+        { status: 502 }
+      );
+    }
+
     const pendingData = await pendingRes.json();
 
     if (!Array.isArray(pendingData) || pendingData.length === 0) {
@@ -52,7 +46,6 @@ export async function GET() {
       });
     }
 
-    // 2️⃣ Hủy toàn bộ giao dịch bị kẹt
     const results = [];
     for (const payment of pendingData) {
       console.log("🧹 Huỷ payment:", payment.identifier);
@@ -64,10 +57,7 @@ export async function GET() {
         }
       );
       const cancelResult = await cancelRes.json();
-      results.push({
-        id: payment.identifier,
-        result: cancelResult,
-      });
+      results.push({ id: payment.identifier, result: cancelResult });
     }
 
     return NextResponse.json({
