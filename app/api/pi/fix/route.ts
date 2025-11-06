@@ -13,11 +13,25 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: "❌ Thiếu PI_API_KEY" }, { status: 400 });
     }
 
-    // 🧩 Lấy danh sách các payment chưa complete
+    console.log("🔍 Kiểm tra payment pending tại:", BASE_URL);
+
     const res = await fetch(`${BASE_URL}/payments/incomplete`, {
       headers: { Authorization: `Key ${API_KEY}` },
     });
-    const data = await res.json();
+
+    const contentType = res.headers.get("content-type") || "";
+    const text = await res.text();
+
+    // Nếu trả về HTML → báo lỗi domain hoặc môi trường
+    if (!contentType.includes("application/json")) {
+      return NextResponse.json({
+        ok: false,
+        error: "Pi API trả về HTML → Sai môi trường (sandbox/mainnet) hoặc domain chưa đăng ký trong Pi Developer Portal.",
+        message: text.slice(0, 300),
+      });
+    }
+
+    const data = JSON.parse(text);
 
     if (!Array.isArray(data) || data.length === 0) {
       return NextResponse.json({ ok: true, message: "✅ Không có payment pending nào." });
@@ -29,7 +43,6 @@ export async function GET() {
       const id = payment.identifier;
       console.log("🧹 Reset payment:", id);
 
-      // ✅ Hủy payment
       await fetch(`${BASE_URL}/payments/${id}/cancel`, {
         method: "POST",
         headers: { Authorization: `Key ${API_KEY}` },
