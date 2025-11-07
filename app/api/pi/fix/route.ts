@@ -11,12 +11,12 @@ export default function PiFix() {
       return;
     }
 
-    // ✅ Khởi tạo SDK
+    // ✅ Khởi tạo Pi SDK (chế độ sandbox)
     window.Pi.init({ version: "2.0", sandbox: true });
     setStatus("✅ Pi SDK đã sẵn sàng.");
   }, []);
 
-  // 🔹 Đăng nhập Pi
+  // 🔑 Đăng nhập Pi
   const handleLogin = async () => {
     try {
       if (!window.Pi) return alert("❌ Pi SDK chưa sẵn sàng!");
@@ -29,7 +29,7 @@ export default function PiFix() {
     }
   };
 
-  // 🔹 Gọi API Fix (theo username)
+  // 🧹 Xử lý đơn pending
   const handleFix = async () => {
     if (!username) {
       return alert("Vui lòng đăng nhập Pi trước!");
