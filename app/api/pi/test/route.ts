@@ -1,15 +1,8 @@
 import { NextResponse } from "next/server";
 
-/**
- * ✅ API test đồng bộ với bản PHP
- * - Không dùng /sandbox
- * - Thêm "X-Pi-Api-Version": "2.0"
- * - Dùng chung cách gọi với approve / complete
- */
 export async function GET() {
   return NextResponse.json({
-    ok: true,
-    message: "✅ Pi Test API is active (v2)",
+    message: "✅ Pi Test API is active",
     example: {
       approve: { action: "approve", paymentId: "123" },
       complete: { action: "complete", paymentId: "123", txid: "abc123" },
@@ -29,7 +22,10 @@ export async function POST(req: Request) {
       );
 
     const API_KEY = process.env.PI_API_KEY;
-    const API_URL = "https://api.minepi.com/v2/payments";
+    const API_URL =
+      process.env.NEXT_PUBLIC_PI_ENV === "testnet"
+        ? "https://api.minepi.com/v2/sandbox"
+        : "https://api.minepi.com/v2";
 
     if (!API_KEY)
       return NextResponse.json(
@@ -40,8 +36,9 @@ export async function POST(req: Request) {
     console.log(`🔔 [TEST API] ${action.toUpperCase()} paymentId=${paymentId}`);
 
     let endpoint = "";
-    if (action === "approve") endpoint = `${API_URL}/${paymentId}/approve`;
-    else if (action === "complete") endpoint = `${API_URL}/${paymentId}/complete`;
+    if (action === "approve") endpoint = `${API_URL}/payments/${paymentId}/approve`;
+    else if (action === "complete")
+      endpoint = `${API_URL}/payments/${paymentId}/complete`;
     else
       return NextResponse.json(
         { ok: false, error: "Action không hợp lệ" },
@@ -53,23 +50,23 @@ export async function POST(req: Request) {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Key ${API_KEY}`,
-        "X-Pi-Api-Version": "2.0",
       },
       body: action === "complete" ? JSON.stringify({ txid }) : undefined,
     });
 
     const text = await res.text();
 
-    if (text.startsWith("<!DOCTYPE")) {
+    const isHTML = text.startsWith("<!DOCTYPE");
+    if (isHTML)
       return NextResponse.json(
         {
           ok: false,
-          error: "⚠️ Pi API trả về HTML — domain chưa duyệt hoặc sai endpoint.",
+          error:
+            "Pi API trả về HTML — domain chưa đăng ký hoặc sai môi trường.",
           message: text.slice(0, 200),
         },
         { status: 502 }
       );
-    }
 
     return NextResponse.json({
       ok: true,
