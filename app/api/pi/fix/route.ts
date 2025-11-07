@@ -1,70 +1,62 @@
-"use client";
-import { useState, useEffect } from "react";
+import { NextResponse } from "next/server";
 
-export default function PiFix() {
-  const [status, setStatus] = useState("⏳ Đang khởi tạo Pi SDK...");
-  const [username, setUsername] = useState("");
+export async function GET() {
+  const API_KEY = process.env.PI_API_KEY;
+  const IS_TESTNET = process.env.NEXT_PUBLIC_PI_ENV === "testnet";
 
-  useEffect(() => {
-    if (!window.Pi) {
-      setStatus("⚠️ Không tìm thấy Pi SDK. Hãy mở trang này trong Pi Browser.");
-      return;
-    }
-    window.Pi.init({ version: "2.0", sandbox: true });
-    setStatus("✅ Pi SDK đã sẵn sàng.");
-  }, []);
+  const BASE_URL = IS_TESTNET
+    ? "https://api.minepi.com/v2/sandbox"
+    : "https://api.minepi.com/v2";
 
-  const handleLogin = async () => {
-    try {
-      const scopes = ["username", "payments"];
-      const auth = await window.Pi.authenticate(scopes, () => {});
-      setUsername(auth.user.username);
-      setStatus(`✅ Đăng nhập thành công: ${auth.user.username}`);
-    } catch (err) {
-      setStatus("❌ Lỗi đăng nhập: " + err.message);
-    }
-  };
+  if (!API_KEY) {
+    return NextResponse.json({ ok: false, error: "Thiếu PI_API_KEY" }, { status: 500 });
+  }
 
-  const handleFix = async () => {
-    if (!username) return alert("Vui lòng đăng nhập Pi trước!");
-    setStatus("🧹 Đang xử lý đơn hàng pending...");
-    try {
-      const res = await fetch("/api/pi/fix", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username }),
+  try {
+    console.log("🧹 Kiểm tra pending payments từ:", BASE_URL);
+
+    const pendingRes = await fetch(`${BASE_URL}/payments/incomplete`, {
+      headers: { Authorization: `Key ${API_KEY}` },
+    });
+
+    const contentType = pendingRes.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      const text = await pendingRes.text();
+      console.error("❌ Pi API trả về HTML:", text.slice(0, 200));
+      return NextResponse.json({
+        ok: false,
+        error: "Pi API trả về HTML (sai domain hoặc sai môi trường)",
+        message: text.slice(0, 200),
       });
-      const data = await res.json();
-      setStatus(data.ok ? `✅ ${data.message}` : `❌ ${data.error}`);
-    } catch (err) {
-      setStatus("💥 Lỗi: " + err.message);
     }
-  };
 
-  return (
-    <div className="p-6 text-center">
-      <h1 className="text-2xl font-bold text-purple-700 mb-4">
-        🧹 Fix Pending Payments
-      </h1>
+    const pendingData = await pendingRes.json();
+    if (!Array.isArray(pendingData) || pendingData.length === 0) {
+      return NextResponse.json({ ok: true, message: "✅ Không có pending nào." });
+    }
 
-      <button
-        onClick={handleLogin}
-        className="bg-orange-500 text-white px-4 py-2 rounded m-2"
-      >
-        🔑 Đăng nhập Pi
-      </button>
+    // 🧹 Huỷ tất cả pending
+    const results = [];
+    for (const payment of pendingData) {
+      console.log("🗑️ Huỷ pending:", payment.identifier);
+      const res = await fetch(`${BASE_URL}/payments/${payment.identifier}/cancel`, {
+        method: "POST",
+        headers: { Authorization: `Key ${API_KEY}` },
+      });
+      const result = await res.text();
+      results.push({ id: payment.identifier, result });
+    }
 
-      <button
-        onClick={handleFix}
-        className="bg-purple-600 text-white px-4 py-2 rounded m-2"
-      >
-        💳 Hủy đơn pending
-      </button>
-
-      <p className="mt-4 text-gray-700">{status}</p>
-      {username && (
-        <p className="text-sm text-green-700">👤 User: {username}</p>
-      )}
-    </div>
-  );
+    return NextResponse.json({
+      ok: true,
+      message: "🎉 Đã hủy toàn bộ pending payment.",
+      results,
+    });
+  } catch (err: any) {
+    console.error("💥 Lỗi khi huỷ pending:", err);
+    return NextResponse.json(
+      { ok: false, error: err.message || "Không xác định" },
+      { status: 500 }
+    );
+  }
 }
