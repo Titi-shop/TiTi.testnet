@@ -1,8 +1,17 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function PiTest() {
   const [status, setStatus] = useState("🔹 Pi SDK ready...");
+
+  useEffect(() => {
+    if (window.Pi) {
+      window.Pi.init({ version: "2.0", sandbox: true });
+      console.log("✅ Pi SDK initialized");
+    } else {
+      console.warn("⚠️ Pi SDK chưa tải");
+    }
+  }, []);
 
   const login = async () => {
     try {
