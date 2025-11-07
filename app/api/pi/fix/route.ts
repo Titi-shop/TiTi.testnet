@@ -1,32 +1,37 @@
+// app/api/pi/fix/route.ts
 import { NextResponse } from "next/server";
+
+/**
+ * ✅ Phiên bản fix tương thích PHP legacy (không cần domain duyệt)
+ * - Gọi trực tiếp endpoint /v2/payments thay vì /sandbox
+ * - Thêm header version: "2.0" để dùng chế độ testnet
+ */
 
 export async function GET() {
   try {
     const API_KEY = process.env.PI_API_KEY;
-    const IS_TESTNET = process.env.NEXT_PUBLIC_PI_ENV === "testnet";
-
-    const BASE_URL = IS_TESTNET
-      ? "https://api.minepi.com/v2/sandbox"
-      : "https://api.minepi.com/v2";
-
     if (!API_KEY) {
       return NextResponse.json({ ok: false, error: "❌ Thiếu PI_API_KEY" }, { status: 400 });
     }
 
-    console.log("🔍 Kiểm tra payment pending tại:", BASE_URL);
+    const API_URL = "https://api.minepi.com/v2/payments";
 
-    const res = await fetch(`${BASE_URL}/payments/incomplete`, {
-      headers: { Authorization: `Key ${API_KEY}` },
+    console.log("🔍 Kiểm tra các payment pending tại:", API_URL);
+
+    const res = await fetch(`${API_URL}/incomplete`, {
+      headers: {
+        Authorization: `Key ${API_KEY}`,
+        "X-Pi-Api-Version": "2.0",
+      },
     });
 
-    const contentType = res.headers.get("content-type") || "";
     const text = await res.text();
 
-    // Nếu trả về HTML → báo lỗi domain hoặc môi trường
-    if (!contentType.includes("application/json")) {
+    // Nếu trả về HTML thì báo lỗi domain, key, hoặc Pi server
+    if (text.startsWith("<!DOCTYPE")) {
       return NextResponse.json({
         ok: false,
-        error: "Pi API trả về HTML → Sai môi trường (sandbox/mainnet) hoặc domain chưa đăng ký trong Pi Developer Portal.",
+        error: "⚠️ Pi API trả về HTML — có thể domain chưa whitelist hoặc server lỗi.",
         message: text.slice(0, 300),
       });
     }
@@ -41,19 +46,24 @@ export async function GET() {
 
     for (const payment of data) {
       const id = payment.identifier;
-      console.log("🧹 Reset payment:", id);
+      console.log("🧹 Hủy payment:", id);
 
-      await fetch(`${BASE_URL}/payments/${id}/cancel`, {
+      const cancelRes = await fetch(`${API_URL}/${id}/cancel`, {
         method: "POST",
-        headers: { Authorization: `Key ${API_KEY}` },
+        headers: {
+          Authorization: `Key ${API_KEY}`,
+          "X-Pi-Api-Version": "2.0",
+        },
       });
 
-      results.push(id);
+      const cancelText = await cancelRes.text();
+      results.push({ id, result: cancelText.slice(0, 100) });
     }
 
     return NextResponse.json({
       ok: true,
       message: "🎉 Đã hủy toàn bộ payment pending!",
+      count: results.length,
       results,
     });
   } catch (err: any) {
