@@ -10,16 +10,12 @@ export default function PiFix() {
       setStatus("⚠️ Không tìm thấy Pi SDK. Hãy mở trang này trong Pi Browser.");
       return;
     }
-
-    // ✅ Khởi tạo Pi SDK (chế độ sandbox)
     window.Pi.init({ version: "2.0", sandbox: true });
     setStatus("✅ Pi SDK đã sẵn sàng.");
   }, []);
 
-  // 🔑 Đăng nhập Pi
   const handleLogin = async () => {
     try {
-      if (!window.Pi) return alert("❌ Pi SDK chưa sẵn sàng!");
       const scopes = ["username", "payments"];
       const auth = await window.Pi.authenticate(scopes, () => {});
       setUsername(auth.user.username);
@@ -29,26 +25,17 @@ export default function PiFix() {
     }
   };
 
-  // 🧹 Xử lý đơn pending
   const handleFix = async () => {
-    if (!username) {
-      return alert("Vui lòng đăng nhập Pi trước!");
-    }
-
+    if (!username) return alert("Vui lòng đăng nhập Pi trước!");
+    setStatus("🧹 Đang xử lý đơn hàng pending...");
     try {
-      setStatus("🧹 Đang xử lý đơn hàng pending...");
       const res = await fetch("/api/pi/fix", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username }),
       });
-
       const data = await res.json();
-      if (data.ok) {
-        setStatus(`✅ ${data.message}`);
-      } else {
-        setStatus(`❌ ${data.error || "Không thể xử lý pending"}`);
-      }
+      setStatus(data.ok ? `✅ ${data.message}` : `❌ ${data.error}`);
     } catch (err) {
       setStatus("💥 Lỗi: " + err.message);
     }
