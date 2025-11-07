@@ -3,37 +3,39 @@ import { NextResponse } from "next/server";
 export async function POST(req: Request) {
   try {
     const { paymentId, txid } = await req.json();
-
-    if (!paymentId) {
-      return NextResponse.json({ error: "missing paymentId" }, { status: 400 });
+    if (!paymentId || !txid) {
+      return NextResponse.json({ ok: false, error: "Thiếu paymentId hoặc txid" }, { status: 400 });
     }
 
     const API_KEY = process.env.PI_API_KEY;
-    const API_URL =
-  process.env.NEXT_PUBLIC_PI_ENV === "testnet"
-    ? "https://api.minepi.com/v2/sandbox/payments"
-    : "https://api.minepi.com/v2/payments";
+    if (!API_KEY) {
+      return NextResponse.json({ ok: false, error: "Thiếu PI_API_KEY" }, { status: 500 });
+    }
 
-    console.log("⏳ [Pi COMPLETE] ID:", paymentId, txid);
+    const API_URL = "https://api.minepi.com/v2/payments";
 
     const res = await fetch(`${API_URL}/${paymentId}/complete`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Key ${API_KEY}`,
+        "Authorization": `Key ${API_KEY}`,
+        "X-Pi-Api-Version": "2.0",
       },
       body: JSON.stringify({ txid }),
     });
 
     const text = await res.text();
-    console.log("✅ [Pi COMPLETE RESULT]:", res.status, text);
 
-    return new NextResponse(text, {
-      status: res.status,
-      headers: { "Access-Control-Allow-Origin": "*" },
-    });
+    if (text.startsWith("<!DOCTYPE")) {
+      return NextResponse.json({
+        ok: false,
+        error: "⚠️ Pi API trả về HTML — domain chưa duyệt hoặc server lỗi.",
+        message: text.slice(0, 200),
+      });
+    }
+
+    return NextResponse.json({ ok: true, message: "✅ Complete thành công", result: text });
   } catch (err: any) {
-    console.error("💥 [Pi COMPLETE ERROR]:", err);
-    return NextResponse.json({ error: err.message || "unknown" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
   }
 }
