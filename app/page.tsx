@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import BannerCarousel from "./components/BannerCarousel";
-import { useLanguage } from "../context/LanguageContext"; // ✅ import
+import { useLanguage } from "./context/LanguageContext"; // ✅ import
 
 export default function HomePage() {
   const router = useRouter();
