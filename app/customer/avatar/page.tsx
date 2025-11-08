@@ -17,6 +17,11 @@ export default function AvatarPage() {
 
   if (!piReady || !user) return <div className="min-h-screen bg-gray-100"></div>;
 
+  // ✅ Ghi log user để dễ kiểm tra
+  useEffect(() => {
+    console.log("👤 User info:", user);
+  }, [user]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -27,7 +32,17 @@ export default function AvatarPage() {
 
   const handleUpload = async () => {
     if (!selectedFile) {
-      alert("Vui lòng chọn ảnh trước khi tải lên!");
+      alert("⚠️ Vui lòng chọn ảnh trước khi tải lên!");
+      return;
+    }
+
+    // ✅ Kiểm tra username
+    const username =
+      user?.username || localStorage.getItem("titi_username") || "";
+
+    if (!username) {
+      alert("⚠️ Không xác định được username. Vui lòng đăng nhập lại.");
+      router.replace("/pilogin");
       return;
     }
 
@@ -35,13 +50,7 @@ export default function AvatarPage() {
       setLoading(true);
       const formData = new FormData();
       formData.append("file", selectedFile);
-      const username = user?.username || localStorage.getItem("titi_username") || "";
-if (!username) {
-  alert("⚠️ Không xác định được username. Vui lòng đăng nhập lại.");
-  router.replace("/pilogin");
-  return;
-}
-formData.append("username", username);
+      formData.append("username", username.trim());
 
       const res = await fetch("/api/uploadAvatar", {
         method: "POST",
@@ -49,11 +58,12 @@ formData.append("username", username);
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Lỗi tải ảnh");
+      if (!res.ok) throw new Error(data.error || "Lỗi tải ảnh lên máy chủ");
 
-      alert("✅ Ảnh đại diện đã được cập nhật!");
+      alert("✅ Ảnh đại diện đã được cập nhật thành công!");
       router.refresh();
     } catch (err: any) {
+      console.error("❌ Upload lỗi:", err);
       alert("❌ Lỗi tải ảnh: " + err.message);
     } finally {
       setLoading(false);
@@ -84,7 +94,10 @@ formData.append("username", username);
           </label>
         </div>
 
-        <h1 className="text-lg font-semibold text-gray-800 mb-2">{user.username}</h1>
+        <h1 className="text-lg font-semibold text-gray-800 mb-2">
+          {user.username || "Chưa đăng nhập"}
+        </h1>
+
         <button
           onClick={handleUpload}
           disabled={loading}
