@@ -49,8 +49,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const parsed = JSON.parse(saved);
         const username = parsed?.user?.username || parsed?.username || null;
         const accessToken = parsed?.accessToken || "";
-        if (username && accessToken) {
-          setUser({ username, accessToken });
+        if (username) {
+  setUser({ username, accessToken: accessToken || "none" });
+}
 
           // 🔹 Đồng bộ lại username cho toàn hệ thống (checkout, address...)
           localStorage.setItem("titi_username", username);
