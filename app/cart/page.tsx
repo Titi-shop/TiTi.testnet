@@ -24,24 +24,38 @@ export default function CartPage() {
     else setSelectedItems(cart.map((i) => i.id));
   };
 
-  const handlePayOne = async (item: any) => {
+  // ✅ Thanh toán nhiều sản phẩm được chọn
+  const handlePaySelected = async () => {
     try {
       if (!window.Pi) {
         alert("⚠️ " + translate("please_open_in_pi_browser"));
         return;
       }
+      if (selectedItems.length === 0) {
+        alert("⚠️ " + translate("please_select_item"));
+        return;
+      }
+
+      const selectedProducts = cart.filter((i) => selectedItems.includes(i.id));
+      const total = selectedProducts.reduce(
+        (sum, i) => sum + i.price * (i.quantity || 1),
+        0
+      );
 
       const userInfo = JSON.parse(localStorage.getItem("user_info") || "{}");
       const buyer = userInfo.username || "guest_user";
       const orderId = Date.now();
+
       const scopes = ["payments", "username", "wallet_address"];
       const auth = await window.Pi.authenticate(scopes, (res) => res);
+      console.log("✅ Pi Auth:", auth);
 
+      // ✅ Gọi thanh toán thực qua Pi
       const payment = await window.Pi.createPayment(
         {
-          amount: item.price * (item.quantity || 1),
-          memo: `${translate("paying_product")} ${item.name}`,
-          metadata: { orderId, buyer, item },
+          amount: total,
+          memo: `${translate("paying_order")} (${selectedProducts.length} items)`,
+          metadata: { orderId, buyer, items: selectedProducts },
         },
         {
           onReadyForServerApproval: async (paymentId) => {
@@ -63,11 +77,14 @@ export default function CartPage() {
         }
       );
 
+      console.log("💰 Kết quả thanh toán:", payment);
+
+      // ✅ Lưu đơn hàng
       const orderData = {
         id: orderId,
         buyer,
-        total: item.price * (item.quantity || 1),
-        items: [item],
+        total,
+        items: selectedProducts,
         createdAt: new Date().toISOString(),
         status: translate("waiting_confirm"),
       };
@@ -78,11 +95,13 @@ export default function CartPage() {
         body: JSON.stringify(orderData),
       });
 
-      removeFromCart(item.id);
-      alert(`🎉 ${translate("payment_success")}: ${item.name}`);
+      // ✅ Xóa sản phẩm đã thanh toán khỏi giỏ
+      selectedProducts.forEach((i) => removeFromCart(i.id));
+
+      alert(`🎉 ${translate("payment_success")}`);
       router.push("/customer/pending");
     } catch (error) {
-      console.error("❌ " + translate("payment_error"), error);
+      console.error("❌ Thanh toán thất bại:", error);
       alert("💥 " + translate("payment_failed"));
     }
   };
@@ -110,7 +129,7 @@ export default function CartPage() {
             <div className="divide-y">
               {cart.map((it) => (
                 <div key={it.id} className="flex items-center py-4 gap-3">
-                  {/* ✅ Checkbox chọn */}
+                  {/* Checkbox chọn */}
                   <input
                     type="checkbox"
                     checked={selectedItems.includes(it.id)}
@@ -129,16 +148,14 @@ export default function CartPage() {
                     )}
                   </div>
 
-                  {/* Thông tin sản phẩm */}
+                  {/* Thông tin */}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-800">{it.name}</h3>
-                    <p className="font-bold text-[#ff6600]">
-                      {it.price} π
-                    </p>
+                    <p className="font-bold text-[#ff6600]">{it.price} π</p>
                     <p className="text-gray-500 text-sm line-clamp-2">{it.description}</p>
                   </div>
 
-                  {/* Số lượng & thao tác */}
+                  {/* Số lượng */}
                   <div className="flex flex-col items-end gap-2">
                     <div className="flex items-center border rounded overflow-hidden">
                       <button
@@ -170,13 +187,6 @@ export default function CartPage() {
                     >
                       {translate("delete")}
                     </button>
-
-                    <button
-                      onClick={() => handlePayOne(it)}
-                      className="bg-[#6a1b9a] text-white text-sm px-3 py-1 rounded hover:bg-[#55127a]"
-                    >
-                      💳 {translate("pay_with_pi")}
-                    </button>
                   </div>
                 </div>
               ))}
@@ -204,11 +214,12 @@ export default function CartPage() {
               <div className="text-right">
                 <p className="text-sm">
                   {translate("total")}:{" "}
-                  <span className="font-bold text-[#ff6600]">
-                    {total.toFixed(2)} π
-                  </span>
+                  <span className="font-bold text-[#ff6600]">{total.toFixed(2)} π</span>
                 </p>
+
+                {/* ✅ Nút thanh toán thật qua Pi */}
                 <button
+                  onClick={handlePaySelected}
                   disabled={selectedItems.length === 0}
                   className={`mt-2 px-5 py-2 rounded-lg font-semibold text-white ${
                     selectedItems.length === 0
@@ -216,7 +227,7 @@ export default function CartPage() {
                       : "bg-[#ff6600] hover:bg-[#e65500]"
                   }`}
                 >
-                  {translate("order_now")}
+                  💳 {translate("order_now")}
                 </button>
               </div>
             </div>
