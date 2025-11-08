@@ -35,7 +35,13 @@ export default function AvatarPage() {
       setLoading(true);
       const formData = new FormData();
       formData.append("file", selectedFile);
-      formData.append("username", user.username);
+      const username = user?.username || localStorage.getItem("titi_username") || "";
+if (!username) {
+  alert("⚠️ Không xác định được username. Vui lòng đăng nhập lại.");
+  router.replace("/pilogin");
+  return;
+}
+formData.append("username", username);
 
       const res = await fetch("/api/uploadAvatar", {
         method: "POST",
