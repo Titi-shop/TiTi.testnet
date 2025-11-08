@@ -4,37 +4,29 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/app/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
-import { Clock, Package, Truck, Star, LogOut, User } from "lucide-react";
+import { Clock, Package, Truck, Star, LogOut } from "lucide-react";
 
 export default function CustomerDashboard() {
   const { user, logout, piReady } = useAuth();
   const { translate } = useLanguage();
   const router = useRouter();
 
-  // ✅ Nếu chưa đăng nhập → chuyển về /pilogin
+  // ✅ Nếu chưa đăng nhập thì chuyển sang /pilogin
   useEffect(() => {
     if (piReady && !user) {
       router.replace("/pilogin");
     }
   }, [piReady, user, router]);
 
-  // 🚫 Khi chưa có user → hiển thị chờ hoặc nhắc đăng nhập
-  if (!user)
+  if (!piReady || !user) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center bg-gray-100 text-center">
-        <h2 className="text-2xl font-bold text-red-600 mb-3">
-          🔐 {translate("login_required") || "Vui lòng đăng nhập bằng Pi Network để tiếp tục"}
-        </h2>
-        <button
-          onClick={() => router.push("/pilogin")}
-          className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded"
-        >
-          👉 {translate("go_to_login") || "Đăng nhập ngay"}
-        </button>
+      <main className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-500">
+        ⏳ Đang tải...
       </main>
     );
+  }
 
-  // ✅ Hàm đăng xuất đồng bộ
+  // ✅ Hàm đăng xuất khỏi Pi
   const handleLogoutPi = async () => {
     try {
       if (typeof window !== "undefined" && window.Pi?.logout) {
@@ -44,39 +36,35 @@ export default function CustomerDashboard() {
     } catch (err) {
       console.error("⚠️ Lỗi logout Pi:", err);
     } finally {
-      logout(); // dùng hàm context
+      logout();
       router.replace("/pilogin");
     }
   };
 
-  // ✅ Nếu đã đăng nhập
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* ===== Thông tin người dùng ===== */}
-      <div className="bg-orange-500 text-white p-6 text-center shadow relative">
+    <div className="min-h-screen bg-gray-100 pb-10">
+      {/* ===== Header (khung cam) ===== */}
+      <div className="bg-orange-500 text-white p-6 text-center shadow relative flex flex-col items-center justify-center">
+        {/* ✅ Avatar — chỉ click được vào vòng tròn này */}
         <div
-          className="flex flex-col items-center justify-center cursor-pointer hover:opacity-90 transition"
           onClick={() => router.push("/customer/profile")}
+          className="w-16 h-16 bg-white rounded-full mb-3 flex items-center justify-center text-orange-500 font-bold text-xl cursor-pointer hover:opacity-90 transition"
         >
-          <div className="w-16 h-16 bg-white rounded-full mb-3 flex items-center justify-center text-orange-500 font-bold text-xl">
-            {user.username.charAt(0).toUpperCase()}
-          </div>
-          <h1 className="text-xl font-semibold">{user.username}</h1>
-          <p className="text-sm opacity-90 mt-1">
-            {translate("customer_title") || "Khách hàng TiTi Mall"}
-          </p>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              router.push("/customer/profile");
-            }}
-            className="mt-3 bg-white text-orange-600 text-sm px-4 py-1 rounded-full flex items-center gap-1 hover:bg-gray-100 transition"
-          >
-            <User size={16} />
-            {translate("account") || "Tài khoản"}
-          </button>
+          {user.avatarUrl ? (
+            <img
+              src={user.avatarUrl}
+              alt="Avatar"
+              className="w-16 h-16 rounded-full object-cover"
+            />
+          ) : (
+            user.username.charAt(0).toUpperCase()
+          )}
         </div>
+
+        {/* ✅ Tên người dùng */}
+        <h1 className="text-xl font-semibold select-none">
+          {user.username}
+        </h1>
       </div>
 
       {/* ===== Thanh công cụ đơn hàng ===== */}
