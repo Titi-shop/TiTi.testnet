@@ -49,11 +49,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const parsed = JSON.parse(saved);
         const username = parsed?.user?.username || parsed?.username || null;
         const accessToken = parsed?.accessToken || "";
-        if (username) {
-  setUser({ username, accessToken: accessToken || "none" });
-}
 
-          // 🔹 Đồng bộ lại username cho toàn hệ thống (checkout, address...)
+        if (username) {
+          setUser({ username, accessToken: accessToken || "none" });
           localStorage.setItem("titi_username", username);
           localStorage.setItem("titi_is_logged_in", "true");
         }
@@ -62,7 +60,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("❌ Lỗi đọc pi_user:", err);
     }
   }, []);
-
   // ✅ Hàm pilogin - phiên bản ổn định SDK Pi mới (Promise)
   const pilogin = async () => {
     if (typeof window === "undefined" || !window.Pi) {
