@@ -48,7 +48,7 @@ export default function Navbar() {
             {loading
               ? "⏳ " + (translate("loading") || "Đang tải...")
               : piPrice
-              ? `💰 1 PI ≈ ${piPrice.toFixed(2)} USDT`
+              ? `π1 ≈ ${piPrice.toFixed(2)} USDT`
               : "⚠️ " + (translate("no_data") || "Không có dữ liệu")}
           </div>
         </div>
