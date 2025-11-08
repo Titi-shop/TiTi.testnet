@@ -1,6 +1,8 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import BannerCarousel from "./components/BannerCarousel";
 
 export default function HomePage() {
   const router = useRouter();
@@ -26,7 +28,11 @@ export default function HomePage() {
   }, []);
 
   if (loading)
-    return <p className="text-center mt-10 text-gray-500">⏳ Đang tải sản phẩm...</p>;
+    return (
+      <p className="text-center mt-10 text-gray-500">
+        ⏳ Đang tải sản phẩm...
+      </p>
+    );
 
   if (error)
     return (
@@ -36,37 +42,46 @@ export default function HomePage() {
     );
 
   return (
-    <main className="bg-gray-50 min-h-screen pb-20">
-      <h1 className="text-xl font-bold text-center mt-6 mb-4">🛍 Sản phẩm</h1>
+    <main className="bg-white min-h-screen pb-20">
+      {/* 🖼 Banner quảng cáo */}
+      <div className="w-full mb-3">
+        <BannerCarousel />
+      </div>
 
+      {/* 🛍 Danh sách sản phẩm */}
       {products.length === 0 ? (
-        <p className="text-center text-gray-500">Chưa có sản phẩm nào.</p>
+        <p className="text-center text-gray-500 mt-4">
+          🚫 Chưa có sản phẩm nào.
+        </p>
       ) : (
-        <div className="grid gap-4 px-3 sm:px-6 grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-[1px] bg-gray-200">
           {products.map((p: any) => (
             <div
               key={p.id}
               onClick={() => router.push(`/product/${p.id}`)}
-              className="bg-white rounded-xl shadow hover:shadow-lg transition-all cursor-pointer border border-gray-100 p-3"
+              className="bg-white cursor-pointer transition-transform hover:scale-[1.01] active:scale-[0.98]"
             >
               {p.images?.[0] ? (
                 <img
                   src={p.images[0]}
                   alt={p.name}
                   loading="lazy"
-                  className="w-full aspect-square object-cover rounded-lg mb-2"
+                  className="w-full aspect-square object-cover"
                 />
               ) : (
-                <div className="w-full aspect-square bg-gray-100 flex items-center justify-center rounded-lg mb-2 text-gray-400">
+                <div className="w-full aspect-square bg-gray-100 flex items-center justify-center text-gray-400">
                   Không có ảnh
                 </div>
               )}
-              <h2 className="font-semibold text-sm text-gray-800 line-clamp-2">
-                {p.name}
-              </h2>
-              <p className="text-orange-600 font-bold text-sm mt-1">
-                {p.price} Pi
-              </p>
+
+              <div className="p-2">
+                <h2 className="text-[13px] font-medium text-gray-800 line-clamp-2 leading-tight">
+                  {p.name}
+                </h2>
+                <p className="text-orange-600 font-bold text-[13px] mt-1">
+                  {p.price} π
+                </p>
+              </div>
             </div>
           ))}
         </div>
