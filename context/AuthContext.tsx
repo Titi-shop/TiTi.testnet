@@ -51,6 +51,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const accessToken = parsed?.accessToken || "";
         if (username && accessToken) {
           setUser({ username, accessToken });
+
+          // 🔹 Đồng bộ lại username cho toàn hệ thống (checkout, address...)
+          localStorage.setItem("titi_username", username);
+          localStorage.setItem("titi_is_logged_in", "true");
         }
       }
     } catch (err) {
@@ -85,9 +89,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const piUser: PiUser = { username, accessToken };
       setUser(piUser);
 
-      // ✅ Lưu thông tin vào localStorage
+      // ✅ Lưu thông tin vào localStorage cho toàn hệ thống
       localStorage.setItem("pi_user", JSON.stringify(authResult));
       localStorage.setItem("titi_is_logged_in", "true");
+      localStorage.setItem("titi_username", username); // 🔹 thêm dòng này
 
       console.log("✅ Đăng nhập thành công:", piUser);
     } catch (err: any) {
@@ -107,6 +112,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(null);
     localStorage.removeItem("pi_user");
     localStorage.removeItem("titi_is_logged_in");
+    localStorage.removeItem("titi_username"); // 🔹 thêm dòng này
   };
 
   return (
