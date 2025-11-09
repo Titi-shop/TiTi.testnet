@@ -186,7 +186,7 @@ export default function ProductDetail() {
       <img
         src={validImages[currentIndex]}
         alt="Zoomed"
-        className="object-contain w-[60vw] h-[70vh] transition-transform duration-300 ease-in-out"
+        className="object-contain w-[90vw] h-[100vh] transition-transform duration-300 ease-in-out"
         style={{
           transformOrigin: "center center",
           transform: showZoom ? "scale(2)" : "scale(1)",
