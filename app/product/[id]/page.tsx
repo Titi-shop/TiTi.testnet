@@ -168,38 +168,62 @@ export default function ProductDetail() {
         </button>
       </div>
 
-      {/* 🔍 Lightbox ảnh lớn */}
-      {showLightbox && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
-          <button
-            onClick={() => setShowLightbox(false)}
-            className="absolute top-5 right-5 text-white text-3xl"
-          >
-            <X />
-          </button>
-          <img
-            src={validImages[currentIndex]}
-            alt="Zoomed"
-            className="max-h-[80%] max-w-[90%] object-contain"
-          />
-          {validImages.length > 1 && (
-            <>
-              <button
-                onClick={handlePrev}
-                className="absolute left-4 text-white text-4xl select-none"
-              >
-                ‹
-              </button>
-              <button
-                onClick={handleNext}
-                className="absolute right-4 text-white text-4xl select-none"
-              >
-                ›
-              </button>
-            </>
-          )}
-        </div>
-      )}
+      {/* 🔍 Lightbox ảnh lớn (nâng cấp có zoom và kích thước 60x70) */}
+{showLightbox && (
+  <div
+    className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center"
+    onClick={() => setShowLightbox(false)}
+  >
+    {/* Nút đóng */}
+    <button
+      onClick={() => setShowLightbox(false)}
+      className="absolute top-5 right-5 text-white text-3xl z-50"
+    >
+      <X />
+    </button>
+
+    {/* Ảnh có thể zoom */}
+    <div className="relative flex items-center justify-center overflow-hidden rounded-lg">
+      <img
+        src={validImages[currentIndex]}
+        alt="Zoomed"
+        className="object-contain w-[60vw] h-[70vh] transition-transform duration-300 ease-in-out"
+        style={{
+          transformOrigin: "center center",
+          transform: showZoom ? "scale(2)" : "scale(1)",
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowZoom((prev) => !prev); // 👈 Chạm 1 lần để phóng to/thu nhỏ
+        }}
+      />
     </div>
+
+    {/* Nút chuyển ảnh */}
+    {validImages.length > 1 && (
+      <>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePrev();
+          }}
+          className="absolute left-4 text-white text-4xl select-none"
+        >
+          ‹
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleNext();
+          }}
+          className="absolute right-4 text-white text-4xl select-none"
+        >
+          ›
+        </button>
+      </>
+    )}
+  </div>
+)}
+  </div>
   );
-}
+    }
