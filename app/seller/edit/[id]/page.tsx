@@ -19,8 +19,11 @@ export default function EditProductPage() {
   const [sellerUser, setSellerUser] = useState<string>("");
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [images, setImages] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const [selectedPreview, setSelectedPreview] = useState<string | null>(null);
 
-  // ✅ Lấy thông tin đăng nhập Pi
+  // ✅ Xác thực người dùng Pi
   useEffect(() => {
     try {
       const stored = localStorage.getItem("pi_user");
@@ -40,14 +43,17 @@ export default function EditProductPage() {
     }
   }, [router]);
 
-  // 🧩 Tải thông tin sản phẩm
+  // ✅ Lấy thông tin sản phẩm
   useEffect(() => {
     if (!id) return;
     fetch("/api/products", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         const found = data.find((p: any) => String(p.id) === String(id));
-        setProduct(found || null);
+        if (found) {
+          setProduct(found);
+          setPreviews(found.images || []);
+        }
         setLoading(false);
       })
       .catch((err) => {
@@ -57,7 +63,7 @@ export default function EditProductPage() {
       });
   }, [id]);
 
-  // ✅ Upload ảnh qua Blob API
+  // ✅ Upload ảnh
   async function handleFileUpload(file: File): Promise<string | null> {
     try {
       const arrayBuffer = await file.arrayBuffer();
@@ -80,21 +86,26 @@ export default function EditProductPage() {
     }
   }
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setSaving(true);
-    const url = await handleFileUpload(file);
-    if (url) {
-      setProduct((prev: any) => ({ ...prev, images: [url] }));
-      setMessage({ text: "Ảnh đã được cập nhật.", type: "success" });
-    } else {
-      setMessage({ text: "Tải ảnh thất bại, vui lòng thử lại!", type: "error" });
-    }
-    setSaving(false);
+  // ✅ Khi chọn thêm ảnh
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files);
+    setImages((prev) => [...prev, ...files]);
+    const urls = files.map((f) => URL.createObjectURL(f));
+    setPreviews((prev) => [...prev, ...urls]);
   };
 
-  // ✅ Lưu sản phẩm
+  // ✅ Xoá ảnh khỏi danh sách
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+    setPreviews((prev) => prev.filter((_, i) => i !== index));
+    setProduct((prev: any) => ({
+      ...prev,
+      images: prev.images?.filter((_: any, i: number) => i !== index),
+    }));
+  };
+
+  // ✅ Lưu chỉnh sửa
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
@@ -104,17 +115,23 @@ export default function EditProductPage() {
     let rawPrice = (form.price as any).value;
     rawPrice = rawPrice.replace(",", ".");
     const price = parseFloat(rawPrice);
-    const name = (form.name as any).value;
-    const description = (form.description as any).value;
+    const name = (form.name as any).value.trim();
+    const description = (form.description as any).value.trim();
 
     if (isNaN(price) || price <= 0) {
-      setMessage({
-        text: "⚠️ Vui lòng nhập giá hợp lệ (số dương, có thể nhỏ hơn 1).",
-        type: "error",
-      });
+      setMessage({ text: "⚠️ Giá không hợp lệ.", type: "error" });
       setSaving(false);
       return;
     }
+
+    // Upload ảnh mới nếu có
+    const newUrls: string[] = [];
+    for (const img of images) {
+      const url = await handleFileUpload(img);
+      if (url) newUrls.push(url);
+    }
+
+    const allImages = [...(product.images || []), ...newUrls];
 
     try {
       const res = await fetch("/api/products", {
@@ -125,7 +142,7 @@ export default function EditProductPage() {
           name,
           price,
           description,
-          images: product.images || [],
+          images: allImages,
           seller: sellerUser,
         }),
       });
@@ -142,7 +159,7 @@ export default function EditProductPage() {
       }
     } catch (err) {
       console.error("❌ PUT error:", err);
-      setMessage({ text: "Không thể cập nhật sản phẩm.", type: "error" });
+      setMessage({ text: "Lỗi khi lưu sản phẩm.", type: "error" });
     } finally {
       setSaving(false);
     }
@@ -156,7 +173,7 @@ export default function EditProductPage() {
 
   return (
     <main className="max-w-lg mx-auto p-6 bg-white rounded-xl shadow mt-10 pb-32">
-      <h1 className="text-xl font-bold mb-4 text-center text-gray-800">
+      <h1 className="text-2xl font-bold mb-4 text-center text-[#ff6600]">
         ✏️ {translate("edit_product") || "Chỉnh sửa sản phẩm"}
       </h1>
 
@@ -194,9 +211,7 @@ export default function EditProductPage() {
             min="0.000001"
             defaultValue={product.price}
             required
-            inputMode="decimal"
             className="w-full border rounded-md p-2"
-            placeholder="VD: 0.5 hoặc 0.0001"
           />
         </div>
 
@@ -210,28 +225,67 @@ export default function EditProductPage() {
           ></textarea>
         </div>
 
+        {/* ✅ Ảnh sản phẩm */}
         <div>
-          <label className="block font-medium mb-1">Ảnh sản phẩm</label>
+          <label className="block font-medium mb-2">Ảnh sản phẩm</label>
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            multiple
             onChange={handleFileChange}
             className="w-full"
           />
-          {product.images?.[0] && (
-            <img
-              src={product.images[0]}
-              alt="preview"
-              className="w-full h-48 object-cover mt-2 rounded-md"
-            />
-          )}
+
+          <div className="mt-3 space-y-2">
+            {previews.map((url, idx) => (
+              <div
+                key={idx}
+                className="flex items-center justify-between bg-gray-100 rounded-md p-2"
+              >
+                <div
+                  onClick={() => setSelectedPreview(url)}
+                  className="flex items-center gap-3 cursor-pointer"
+                >
+                  <img
+                    src={url}
+                    alt={`preview-${idx}`}
+                    className="w-[70px] h-[70px] object-cover rounded-md border border-gray-300"
+                  />
+                  <span className="text-gray-700 text-sm truncate">
+                    {product.images?.[idx]?.split("/").pop() || `Ảnh ${idx + 1}`}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeImage(idx)}
+                  className="text-purple-600 text-lg font-bold px-2"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
+
+        {/* Preview lớn */}
+        {selectedPreview && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
+            onClick={() => setSelectedPreview(null)}
+          >
+            <img
+              src={selectedPreview}
+              alt="preview-large"
+              className="max-w-[90%] max-h-[80%] rounded-lg shadow-lg"
+            />
+          </div>
+        )}
 
         <button
           type="submit"
           disabled={saving}
-          className="w-full bg-green-600 hover:bg-green-700 text-white p-3 rounded-lg font-semibold"
+          className="w-full bg-[#ff6600] hover:bg-[#e65500] text-white p-3 rounded-lg font-semibold"
         >
           {saving ? "💾 Đang lưu..." : "✅ Lưu thay đổi"}
         </button>
