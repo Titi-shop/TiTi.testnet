@@ -4,12 +4,14 @@ import { kv } from "@vercel/kv";
 
 /**
  * 🟣 API: /api/users/role
- * Lưu & lấy thông tin phân quyền người dùng (seller / buyer)
+ * - Phân quyền người dùng (seller / buyer)
+ * - Không phân biệt chữ hoa/thường
+ * - Tự động set role seller cho người trong danh sách mặc định
  */
 
-const DEFAULT_SELLERS = ["nguyenminhduc1991111","vothao11996611"]; // Danh sách người bán mặc định
+const DEFAULT_SELLERS = ["nguyenminhduc1991111", "vothao11996611"];
 
-function normalize(str: string) {
+function normalize(str: string): string {
   return str.trim().toLowerCase();
 }
 
@@ -17,12 +19,16 @@ export async function POST(req: Request) {
   try {
     const { username, role } = await req.json();
     if (!username || !role)
-      return NextResponse.json({ error: "missing data" }, { status: 400 });
+      return NextResponse.json({ error: "Thiếu dữ liệu" }, { status: 400 });
 
-    const key = `user_role:${normalize(username)}`;
+    const normalized = normalize(username);
+    const key = `user_role:${normalized}`;
+
+    if (!["seller", "buyer"].includes(role))
+      return NextResponse.json({ error: "Role không hợp lệ" }, { status: 400 });
+
     await kv.set(key, role);
-
-    return NextResponse.json({ success: true, username: normalize(username), role });
+    return NextResponse.json({ success: true, username: normalized, role });
   } catch (err: any) {
     console.error("❌ Lỗi lưu quyền:", err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
@@ -30,20 +36,25 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const username = searchParams.get("username");
+  try {
+    const { searchParams } = new URL(req.url);
+    const username = searchParams.get("username");
+    if (!username)
+      return NextResponse.json({ error: "Thiếu username" }, { status: 400 });
 
-  if (!username)
-    return NextResponse.json({ error: "missing username" }, { status: 400 });
+    const normalized = normalize(username);
+    const key = `user_role:${normalized}`;
 
-  const key = `user_role:${normalize(username)}`;
-  let role = (await kv.get(key)) || "buyer";
+    let role = (await kv.get<string>(key)) || "buyer";
 
-  // ✅ Nếu nằm trong danh sách mặc định → ép role thành seller
-  if (DEFAULT_SELLERS.includes(normalize(username))) {
-    role = "seller";
-    await kv.set(key, role);
+    if (DEFAULT_SELLERS.some((u) => normalize(u) === normalized)) {
+      role = "seller";
+      await kv.set(key, role);
+    }
+
+    return NextResponse.json({ success: true, username: normalized, role });
+  } catch (err: any) {
+    console.error("❌ Lỗi GET role:", err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
-
-  return NextResponse.json({ username: normalize(username), role });
 }
