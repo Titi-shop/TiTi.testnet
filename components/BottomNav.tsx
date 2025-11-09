@@ -12,12 +12,16 @@ export default function BottomNav() {
   const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
-    const username = localStorage.getItem("username");
-    if (!username) return;
+    const rawUsername = localStorage.getItem("username");
+    if (!rawUsername) return;
+
+    // 🔹 Chuẩn hóa về chữ thường & trim để khớp với API
+    const username = rawUsername.trim().toLowerCase();
 
     fetch(`/api/users/role?username=${username}`)
       .then((res) => res.json())
       .then((data) => {
+        console.log("👉 API /role trả về:", data);
         if (data?.role) setRole(data.role);
       })
       .catch((err) => console.error("Lỗi lấy quyền:", err));
