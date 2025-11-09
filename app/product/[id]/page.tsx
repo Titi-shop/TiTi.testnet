@@ -13,10 +13,18 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showLightbox, setShowLightbox] = useState(false);
+  const [showZoom, setShowZoom] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const { addToCart, clearCart } = useCart();
   const { translate } = useLanguage();
 
+  // 🧠 Hàm chuyển ảnh khi vuốt
+  const handleSwipe = (direction: string) => {
+    if (direction === "left") handleNext();
+    else handlePrev();
+  };
+
+  // 🧠 Load sản phẩm từ API
   useEffect(() => {
     async function fetchProduct() {
       try {
@@ -42,29 +50,25 @@ export default function ProductDetail() {
       </p>
     );
 
+  // 🧩 Xử lý đường dẫn ảnh
   const validImages =
     product.images?.map((src: string) =>
       src.startsWith("http") ? src : `/uploads/${src.split("\\").pop()}`
     ) || [];
 
-  const handleDoubleTap = () => {
-    setShowLightbox(true);
-  };
-
-  const handleNext = () => {
+  // 🖼️ Chuyển ảnh
+  const handleNext = () =>
     setCurrentIndex((prev) => (prev + 1) % validImages.length);
-  };
-  const handlePrev = () => {
+  const handlePrev = () =>
     setCurrentIndex((prev) =>
       prev === 0 ? validImages.length - 1 : prev - 1
     );
-  };
 
+  // 🛒 Giỏ hàng & Thanh toán
   const handleAddToCart = () => {
     addToCart({ ...product, quantity });
     alert("✅ " + translate("added_to_cart"));
   };
-
   const handleCheckout = () => {
     clearCart();
     addToCart({ ...product, quantity });
@@ -93,16 +97,18 @@ export default function ProductDetail() {
         </button>
       </div>
 
-      
       {/* 🖼️ Slider ảnh */}
       <div
         className="relative w-full h-80 bg-white flex justify-center items-center overflow-hidden mt-14"
-        onDoubleClick={handleDoubleTap}
-        onTouchStart={(e) => (e.target as HTMLElement).setAttribute("data-x", e.touches[0].clientX.toString())}
+        onDoubleClick={() => setShowLightbox(true)}
+        onTouchStart={(e) =>
+          (e.currentTarget.dataset.x = e.touches[0].clientX.toString())
+        }
         onTouchEnd={(e) => {
-          const startX = parseFloat((e.target as HTMLElement).getAttribute("data-x") || "0");
+          const startX = parseFloat(e.currentTarget.dataset.x || "0");
           const diff = e.changedTouches[0].clientX - startX;
-          if (Math.abs(diff) > 50) handleSwipe(diff > 0 ? "left" : "right");
+          if (Math.abs(diff) > 50)
+            handleSwipe(diff > 0 ? "right" : "left");
         }}
       >
         {validImages.length > 0 ? (
@@ -120,24 +126,12 @@ export default function ProductDetail() {
           {validImages.map((_, i) => (
             <span
               key={i}
-              className={`w-2 h-2 rounded-full ${i === currentIndex ? "bg-orange-500" : "bg-gray-300"}`}
+              className={`w-2 h-2 rounded-full ${
+                i === currentIndex ? "bg-orange-500" : "bg-gray-300"
+              }`}
             ></span>
           ))}
         </div>
-
-        {/* 🔍 Ảnh phóng to */}
-        {showZoom && (
-          <div
-            onClick={() => setShowZoom(false)}
-            className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
-          >
-            <img
-              src={validImages[currentIndex]}
-              alt="Zoomed"
-              className="w-[70%] h-[70%] object-contain rounded-lg"
-            />
-          </div>
-        )}
       </div>
 
       {/* 🧾 Tên + Giá Pi cùng hàng */}
