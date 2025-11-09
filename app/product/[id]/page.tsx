@@ -168,13 +168,24 @@ export default function ProductDetail() {
         </button>
       </div>
 
-      {/* 🔍 Lightbox ảnh lớn (nâng cấp có zoom và kích thước 60x70) */}
+      {/* 🔍 Lightbox ảnh lớn (full width, 80% chiều cao, có vuốt đổi ảnh & zoom) */}
 {showLightbox && (
   <div
-    className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center"
+    className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center overflow-hidden"
     onClick={() => setShowLightbox(false)}
+    onTouchStart={(e) =>
+      (e.currentTarget.dataset.x = e.touches[0].clientX.toString())
+    }
+    onTouchEnd={(e) => {
+      const startX = parseFloat(e.currentTarget.dataset.x || "0");
+      const diff = e.changedTouches[0].clientX - startX;
+      if (Math.abs(diff) > 50) {
+        if (diff > 0) handlePrev();
+        else handleNext();
+      }
+    }}
   >
-    {/* Nút đóng */}
+    {/* 🔘 Nút đóng */}
     <button
       onClick={() => setShowLightbox(false)}
       className="absolute top-5 right-5 text-white text-3xl z-50"
@@ -182,24 +193,24 @@ export default function ProductDetail() {
       <X />
     </button>
 
-    {/* Ảnh có thể zoom */}
-    <div className="relative flex items-center justify-center overflow-hidden rounded-lg">
+    {/* 🖼️ Ảnh hiển thị chính */}
+    <div className="relative flex items-center justify-center w-full h-[80vh]">
       <img
         src={validImages[currentIndex]}
         alt="Zoomed"
-        className="object-contain w-[60vw] h-[70vh] transition-transform duration-300 ease-in-out"
+        className="object-contain w-full h-full transition-transform duration-300 ease-in-out"
         style={{
           transformOrigin: "center center",
-          transform: showZoom ? "scale(2)" : "scale(1)",
+          transform: showZoom ? "scale(1.8)" : "scale(1)",
         }}
         onClick={(e) => {
           e.stopPropagation();
-          setShowZoom((prev) => !prev); // 👈 Chạm 1 lần để phóng to/thu nhỏ
+          setShowZoom((prev) => !prev); // 👈 Chạm để zoom in/out
         }}
       />
     </div>
 
-    {/* Nút chuyển ảnh */}
+    {/* ⬅️➡️ Nút chuyển ảnh */}
     {validImages.length > 1 && (
       <>
         <button
@@ -224,6 +235,3 @@ export default function ProductDetail() {
     )}
   </div>
 )}
-  </div>
-  );
-    }
