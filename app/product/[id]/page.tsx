@@ -172,6 +172,18 @@ export default function ProductDetail() {
   <div
     className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center"
     onClick={() => setShowLightbox(false)}
+    // 👇 Thêm 2 sự kiện này để xử lý vuốt ảnh
+    onTouchStart={(e) =>
+      (e.currentTarget.dataset.x = e.touches[0].clientX.toString())
+    }
+    onTouchEnd={(e) => {
+      const startX = parseFloat(e.currentTarget.dataset.x || "0");
+      const diff = e.changedTouches[0].clientX - startX;
+      if (Math.abs(diff) > 50) {
+        if (diff > 0) handlePrev(); // Vuốt sang phải => ảnh trước
+        else handleNext();          // Vuốt sang trái => ảnh kế tiếp
+      }
+    }}
   >
     {/* Nút đóng */}
     <button
