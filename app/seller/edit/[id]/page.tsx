@@ -43,7 +43,7 @@ export default function EditProductPage() {
     }
   }, [router]);
 
-  // ✅ Lấy thông tin sản phẩm
+  // ✅ Lấy sản phẩm
   useEffect(() => {
     if (!id) return;
     fetch("/api/products", { cache: "no-store" })
@@ -75,18 +75,15 @@ export default function EditProductPage() {
         },
         body: arrayBuffer,
       });
-
       const data = await res.json();
-      if (data.url) return data.url;
-      throw new Error("Upload thất bại");
-    } catch (err) {
-      console.error("❌ Upload lỗi:", err);
+      return data.url || null;
+    } catch {
       setMessage({ text: "Không thể tải ảnh lên.", type: "error" });
       return null;
     }
   }
 
-  // ✅ Khi chọn thêm ảnh
+  // ✅ Chọn thêm ảnh
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const files = Array.from(e.target.files);
@@ -95,7 +92,6 @@ export default function EditProductPage() {
     setPreviews((prev) => [...prev, ...urls]);
   };
 
-  // ✅ Xoá ảnh khỏi danh sách
   const removeImage = (index: number) => {
     setImages((prev) => prev.filter((_, i) => i !== index));
     setPreviews((prev) => prev.filter((_, i) => i !== index));
@@ -124,7 +120,6 @@ export default function EditProductPage() {
       return;
     }
 
-    // Upload ảnh mới nếu có
     const newUrls: string[] = [];
     for (const img of images) {
       const url = await handleFileUpload(img);
@@ -133,47 +128,35 @@ export default function EditProductPage() {
 
     const allImages = [...(product.images || []), ...newUrls];
 
-    try {
-      const res = await fetch("/api/products", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: product.id,
-          name,
-          price,
-          description,
-          images: allImages,
-          seller: sellerUser,
-        }),
-      });
+    const res = await fetch("/api/products", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: product.id,
+        name,
+        price,
+        description,
+        images: allImages,
+        seller: sellerUser,
+      }),
+    });
 
-      const result = await res.json();
-      if (result.success) {
-        setMessage({ text: "✅ Cập nhật sản phẩm thành công!", type: "success" });
-        setTimeout(() => router.push("/seller/stock"), 1500);
-      } else {
-        setMessage({
-          text: result.message || "❌ Không thể cập nhật sản phẩm.",
-          type: "error",
-        });
-      }
-    } catch (err) {
-      console.error("❌ PUT error:", err);
-      setMessage({ text: "Lỗi khi lưu sản phẩm.", type: "error" });
-    } finally {
-      setSaving(false);
+    const result = await res.json();
+    if (result.success) {
+      setMessage({ text: "✅ Cập nhật thành công!", type: "success" });
+      setTimeout(() => router.push("/seller/stock"), 1200);
+    } else {
+      setMessage({ text: result.message || "❌ Không thể lưu.", type: "error" });
     }
+    setSaving(false);
   }
 
-  if (loading)
-    return <p className="text-center mt-10 text-gray-600">⏳ Đang tải dữ liệu...</p>;
-
-  if (!product)
-    return <p className="text-center mt-10 text-red-500">Không tìm thấy sản phẩm!</p>;
+  if (loading) return <p className="text-center mt-10 text-gray-600">⏳ Đang tải dữ liệu...</p>;
+  if (!product) return <p className="text-center mt-10 text-red-500">Không tìm thấy sản phẩm!</p>;
 
   return (
     <main className="max-w-lg mx-auto p-6 bg-white rounded-xl shadow mt-10 pb-32">
-      <h1 className="text-2xl font-bold mb-4 text-center text-[#ff6600]">
+      <h1 className="text-2xl font-bold text-center text-[#ff6600] mb-4">
         ✏️ {translate("edit_product") || "Chỉnh sửa sản phẩm"}
       </h1>
 
@@ -225,7 +208,7 @@ export default function EditProductPage() {
           ></textarea>
         </div>
 
-        {/* ✅ Ảnh sản phẩm */}
+        {/* Ảnh sản phẩm */}
         <div>
           <label className="block font-medium mb-2">Ảnh sản phẩm</label>
           <input
@@ -241,7 +224,7 @@ export default function EditProductPage() {
             {previews.map((url, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between bg-gray-100 rounded-md p-2"
+                className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-md p-2"
               >
                 <div
                   onClick={() => setSelectedPreview(url)}
@@ -252,8 +235,8 @@ export default function EditProductPage() {
                     alt={`preview-${idx}`}
                     className="w-[70px] h-[70px] object-cover rounded-md border border-gray-300"
                   />
-                  <span className="text-gray-700 text-sm truncate">
-                    {product.images?.[idx]?.split("/").pop() || `Ảnh ${idx + 1}`}
+                  <span className="text-gray-700 text-sm truncate max-w-[180px]">
+                    {url.split("/").pop()}
                   </span>
                 </div>
                 <button
@@ -265,10 +248,22 @@ export default function EditProductPage() {
                 </button>
               </div>
             ))}
+
+            {previews.length > 0 && (
+              <label className="text-[#ff6600] cursor-pointer block mt-1 font-medium">
+                + Thêm ảnh khác
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+              </label>
+            )}
           </div>
         </div>
 
-        {/* Preview lớn */}
         {selectedPreview && (
           <div
             className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
