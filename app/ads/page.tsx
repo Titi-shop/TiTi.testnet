@@ -4,19 +4,19 @@ import BannerCarousel from "../components/BannerCarousel";
 
 export default function AdsPage() {
   return (
-    <main className="p-4 space-y-6 bg-gray-50 min-h-screen">
+    <main className="bg-gray-50 min-h-screen w-full">
       {/* Tiêu đề */}
-      <h1 className="text-xl font-semibold text-center text-red-600">
+      <h1 className="text-xl font-semibold text-center text-red-600 py-4">
         🎉 Ưu đãi đặc biệt hôm nay 🎉
       </h1>
 
       {/* Banner chạy tự động */}
-      <div className="max-w-4xl mx-auto">
+      <div className="w-full">
         <BannerCarousel />
       </div>
 
       {/* Danh sách ưu đãi */}
-      <section className="mt-6 space-y-3 text-center">
+      <section className="mt-6 space-y-3 text-center px-3">
         <h2 className="text-lg font-semibold text-gray-800">
           🔥 Chương trình nổi bật
         </h2>
