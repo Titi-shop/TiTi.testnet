@@ -13,10 +13,18 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showLightbox, setShowLightbox] = useState(false);
+  const [showZoom, setShowZoom] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const { addToCart, clearCart } = useCart();
   const { translate } = useLanguage();
 
+  // 🧠 Hàm chuyển ảnh khi vuốt
+  const handleSwipe = (direction: string) => {
+    if (direction === "left") handleNext();
+    else handlePrev();
+  };
+
+  // 🧠 Load sản phẩm từ API
   useEffect(() => {
     async function fetchProduct() {
       try {
@@ -42,29 +50,25 @@ export default function ProductDetail() {
       </p>
     );
 
+  // 🧩 Xử lý đường dẫn ảnh
   const validImages =
     product.images?.map((src: string) =>
       src.startsWith("http") ? src : `/uploads/${src.split("\\").pop()}`
     ) || [];
 
-  const handleDoubleTap = () => {
-    setShowLightbox(true);
-  };
-
-  const handleNext = () => {
+  // 🖼️ Chuyển ảnh
+  const handleNext = () =>
     setCurrentIndex((prev) => (prev + 1) % validImages.length);
-  };
-  const handlePrev = () => {
+  const handlePrev = () =>
     setCurrentIndex((prev) =>
       prev === 0 ? validImages.length - 1 : prev - 1
     );
-  };
 
+  // 🛒 Giỏ hàng & Thanh toán
   const handleAddToCart = () => {
     addToCart({ ...product, quantity });
     alert("✅ " + translate("added_to_cart"));
   };
-
   const handleCheckout = () => {
     clearCart();
     addToCart({ ...product, quantity });
@@ -93,88 +97,109 @@ export default function ProductDetail() {
         </button>
       </div>
 
-      {/* 🖼️ Ảnh sản phẩm */}
-<div className="relative w-full bg-white flex flex-col items-center justify-center mt-14 overflow-hidden">
-  {validImages.length > 0 ? (
-    <>
-      {/* Slider chính */}
+      {/* 🖼️ Slider ảnh */}
       <div
-        className="w-full h-80 flex transition-transform duration-500 ease-in-out"
-        style={{
-          transform: `translateX(-${currentIndex * 100}%)`,
-          width: `${validImages.length * 100}%`,
-        }}
+        className="relative w-full h-80 bg-white flex justify-center items-center overflow-hidden mt-14"
         onDoubleClick={() => setShowLightbox(true)}
+        onTouchStart={(e) =>
+          (e.currentTarget.dataset.x = e.touches[0].clientX.toString())
+        }
+        onTouchEnd={(e) => {
+          const startX = parseFloat(e.currentTarget.dataset.x || "0");
+          const diff = e.changedTouches[0].clientX - startX;
+          if (Math.abs(diff) > 50)
+            handleSwipe(diff > 0 ? "right" : "left");
+        }}
       >
-        {validImages.map((img: string, i: number) => (
+        {validImages.length > 0 ? (
           <img
-            key={i}
-            src={img}
+            src={validImages[currentIndex]}
             alt={product.name}
-            className="w-full h-80 object-contain flex-shrink-0"
+            className="w-full h-full object-cover transition-all duration-500"
           />
-        ))}
+        ) : (
+          <div className="text-gray-400">Không có ảnh</div>
+        )}
+
+        {/* 🔘 Chấm tròn chỉ báo */}
+        <div className="absolute bottom-3 flex justify-center w-full gap-2">
+          {validImages.map((_, i) => (
+            <span
+              key={i}
+              className={`w-2 h-2 rounded-full ${
+                i === currentIndex ? "bg-orange-500" : "bg-gray-300"
+              }`}
+            ></span>
+          ))}
+        </div>
       </div>
 
-      {/* 🔵 Chấm nhỏ dưới ảnh */}
-      <div className="flex justify-center mt-2">
-        {validImages.map((_, i) => (
-          <div
-            key={i}
-            onClick={() => setCurrentIndex(i)}
-            className={`w-2.5 h-2.5 mx-1 rounded-full cursor-pointer transition-all duration-300 ${
-              currentIndex === i ? "bg-blue-600 scale-110" : "bg-gray-300"
-            }`}
-          ></div>
-        ))}
+      {/* 🧾 Tên + Giá Pi cùng hàng */}
+      <div className="bg-white p-4 mt-2 shadow-sm flex justify-between items-center">
+        <h2 className="text-lg font-semibold text-gray-800">{product.name}</h2>
+        <p className="text-xl font-bold text-orange-600">π {product.price}</p>
       </div>
-    </>
-  ) : (
-    <div className="h-72 flex items-center justify-center text-gray-400">
-      {translate("no_image")}
-    </div>
-  )}
-</div>
 
-{/* 🔍 Khung ảnh zoom khi chạm 2 lần */}
-{showLightbox && (
-  <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
-    <button
-      onClick={() => setShowLightbox(false)}
-      className="absolute top-4 right-4 text-white text-3xl"
-    >
-      ✕
-    </button>
+      {/* 👁 Thông tin thêm */}
+      <div className="bg-white px-4 pb-3 flex items-center gap-4 text-gray-500 text-sm border-b">
+        <span>👁 {product.views ?? 11}</span>
+        <span>🛒 {product.sold ?? 0} đã bán</span>
+        <span>⭐ 5.0</span>
+      </div>
 
-    <div className="relative flex items-center justify-center">
-      <img
-        src={validImages[currentIndex]}
-        alt="Zoomed"
-        className="w-[70%] h-[70%] object-contain rounded-md shadow-lg"
-      />
-      {/* Nút chuyển ảnh */}
-      {validImages.length > 1 && (
-        <>
+      {/* 📦 Mô tả */}
+      <div className="bg-white p-4 text-gray-700 text-sm leading-relaxed">
+        {product.description}
+      </div>
+
+      {/* 🛍️ Nút hành động - nằm trên thanh điều hướng */}
+      <div className="fixed bottom-16 left-0 right-0 bg-white border-t shadow-md flex justify-between px-3 py-2 z-50">
+        <button
+          onClick={handleAddToCart}
+          className="flex-1 mx-1 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 rounded-md"
+        >
+          🛒 Giỏ hàng
+        </button>
+        <button
+          onClick={handleCheckout}
+          className="flex-1 mx-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded-md"
+        >
+          💳 Thanh toán
+        </button>
+      </div>
+
+      {/* 🔍 Lightbox ảnh lớn */}
+      {showLightbox && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
           <button
-            onClick={() =>
-              setCurrentIndex((prev) =>
-                prev === 0 ? validImages.length - 1 : prev - 1
-              )
-            }
-            className="absolute left-4 text-white text-4xl select-none"
+            onClick={() => setShowLightbox(false)}
+            className="absolute top-5 right-5 text-white text-3xl"
           >
-            ‹
+            <X />
           </button>
-          <button
-            onClick={() =>
-              setCurrentIndex((prev) => (prev + 1) % validImages.length)
-            }
-            className="absolute right-4 text-white text-4xl select-none"
-          >
-            ›
-          </button>
-        </>
+          <img
+            src={validImages[currentIndex]}
+            alt="Zoomed"
+            className="max-h-[80%] max-w-[90%] object-contain"
+          />
+          {validImages.length > 1 && (
+            <>
+              <button
+                onClick={handlePrev}
+                className="absolute left-4 text-white text-4xl select-none"
+              >
+                ‹
+              </button>
+              <button
+                onClick={handleNext}
+                className="absolute right-4 text-white text-4xl select-none"
+              >
+                ›
+              </button>
+            </>
+          )}
+        </div>
       )}
     </div>
-  </div>
-)}
+  );
+}
