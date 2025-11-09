@@ -178,16 +178,25 @@ export default function ProductDetail() {
       onClick={() => setShowLightbox(false)}
       className="absolute top-5 right-5 text-white text-3xl z-50"
     >
-      ✕
+      <X />
     </button>
 
-    {/* Ảnh tràn ngang, cao 80% màn hình */}
-    <img
-      src={validImages[currentIndex]}
-      alt="Zoomed"
-      className="w-full h-[80vh] object-contain transition-transform duration-300 ease-in-out"
-      onClick={(e) => e.stopPropagation()} // tránh đóng khi click vào ảnh
-    />
+    {/* Ảnh có thể zoom */}
+    <div className="relative flex items-center justify-center overflow-hidden rounded-lg">
+      <img
+        src={validImages[currentIndex]}
+        alt="Zoomed"
+        className="object-contain w-[60vw] h-[70vh] transition-transform duration-300 ease-in-out"
+        style={{
+          transformOrigin: "center center",
+          transform: showZoom ? "scale(2)" : "scale(1)",
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowZoom((prev) => !prev); // 👈 Chạm 1 lần để phóng to/thu nhỏ
+        }}
+      />
+    </div>
 
     {/* Nút chuyển ảnh */}
     {validImages.length > 1 && (
