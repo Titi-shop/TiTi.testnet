@@ -7,7 +7,7 @@ import { kv } from "@vercel/kv";
  * Lưu & lấy thông tin phân quyền người dùng (seller / buyer)
  */
 
-const DEFAULT_SELLERS = ["nguyenminhduc1991111,vothao11996611"]; // Danh sách người bán mặc định
+const DEFAULT_SELLERS = ["nguyenminhduc1991111","vothao11996611"]; // Danh sách người bán mặc định
 
 function normalize(str: string) {
   return str.trim().toLowerCase();
