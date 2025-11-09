@@ -74,13 +74,10 @@ export default function SellerStockPage() {
     try {
       const res = await fetch("/api/products", { cache: "no-store" });
       const data = await res.json();
-
       const filtered = data.filter(
         (p: any) =>
-          (p.seller || "").trim().toLowerCase() ===
-          (username || "").trim().toLowerCase()
+          (p.seller || "").trim().toLowerCase() === (username || "").trim().toLowerCase()
       );
-
       setProducts(filtered);
     } catch (err) {
       console.error("❌ Lỗi tải sản phẩm:", err);
@@ -93,8 +90,6 @@ export default function SellerStockPage() {
   // ✅ Xử lý xóa sản phẩm
   const handleDelete = async (id: number) => {
     setMessage({ text: "", type: "" });
-
-    // Hiển thị xác nhận nhẹ trong giao diện thay vì popup
     const product = products.find((p) => p.id === id);
     if (!product) return;
 
@@ -102,14 +97,12 @@ export default function SellerStockPage() {
     if (!confirmed) return;
 
     setDeletingId(id);
-
     try {
       const res = await fetch(`/api/products?id=${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ seller: sellerUser }),
       });
-
       const result = await res.json();
 
       if (result.success) {
@@ -144,9 +137,11 @@ export default function SellerStockPage() {
     );
 
   return (
-    <main className="p-4 max-w-3xl mx-auto pb-24">
-      <h1 className="text-2xl font-bold text-center mb-4">📦 Quản lý kho hàng</h1>
-      <p className="text-center text-sm text-gray-500 mb-3">
+    <main className="p-4 max-w-5xl mx-auto pb-24">
+      <h1 className="text-2xl font-bold text-center mb-4 text-[#ff6600]">
+        🏪 Cửa hàng của tôi
+      </h1>
+      <p className="text-center text-sm text-gray-500 mb-4">
         👤 Người bán: <b>{sellerUser}</b>
       </p>
 
@@ -163,50 +158,61 @@ export default function SellerStockPage() {
       {products.length === 0 ? (
         <p className="text-center text-gray-500">Không có sản phẩm nào.</p>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {products.map((product) => (
             <div
               key={product.id}
-              className="bg-white shadow-md rounded-lg p-4 border border-gray-200"
+              className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300"
             >
-              {product.images?.[0] ? (
-                <Image
-                  src={product.images[0]}
-                  alt={product.name}
-                  width={400}
-                  height={300}
-                  className="w-full h-48 object-cover rounded-md mb-3"
-                />
-              ) : (
-                <div className="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-400 rounded-md mb-3">
-                  Không có ảnh
+              <div className="relative w-full h-44">
+                {product.images?.[0] ? (
+                  <Image
+                    src={product.images[0]}
+                    alt={product.name}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400">
+                    Không có ảnh
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 text-center">
+                <h3 className="font-semibold text-gray-800 truncate">
+                  {product.name}
+                </h3>
+                <p className="text-[#ff6600] font-bold mt-1 text-sm">
+                  {product.price} π
+                </p>
+
+                <div className="flex justify-center gap-4 mt-2 text-gray-600 text-lg">
+                  <button
+                    onClick={() => router.push(`/product/${product.id}`)}
+                    title="Xem"
+                    className="hover:text-blue-500"
+                  >
+                    👁
+                  </button>
+                  <button
+                    onClick={() => router.push(`/seller/edit/${product.id}`)}
+                    title="Sửa"
+                    className="hover:text-green-500"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => handleDelete(product.id)}
+                    disabled={deletingId === product.id}
+                    title="Xóa"
+                    className={`hover:text-red-500 ${
+                      deletingId === product.id ? "opacity-50" : ""
+                    }`}
+                  >
+                    🗑
+                  </button>
                 </div>
-              )}
-
-              <h2 className="text-lg font-semibold text-gray-800">{product.name}</h2>
-              <p className="text-orange-600 font-bold mt-1">💰 {product.price} Pi</p>
-              {product.description && (
-                <p className="text-gray-500 mt-1">{product.description}</p>
-              )}
-
-              <div className="flex gap-2 mt-4">
-                <button
-                  onClick={() => router.push(`/seller/edit/${product.id}`)}
-                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md"
-                >
-                  ✏️ Sửa
-                </button>
-                <button
-                  onClick={() => handleDelete(product.id)}
-                  disabled={deletingId === product.id}
-                  className={`flex-1 ${
-                    deletingId === product.id
-                      ? "bg-gray-400"
-                      : "bg-red-500 hover:bg-red-600"
-                  } text-white py-2 rounded-md`}
-                >
-                  {deletingId === product.id ? "⏳ Đang xóa..." : "❌ Xóa"}
-                </button>
               </div>
             </div>
           ))}
