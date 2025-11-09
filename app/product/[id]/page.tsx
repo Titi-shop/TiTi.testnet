@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useCart } from "../../context/CartContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { ArrowLeft, ShoppingCart, X } from "lucide-react";
+import { ArrowLeft, ShoppingCart } from "lucide-react";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -12,19 +12,12 @@ export default function ProductDetail() {
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [showLightbox, setShowLightbox] = useState(false);
   const [showZoom, setShowZoom] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const { addToCart, clearCart } = useCart();
   const { translate } = useLanguage();
 
-  // 🧠 Hàm chuyển ảnh khi vuốt
-  const handleSwipe = (direction: string) => {
-    if (direction === "left") handleNext();
-    else handlePrev();
-  };
-
-  // 🧠 Load sản phẩm từ API
+  // ✅ Lấy sản phẩm theo ID
   useEffect(() => {
     async function fetchProduct() {
       try {
@@ -38,37 +31,40 @@ export default function ProductDetail() {
         setLoading(false);
       }
     }
+
     if (id) fetchProduct();
   }, [id]);
 
-  if (loading)
-    return <p className="text-center mt-6">⏳ {translate("loading")}</p>;
+  if (loading) return <p className="text-center mt-6">⏳ {translate("loading")}</p>;
   if (!product)
-    return (
-      <p className="text-center mt-6 text-red-600 font-medium">
-        ❌ {translate("no_products")}
-      </p>
-    );
+    return <p className="text-center mt-6 text-red-600 font-medium">❌ {translate("no_products")}</p>;
 
-  // 🧩 Xử lý đường dẫn ảnh
   const validImages =
     product.images?.map((src: string) =>
       src.startsWith("http") ? src : `/uploads/${src.split("\\").pop()}`
     ) || [];
 
-  // 🖼️ Chuyển ảnh
-  const handleNext = () =>
-    setCurrentIndex((prev) => (prev + 1) % validImages.length);
-  const handlePrev = () =>
-    setCurrentIndex((prev) =>
-      prev === 0 ? validImages.length - 1 : prev - 1
-    );
+  // ✅ Vuốt sang phải / trái để đổi ảnh
+  const handleSwipe = (direction: "left" | "right") => {
+    setCurrentIndex((prev) => {
+      if (direction === "right") return (prev + 1) % validImages.length;
+      return (prev - 1 + validImages.length) % validImages.length;
+    });
+  };
 
-  // 🛒 Giỏ hàng & Thanh toán
+  // ✅ Mở / tắt khung ảnh phóng to
+  const handleDoubleTap = () => {
+    setShowZoom(!showZoom);
+  };
+
+  // ✅ Thêm vào giỏ hàng
   const handleAddToCart = () => {
     addToCart({ ...product, quantity });
     alert("✅ " + translate("added_to_cart"));
+    router.push("/cart");
   };
+
+  // ✅ Thanh toán ngay
   const handleCheckout = () => {
     clearCart();
     addToCart({ ...product, quantity });
@@ -76,23 +72,15 @@ export default function ProductDetail() {
   };
 
   return (
-    <div className="pb-36 bg-gray-50 min-h-screen">
-      {/* 🔝 Header */}
+    <div className="pb-28 bg-gray-50 min-h-screen">
+      {/* 🔝 Thanh trên cùng */}
       <div className="fixed top-0 left-0 right-0 bg-white shadow z-50 flex items-center justify-between px-4 py-3 border-b">
-        <button
-          onClick={() => router.back()}
-          className="text-gray-700 hover:text-orange-500 flex items-center gap-1"
-        >
+        <button onClick={() => router.back()} className="text-gray-700 hover:text-orange-500 flex items-center gap-1">
           <ArrowLeft size={22} />
           <span className="font-medium">{translate("back")}</span>
         </button>
-        <h1 className="text-base font-semibold text-gray-800 truncate max-w-[60%]">
-          {product.name}
-        </h1>
-        <button
-          onClick={() => router.push("/cart")}
-          className="text-gray-700 hover:text-orange-500"
-        >
+        <h1 className="text-base font-semibold text-gray-800 truncate max-w-[60%]">{product.name}</h1>
+        <button onClick={() => router.push("/cart")} className="text-gray-700 hover:text-orange-500">
           <ShoppingCart size={22} />
         </button>
       </div>
@@ -100,15 +88,12 @@ export default function ProductDetail() {
       {/* 🖼️ Slider ảnh */}
       <div
         className="relative w-full h-80 bg-white flex justify-center items-center overflow-hidden mt-14"
-        onDoubleClick={() => setShowLightbox(true)}
-        onTouchStart={(e) =>
-          (e.currentTarget.dataset.x = e.touches[0].clientX.toString())
-        }
+        onDoubleClick={handleDoubleTap}
+        onTouchStart={(e) => (e.target as HTMLElement).setAttribute("data-x", e.touches[0].clientX.toString())}
         onTouchEnd={(e) => {
-          const startX = parseFloat(e.currentTarget.dataset.x || "0");
+          const startX = parseFloat((e.target as HTMLElement).getAttribute("data-x") || "0");
           const diff = e.changedTouches[0].clientX - startX;
-          if (Math.abs(diff) > 50)
-            handleSwipe(diff > 0 ? "right" : "left");
+          if (Math.abs(diff) > 50) handleSwipe(diff > 0 ? "left" : "right");
         }}
       >
         {validImages.length > 0 ? (
@@ -126,104 +111,63 @@ export default function ProductDetail() {
           {validImages.map((_, i) => (
             <span
               key={i}
-              className={`w-2 h-2 rounded-full ${
-                i === currentIndex ? "bg-orange-500" : "bg-gray-300"
-              }`}
+              className={`w-2 h-2 rounded-full ${i === currentIndex ? "bg-orange-500" : "bg-gray-300"}`}
             ></span>
           ))}
         </div>
+
+        {/* 🔍 Ảnh phóng to */}
+        {showZoom && (
+          <div
+            onClick={() => setShowZoom(false)}
+            className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
+          >
+            <img
+              src={validImages[currentIndex]}
+              alt="Zoomed"
+              className="w-[70%] h-[70%] object-contain rounded-lg"
+            />
+          </div>
+        )}
       </div>
 
-      {/* 🧾 Tên + Giá Pi cùng hàng */}
-      <div className="bg-white p-4 mt-2 shadow-sm flex justify-between items-center">
-        <h2 className="text-lg font-semibold text-gray-800">{product.name}</h2>
-        <p className="text-xl font-bold text-orange-600">π {product.price}</p>
+      {/* 🏷️ Thông tin */}
+      <div className="p-4 max-w-3xl mx-auto bg-white mt-3 rounded-lg shadow-sm">
+        <h1 className="text-2xl font-bold mb-2">{product.name}</h1>
+        <p className="text-xl text-orange-600 font-semibold mb-2">π {product.price}</p>
+
+        {/* 👁 Lượt xem / Đã bán / Đánh giá */}
+        <div className="flex items-center gap-4 text-gray-500 text-sm mb-3">
+          <span>👁 {product.views ?? 11}</span>
+          <span>🛒 {product.sold ?? 0} đã bán</span>
+          <span>⭐ 5.0</span>
+        </div>
+
+        {/* Số lượng */}
+        <div className="flex items-center gap-3 mb-4">
+          <button onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="bg-gray-200 px-3 py-1 rounded">-</button>
+          <span className="font-medium">{quantity}</span>
+          <button onClick={() => setQuantity((q) => q + 1)} className="bg-gray-200 px-3 py-1 rounded">+</button>
+        </div>
+
+        <p className="text-gray-700 leading-relaxed">{product.description}</p>
       </div>
 
-      {/* 👁 Thông tin thêm */}
-      <div className="bg-white px-4 pb-3 flex items-center gap-4 text-gray-500 text-sm border-b">
-        <span>👁 {product.views ?? 11}</span>
-        <span>🛒 {product.sold ?? 0} đã bán</span>
-        <span>⭐ 5.0</span>
-      </div>
-
-      {/* 📦 Mô tả */}
-      <div className="bg-white p-4 text-gray-700 text-sm leading-relaxed">
-        {product.description}
-      </div>
-
-      {/* 🛍️ Nút hành động - nằm trên thanh điều hướng */}
-      <div className="fixed bottom-16 left-0 right-0 bg-white border-t shadow-md flex justify-between px-3 py-2 z-50">
+      {/* 🛍️ Nút hành động */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg flex justify-around py-3 z-50">
         <button
           onClick={handleAddToCart}
-          className="flex-1 mx-1 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 rounded-md"
+          className="flex items-center justify-center bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-4 py-2 rounded-lg w-[45%]"
         >
-          🛒 Giỏ hàng
+          🛒 {translate("add_to_cart")}
         </button>
         <button
           onClick={handleCheckout}
-          className="flex-1 mx-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded-md"
+          className="flex items-center justify-center bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-lg w-[45%]"
         >
-          💳 Thanh toán
+          💳 {translate("checkout_now")}
         </button>
       </div>
-
-      {/* 🔍 Lightbox ảnh lớn (nâng cấp có zoom và kích thước 60x70) */}
-{showLightbox && (
-  <div
-    className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center"
-    onClick={() => setShowLightbox(false)}
-  >
-    {/* Nút đóng */}
-    <button
-      onClick={() => setShowLightbox(false)}
-      className="absolute top-5 right-5 text-white text-3xl z-50"
-    >
-      <X />
-    </button>
-
-    {/* Ảnh có thể zoom */}
-    <div className="relative flex items-center justify-center overflow-hidden rounded-lg">
-      <img
-        src={validImages[currentIndex]}
-        alt="Zoomed"
-        className="object-contain w-[60vw] h-[70vh] transition-transform duration-300 ease-in-out"
-        style={{
-          transformOrigin: "center center",
-          transform: showZoom ? "scale(2)" : "scale(1)",
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          setShowZoom((prev) => !prev); // 👈 Chạm 1 lần để phóng to/thu nhỏ
-        }}
-      />
     </div>
-
-    {/* Nút chuyển ảnh */}
-    {validImages.length > 1 && (
-      <>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handlePrev();
-          }}
-          className="absolute left-4 text-white text-4xl select-none"
-        >
-          ‹
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleNext();
-          }}
-          className="absolute right-4 text-white text-4xl select-none"
-        >
-          ›
-        </button>
-      </>
-    )}
-  </div>
-)}
-  </div>
   );
-    }
+}
