@@ -93,20 +93,49 @@ export default function ProductDetail() {
         </button>
       </div>
 
-      {/* 🖼️ Ảnh sản phẩm */}
+      
+      {/* 🖼️ Slider ảnh */}
       <div
-        className="w-full bg-white flex justify-center items-center overflow-hidden mt-14"
+        className="relative w-full h-80 bg-white flex justify-center items-center overflow-hidden mt-14"
         onDoubleClick={handleDoubleTap}
+        onTouchStart={(e) => (e.target as HTMLElement).setAttribute("data-x", e.touches[0].clientX.toString())}
+        onTouchEnd={(e) => {
+          const startX = parseFloat((e.target as HTMLElement).getAttribute("data-x") || "0");
+          const diff = e.changedTouches[0].clientX - startX;
+          if (Math.abs(diff) > 50) handleSwipe(diff > 0 ? "left" : "right");
+        }}
       >
         {validImages.length > 0 ? (
           <img
             src={validImages[currentIndex]}
             alt={product.name}
-            className="w-full max-h-96 object-contain transition-all duration-300"
+            className="w-full h-full object-cover transition-all duration-500"
           />
         ) : (
-          <div className="text-gray-400 h-80 flex items-center justify-center">
-            {translate("no_image")}
+          <div className="text-gray-400">Không có ảnh</div>
+        )}
+
+        {/* 🔘 Chấm tròn chỉ báo */}
+        <div className="absolute bottom-3 flex justify-center w-full gap-2">
+          {validImages.map((_, i) => (
+            <span
+              key={i}
+              className={`w-2 h-2 rounded-full ${i === currentIndex ? "bg-orange-500" : "bg-gray-300"}`}
+            ></span>
+          ))}
+        </div>
+
+        {/* 🔍 Ảnh phóng to */}
+        {showZoom && (
+          <div
+            onClick={() => setShowZoom(false)}
+            className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
+          >
+            <img
+              src={validImages[currentIndex]}
+              alt="Zoomed"
+              className="w-[70%] h-[70%] object-contain rounded-lg"
+            />
           </div>
         )}
       </div>
