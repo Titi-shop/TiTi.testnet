@@ -19,7 +19,7 @@ export default function SellerPostPage() {
   const [previews, setPreviews] = useState<string[]>([]);
   const [selectedPreview, setSelectedPreview] = useState<string | null>(null);
 
-  // ✅ Xác thực Pi login
+  // ✅ Xác thực người dùng Pi
   useEffect(() => {
     try {
       const stored = localStorage.getItem("pi_user");
@@ -37,38 +37,15 @@ export default function SellerPostPage() {
     }
   }, [router]);
 
-  // ✅ Cắt ảnh về kích thước đồng đều (60x70)
-  async function resizeImage(file: File, width = 70, height = 70): Promise<File> {
-    const img = document.createElement("img");
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return file;
-
-    const url = URL.createObjectURL(file);
-    await new Promise((res) => (img.onload = res, img.src = url));
-
-    canvas.width = width;
-    canvas.height = height;
-    ctx.drawImage(img, 0, 0, width, height);
-
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => {
-        if (blob) resolve(new File([blob], file.name, { type: file.type }));
-        else resolve(file);
-      }, file.type);
-    });
-  }
-
-  // ✅ Upload ảnh
+  // ✅ Upload ảnh (không cắt)
   async function handleFileUpload(file: File): Promise<string | null> {
     try {
-      const resized = await resizeImage(file);
-      const arrayBuffer = await resized.arrayBuffer();
+      const arrayBuffer = await file.arrayBuffer();
       const res = await fetch("/api/upload", {
         method: "POST",
         headers: {
-          "x-filename": encodeURIComponent(resized.name),
-          "Content-Type": resized.type || "application/octet-stream",
+          "x-filename": encodeURIComponent(file.name),
+          "Content-Type": file.type || "application/octet-stream",
         },
         body: arrayBuffer,
       });
@@ -202,7 +179,7 @@ export default function SellerPostPage() {
             className="w-full"
           />
 
-          {/* ✅ Khung hiển thị ảnh */}
+          {/* ✅ Danh sách ảnh hiển thị */}
           <div className="mt-3 space-y-2">
             {previews.map((url, idx) => (
               <div
@@ -216,7 +193,7 @@ export default function SellerPostPage() {
                   <img
                     src={url}
                     alt={`preview-${idx}`}
-                    className="w-16 h-16 object-cover rounded-md border border-gray-300"
+                    className="w-[70px] h-[70px] object-cover rounded-md border border-gray-300"
                   />
                   <span className="text-gray-700 text-sm truncate">
                     {images[idx]?.name}
