@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, Search, Trash2, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function SearchPage() {
@@ -9,15 +9,19 @@ export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<any[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
+  const [savedProducts, setSavedProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // 🧠 Load lịch sử tìm kiếm từ localStorage
+  // 🧠 Load lịch sử tìm kiếm & sản phẩm đã lưu
   useEffect(() => {
-    const stored = localStorage.getItem("recentSearch");
-    if (stored) setRecent(JSON.parse(stored));
+    const storedRecent = localStorage.getItem("recentSearch");
+    const storedProducts = localStorage.getItem("savedProducts");
+
+    if (storedRecent) setRecent(JSON.parse(storedRecent));
+    if (storedProducts) setSavedProducts(JSON.parse(storedProducts));
   }, []);
 
-  // 💾 Lưu lịch sử tìm kiếm
+  // 💾 Lưu lịch sử tìm kiếm (chuỗi text)
   const saveRecent = (q: string) => {
     if (!q) return;
     const updated = [q, ...recent.filter((i) => i !== q)].slice(0, 5);
@@ -25,7 +29,17 @@ export default function SearchPage() {
     localStorage.setItem("recentSearch", JSON.stringify(updated));
   };
 
-  // 🔍 Xử lý tìm kiếm (lọc dữ liệu từ /api/products)
+  // 💾 Lưu danh sách sản phẩm đã tìm thấy
+  const saveProducts = (list: any[]) => {
+    const newList = [...savedProducts, ...list].reduce((acc: any[], p) => {
+      if (!acc.some((item) => item.id === p.id)) acc.push(p);
+      return acc;
+    }, []);
+    setSavedProducts(newList);
+    localStorage.setItem("savedProducts", JSON.stringify(newList));
+  };
+
+  // 🔍 Xử lý tìm kiếm
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!query.trim()) return;
@@ -45,6 +59,7 @@ export default function SearchPage() {
       );
 
       setResults(filtered);
+      saveProducts(filtered); // ✅ Lưu lại sản phẩm đã tìm được
     } catch (err) {
       console.error("❌ Lỗi khi tìm kiếm:", err);
       setResults([]);
@@ -53,15 +68,22 @@ export default function SearchPage() {
     }
   };
 
-  // 🗑 Xóa lịch sử tìm kiếm
+  // 🗑 Xóa toàn bộ lịch sử
   const clearRecent = () => {
     setRecent([]);
     localStorage.removeItem("recentSearch");
   };
 
+  // ❌ Xóa 1 sản phẩm đã lưu
+  const removeSavedProduct = (id: number) => {
+    const updated = savedProducts.filter((p) => p.id !== id);
+    setSavedProducts(updated);
+    localStorage.setItem("savedProducts", JSON.stringify(updated));
+  };
+
   return (
     <div className="min-h-screen bg-white">
-      {/* 🔶 Thanh tìm kiếm cố định trên cùng (giao diện từ code 1) */}
+      {/* 🔶 Thanh tìm kiếm cố định trên cùng */}
       <div className="fixed top-0 left-0 right-0 bg-orange-500 z-50 px-3 py-3 flex items-center gap-2 shadow-md">
         <button
           onClick={() => router.back()}
@@ -87,7 +109,7 @@ export default function SearchPage() {
         </form>
       </div>
 
-      {/* 🔸 Nội dung bên dưới thanh tìm kiếm */}
+      {/* 🔸 Nội dung chính bên dưới */}
       <div className="pt-20 px-3 pb-10">
         {/* Lịch sử tìm kiếm */}
         {recent.length > 0 && (
@@ -124,37 +146,15 @@ export default function SearchPage() {
             ? "⏳ Đang tìm kiếm..."
             : results.length > 0
             ? "Kết quả tìm kiếm"
-            : "Gợi ý tìm kiếm"}
+            : savedProducts.length > 0
+            ? "Sản phẩm đã lưu"
+            : "Không có kết quả tìm kiếm"}
         </h2>
 
+        {/* Hiển thị kết quả hoặc danh sách sản phẩm đã lưu */}
         {loading ? (
           <p className="text-center text-gray-400 mt-5">Đang tải dữ liệu...</p>
-        ) : results.length === 0 ? (
-          // Hiển thị gợi ý nếu chưa có kết quả
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {[
-              { name: "Nhớt Motul 5w30", img: "/uploads/motul.jpg" },
-              { name: "Nước Làm Mát Yamaha", img: "/uploads/yamaha.jpg" },
-              { name: "Miếng Lót Gót Chân", img: "/uploads/gotchan.jpg" },
-              { name: "Bảng Vẽ Điện Tử", img: "/uploads/bangve.jpg" },
-              { name: "Mút Tán Kem Nền", img: "/uploads/mut.jpg" },
-              { name: "Kẹo Sâm Xtreme", img: "/uploads/keosam.jpg" },
-            ].map((item, i) => (
-              <div
-                key={i}
-                className="bg-white border rounded-lg p-2 shadow-sm flex flex-col items-center text-center hover:shadow-md transition"
-              >
-                <img
-                  src={item.img}
-                  alt={item.name}
-                  className="w-full h-28 object-contain rounded-md mb-2"
-                />
-                <p className="text-sm text-gray-800">{item.name}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          // Hiển thị sản phẩm tìm được
+        ) : results.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {results.map((p) => (
               <div
@@ -171,6 +171,34 @@ export default function SearchPage() {
               </div>
             ))}
           </div>
+        ) : savedProducts.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {savedProducts.map((p) => (
+              <div
+                key={p.id}
+                className="relative bg-white border rounded-lg p-2 shadow-sm flex flex-col items-center text-center hover:shadow-md transition"
+              >
+                <button
+                  onClick={() => removeSavedProduct(p.id)}
+                  className="absolute top-1 right-1 text-red-500 hover:text-red-700"
+                  title="Xóa sản phẩm này"
+                >
+                  <XCircle size={18} />
+                </button>
+                <img
+                  src={p.images?.[0] || "/no-image.png"}
+                  alt={p.name}
+                  className="w-full h-28 object-contain rounded-md mb-2"
+                />
+                <p className="text-sm font-semibold line-clamp-2">{p.name}</p>
+                <p className="text-orange-600 text-sm">{p.price} Pi</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-center text-gray-400 mt-10">
+            🔍 Nhập từ khóa để tìm kiếm sản phẩm.
+          </p>
         )}
       </div>
     </div>
