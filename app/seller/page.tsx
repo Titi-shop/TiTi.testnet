@@ -55,7 +55,7 @@ export default function SellerDashboard() {
   if (isChecking) {
     return (
       <main className="flex items-center justify-center min-h-screen text-gray-500">
-        ⏳ {translate("checking_access") || "Đang kiểm tra quyền truy cập..."}
+      
       </main>
     );
   }
