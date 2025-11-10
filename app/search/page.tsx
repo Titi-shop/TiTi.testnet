@@ -25,17 +25,15 @@ export default function SearchPage() {
     localStorage.setItem("recentSearch", JSON.stringify(updated));
   };
 
-  // 🔍 Xử lý tìm kiếm — lọc trên client, không cần chỉnh API
+  // 🔍 Xử lý tìm kiếm
   const handleSearch = async () => {
     if (!query.trim()) return;
     saveRecent(query);
     setLoading(true);
     try {
-      // Gọi API lấy toàn bộ sản phẩm
       const res = await fetch("/api/products");
       const data = await res.json();
 
-      // Lọc theo tên, mô tả hoặc người bán
       const text = query.toLowerCase();
       const filtered = data.filter(
         (p: any) =>
@@ -43,7 +41,6 @@ export default function SearchPage() {
           p.description?.toLowerCase().includes(text) ||
           p.seller?.toLowerCase().includes(text)
       );
-
       setResults(filtered);
     } catch (err) {
       console.error("❌ Lỗi tìm kiếm:", err);
@@ -61,26 +58,28 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* 🔸 Thanh tìm kiếm trên cùng */}
-      <div className="sticky top-0 bg-orange-500 p-2 flex items-center z-50">
+      {/* 🔶 Thanh tìm kiếm cố định trên cùng */}
+      <div className="sticky top-0 bg-orange-500 p-2 flex items-center z-50 shadow-md">
         <button
           onClick={() => router.back()}
           className="text-white mr-2 flex items-center"
         >
           <ArrowLeft size={22} />
         </button>
-        <div className="flex flex-1 bg-white rounded-full overflow-hidden">
+
+        {/* Ô tìm kiếm bo tròn trắng + icon kính lúp bên phải */}
+        <div className="flex flex-1 bg-white rounded-full items-center overflow-hidden">
           <input
             type="text"
             placeholder="Nhập từ khóa tìm kiếm..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="flex-1 px-4 py-2 text-sm outline-none"
+            className="flex-1 px-4 py-2 text-sm outline-none text-gray-700"
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
           />
           <button
             onClick={handleSearch}
-            className="bg-orange-500 px-4 flex items-center justify-center"
+            className="bg-orange-500 px-4 py-2 flex items-center justify-center"
           >
             <Search size={20} color="white" />
           </button>
@@ -131,7 +130,7 @@ export default function SearchPage() {
             {results.map((p) => (
               <div
                 key={p.id}
-                className="border rounded-lg p-2 flex flex-col items-center text-center shadow-sm"
+                className="border rounded-lg p-2 flex flex-col items-center text-center shadow-sm hover:shadow-md transition"
               >
                 <img
                   src={p.images?.[0] || "/no-image.png"}
