@@ -71,10 +71,28 @@ async function isSeller(username: string): Promise<boolean> {
   }
 }
 
-/** 🔹 GET - Lấy toàn bộ sản phẩm */
-export async function GET() {
-  const products = await readProducts();
-  return NextResponse.json(products);
+/** 🔹 GET - Lấy danh sách sản phẩm (có thể lọc theo ?search=) */
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const query = (searchParams.get("search") || "").toLowerCase();
+
+    const products = await readProducts();
+
+    // Nếu có query → lọc theo tên, mô tả hoặc seller
+    const filtered = query
+      ? products.filter((p: any) =>
+          (p.name?.toLowerCase().includes(query) ||
+           p.description?.toLowerCase().includes(query) ||
+           p.seller?.toLowerCase().includes(query))
+        )
+      : products;
+
+    return NextResponse.json({ products: filtered });
+  } catch (err) {
+    console.error("❌ Lỗi GET /api/products:", err);
+    return NextResponse.json({ products: [] }, { status: 500 });
+  }
 }
 
 /** 🔹 POST - Tạo sản phẩm mới (chỉ seller được phép) */
