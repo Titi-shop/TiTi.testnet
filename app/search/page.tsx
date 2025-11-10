@@ -1,4 +1,5 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { Search, Trash2, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -7,6 +8,7 @@ export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<any[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   // 🧠 Load lịch sử tìm kiếm
@@ -23,17 +25,31 @@ export default function SearchPage() {
     localStorage.setItem("recentSearch", JSON.stringify(updated));
   };
 
-  // 🔍 Xử lý tìm kiếm
+  // 🔍 Xử lý tìm kiếm — lọc trên client, không cần chỉnh API
   const handleSearch = async () => {
     if (!query.trim()) return;
     saveRecent(query);
+    setLoading(true);
     try {
-      const res = await fetch(`/api/products?search=${encodeURIComponent(query)}`);
+      // Gọi API lấy toàn bộ sản phẩm
+      const res = await fetch("/api/products");
       const data = await res.json();
-      setResults(data.products || []);
+
+      // Lọc theo tên, mô tả hoặc người bán
+      const text = query.toLowerCase();
+      const filtered = data.filter(
+        (p: any) =>
+          p.name?.toLowerCase().includes(text) ||
+          p.description?.toLowerCase().includes(text) ||
+          p.seller?.toLowerCase().includes(text)
+      );
+
+      setResults(filtered);
     } catch (err) {
       console.error("❌ Lỗi tìm kiếm:", err);
       setResults([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -45,7 +61,7 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Thanh tìm kiếm */}
+      {/* 🔸 Thanh tìm kiếm trên cùng */}
       <div className="sticky top-0 bg-orange-500 p-2 flex items-center z-50">
         <button
           onClick={() => router.back()}
@@ -71,7 +87,7 @@ export default function SearchPage() {
         </div>
       </div>
 
-      {/* Lịch sử tìm kiếm */}
+      {/* 🔸 Lịch sử tìm kiếm */}
       {recent.length > 0 && (
         <div className="p-3">
           <div className="flex justify-between items-center mb-2">
@@ -100,12 +116,16 @@ export default function SearchPage() {
         </div>
       )}
 
-      {/* Kết quả tìm kiếm */}
+      {/* 🔸 Kết quả tìm kiếm */}
       <div className="p-3">
-        <h2 className="font-semibold text-gray-700 mb-2">Gợi ý tìm kiếm</h2>
+        <h2 className="font-semibold text-gray-700 mb-2">Kết quả tìm kiếm</h2>
 
-        {results.length === 0 ? (
-          <p className="text-center text-gray-500 mt-5">❌ Không có sản phẩm nào.</p>
+        {loading ? (
+          <p className="text-center text-gray-400 mt-5">⏳ Đang tìm kiếm...</p>
+        ) : results.length === 0 ? (
+          <p className="text-center text-gray-500 mt-5">
+            ❌ Không có sản phẩm nào.
+          </p>
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {results.map((p) => (
@@ -114,7 +134,7 @@ export default function SearchPage() {
                 className="border rounded-lg p-2 flex flex-col items-center text-center shadow-sm"
               >
                 <img
-                  src={p.images?.[0] || p.image || "/no-image.png"}
+                  src={p.images?.[0] || "/no-image.png"}
                   alt={p.name}
                   className="w-full h-32 object-contain mb-1 rounded"
                 />
