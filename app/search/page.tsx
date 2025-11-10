@@ -21,7 +21,7 @@ export default function SearchPage() {
     if (storedProducts) setSavedProducts(JSON.parse(storedProducts));
   }, []);
 
-  // 💾 Lưu lịch sử tìm kiếm (chuỗi text)
+  // 💾 Lưu lịch sử tìm kiếm
   const saveRecent = (q: string) => {
     if (!q) return;
     const updated = [q, ...recent.filter((i) => i !== q)].slice(0, 5);
@@ -29,7 +29,7 @@ export default function SearchPage() {
     localStorage.setItem("recentSearch", JSON.stringify(updated));
   };
 
-  // 💾 Lưu danh sách sản phẩm đã tìm thấy
+  // 💾 Lưu danh sách sản phẩm đã tìm
   const saveProducts = (list: any[]) => {
     const newList = [...savedProducts, ...list].reduce((acc: any[], p) => {
       if (!acc.some((item) => item.id === p.id)) acc.push(p);
@@ -39,7 +39,7 @@ export default function SearchPage() {
     localStorage.setItem("savedProducts", JSON.stringify(newList));
   };
 
-  // 🔍 Xử lý tìm kiếm
+  // 🔍 Tìm kiếm
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!query.trim()) return;
@@ -59,7 +59,7 @@ export default function SearchPage() {
       );
 
       setResults(filtered);
-      saveProducts(filtered); // ✅ Lưu lại sản phẩm đã tìm được
+      saveProducts(filtered);
     } catch (err) {
       console.error("❌ Lỗi khi tìm kiếm:", err);
       setResults([]);
@@ -81,9 +81,14 @@ export default function SearchPage() {
     localStorage.setItem("savedProducts", JSON.stringify(updated));
   };
 
+  // 🧭 Điều hướng tới trang sản phẩm
+  const openProduct = (id: number) => {
+    router.push(`/product/${id}`);
+  };
+
   return (
     <div className="min-h-screen bg-white">
-      {/* 🔶 Thanh tìm kiếm cố định trên cùng */}
+      {/* 🔶 Thanh tìm kiếm cố định */}
       <div className="fixed top-0 left-0 right-0 bg-orange-500 z-50 px-3 py-3 flex items-center gap-2 shadow-md">
         <button
           onClick={() => router.back()}
@@ -109,7 +114,7 @@ export default function SearchPage() {
         </form>
       </div>
 
-      {/* 🔸 Nội dung chính bên dưới */}
+      {/* 🔸 Nội dung chính */}
       <div className="pt-20 px-3 pb-10">
         {/* Lịch sử tìm kiếm */}
         {recent.length > 0 && (
@@ -140,7 +145,7 @@ export default function SearchPage() {
           </div>
         )}
 
-        {/* Kết quả tìm kiếm */}
+        {/* Kết quả hoặc danh sách đã lưu */}
         <h2 className="text-lg font-semibold mb-3 text-gray-800">
           {loading
             ? "⏳ Đang tìm kiếm..."
@@ -151,7 +156,6 @@ export default function SearchPage() {
             : "Không có kết quả tìm kiếm"}
         </h2>
 
-        {/* Hiển thị kết quả hoặc danh sách sản phẩm đã lưu */}
         {loading ? (
           <p className="text-center text-gray-400 mt-5">Đang tải dữ liệu...</p>
         ) : results.length > 0 ? (
@@ -159,7 +163,8 @@ export default function SearchPage() {
             {results.map((p) => (
               <div
                 key={p.id}
-                className="bg-white border rounded-lg p-2 shadow-sm flex flex-col items-center text-center hover:shadow-md transition"
+                onClick={() => openProduct(p.id)}
+                className="cursor-pointer bg-white border rounded-lg p-2 shadow-sm flex flex-col items-center text-center hover:shadow-md transition"
               >
                 <img
                   src={p.images?.[0] || "/no-image.png"}
@@ -185,13 +190,20 @@ export default function SearchPage() {
                 >
                   <XCircle size={18} />
                 </button>
-                <img
-                  src={p.images?.[0] || "/no-image.png"}
-                  alt={p.name}
-                  className="w-full h-28 object-contain rounded-md mb-2"
-                />
-                <p className="text-sm font-semibold line-clamp-2">{p.name}</p>
-                <p className="text-orange-600 text-sm">{p.price} Pi</p>
+                <div
+                  onClick={() => openProduct(p.id)}
+                  className="cursor-pointer w-full flex flex-col items-center"
+                >
+                  <img
+                    src={p.images?.[0] || "/no-image.png"}
+                    alt={p.name}
+                    className="w-full h-28 object-contain rounded-md mb-2"
+                  />
+                  <p className="text-sm font-semibold line-clamp-2">
+                    {p.name}
+                  </p>
+                  <p className="text-orange-600 text-sm">{p.price} Pi</p>
+                </div>
               </div>
             ))}
           </div>
