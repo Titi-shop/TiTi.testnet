@@ -31,16 +31,16 @@ export default function Navbar() {
     return () => clearInterval(interval);
   }, []);
 
-  // 🔍 Khi bấm vào nút tìm kiếm → mở trang /search-history
-  const handleSearchClick = () => {
+  // 🔍 Khi bấm vào nút tìm kiếm → mở trang /search
+  const handleSearchClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // tránh click lan ra ngoài link
     router.push("/search");
   };
 
   return (
     <header className="fixed top-0 left-0 right-0 bg-orange-500 border-b shadow-sm z-50">
-      {/* Hàng trên: Giỏ hàng - Giá Pi giữa - Ngôn ngữ & tìm kiếm */}
       <div className="relative flex items-center justify-between px-4 py-2 text-white">
-        {/* 🛒 Giỏ hàng (trái) */}
+        {/* 🛒 Giỏ hàng */}
         <Link
           href="/cart"
           aria-label="Giỏ hàng"
@@ -60,22 +60,21 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* 🌐 Ngôn ngữ & 🔍 Tìm kiếm (phải) */}
-        <div className="flex items-center gap-3">
+        {/* 🌐 Ngôn ngữ + 🔍 Tìm kiếm cùng trong 1 nhóm */}
+        <div className="flex items-center gap-1 bg-white text-orange-600 px-2 py-1 rounded-md shadow-sm">
           <Link
             href="/language"
             aria-label="Ngôn ngữ"
-            className="hover:text-yellow-300 transition"
+            className="hover:text-orange-700 transition"
           >
             <Globe size={22} />
           </Link>
-
           <button
             onClick={handleSearchClick}
             aria-label="Tìm kiếm"
-            className="hover:text-yellow-300 transition"
+            className="hover:text-orange-700 transition"
           >
-            <Search size={22} />
+            <Search size={20} />
           </button>
         </div>
       </div>
