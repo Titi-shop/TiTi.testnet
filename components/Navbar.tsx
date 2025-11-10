@@ -33,7 +33,7 @@ export default function Navbar() {
 
   // 🔍 Khi bấm vào nút tìm kiếm → mở trang /search-history
   const handleSearchClick = () => {
-    router.push("/search-history");
+    router.push("/search");
   };
 
   return (
