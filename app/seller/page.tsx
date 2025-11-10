@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useLanguage } from "../context/LanguageContext";
 import {
   PackagePlus,
@@ -14,25 +15,24 @@ import {
 
 export default function SellerDashboard() {
   const { translate } = useLanguage();
+  const router = useRouter();
 
-  // ✅ State
   const [sellerUser, setSellerUser] = useState<string>("");
   const [isSeller, setIsSeller] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
 
-  // ✅ Kiểm tra thông tin người dùng sau khi component mount (client-side)
+  // ✅ Kiểm tra trạng thái người dùng
   useEffect(() => {
     const checkSeller = async () => {
       try {
-        // ⚙️ Chỉ chạy khi đã có window
         if (typeof window === "undefined") return;
 
         const stored = localStorage.getItem("pi_user");
         const logged = localStorage.getItem("titi_is_logged_in");
 
-        // ❌ Nếu chưa đăng nhập → chỉ đánh dấu đã kiểm tra
+        // ❌ Nếu chưa đăng nhập → chuyển hướng về trang chủ
         if (!stored || logged !== "true") {
-          setIsChecking(false);
+          router.replace("/");
           return;
         }
 
@@ -41,32 +41,36 @@ export default function SellerDashboard() {
           parsed?.user?.username || parsed?.username || "guest_user";
         setSellerUser(username);
 
-        // ✅ Gọi API kiểm tra quyền
+        // ✅ Kiểm tra quyền qua API
         const res = await fetch(`/api/users/role?username=${username}`, {
           cache: "no-store",
         });
 
         if (!res.ok) {
           console.warn("⚠️ Không thể xác thực quyền người bán.");
-          setIsChecking(false);
+          router.replace("/");
           return;
         }
 
         const data = await res.json();
         if (data?.role === "seller") {
           setIsSeller(true);
+        } else {
+          // ❌ Nếu không phải người bán → quay về trang chủ
+          router.replace("/");
         }
       } catch (err) {
         console.error("❌ Lỗi khi kiểm tra quyền người bán:", err);
+        router.replace("/");
       } finally {
         setIsChecking(false);
       }
     };
 
     checkSeller();
-  }, []);
+  }, [router]);
 
-  // 🕓 Đang kiểm tra → hiển thị loading ngắn gọn
+  // 🕓 Hiển thị khi đang kiểm tra
   if (isChecking) {
     return (
       <main className="flex items-center justify-center min-h-screen text-gray-500">
@@ -75,12 +79,12 @@ export default function SellerDashboard() {
     );
   }
 
-  // ❌ Nếu không phải người bán → ẩn trang
+  // ❌ Nếu không phải seller (đã điều hướng rồi, nhưng phòng hờ)
   if (!isSeller) {
     return null;
   }
 
-  // ✅ Khi là người bán
+  // ✅ Giao diện khi là người bán
   return (
     <main className="p-6 pb-24 max-w-6xl mx-auto">
       <div className="text-right text-sm text-gray-700 mb-4">
