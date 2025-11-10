@@ -13,7 +13,7 @@ export default function BottomNav() {
   const navItems = [
     { href: "/", label: translate("home") || "Trang chủ", icon: Home },
     { href: "/shop", label: translate("category") || "Danh mục", icon: Grid },
-    { href: "/seller", label: translate("post") || "Đăng hàng", icon: PlusCircle },
+    { href: "/seller", label: translate("") || "Đăng hàng", icon: PlusCircle },
     { href: "/notifications", label: translate("notifications") || "Thông báo", icon: Bell },
     { href: "/account", label: translate("account") || "Tài khoản", icon: User },
   ];
