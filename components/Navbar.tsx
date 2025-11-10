@@ -12,7 +12,6 @@ export default function Navbar() {
   const { translate } = useLanguage();
   const router = useRouter();
 
-  // 💰 Lấy giá Pi từ API /api/pi-price
   useEffect(() => {
     const fetchPrice = async () => {
       try {
@@ -25,31 +24,22 @@ export default function Navbar() {
         setLoading(false);
       }
     };
-
     fetchPrice();
     const interval = setInterval(fetchPrice, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // 🔍 Khi bấm vào nút tìm kiếm → mở trang /search
-  const handleSearchClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // tránh click lan ra ngoài link
-    router.push("/search");
-  };
+  const goSearch = () => router.push("/search");
 
   return (
     <header className="fixed top-0 left-0 right-0 bg-orange-500 border-b shadow-sm z-50">
       <div className="relative flex items-center justify-between px-4 py-2 text-white">
-        {/* 🛒 Giỏ hàng */}
-        <Link
-          href="/cart"
-          aria-label="Giỏ hàng"
-          className="hover:text-yellow-300 transition"
-        >
+        {/* 1) 🛒 Giỏ hàng (trái) */}
+        <Link href="/cart" aria-label="Giỏ hàng" className="hover:text-yellow-300 transition">
           <ShoppingCart size={22} />
         </Link>
 
-        {/* 💰 Giá Pi (giữa) */}
+        {/* 2) 💰 Giá Pi (giữa) */}
         <div className="absolute left-1/2 -translate-x-1/2">
           <div className="text-xs sm:text-sm font-semibold bg-white text-orange-600 px-3 py-1 rounded-md shadow-sm">
             {loading
@@ -60,22 +50,22 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* 🌐 Ngôn ngữ + 🔍 Tìm kiếm cùng trong 1 nhóm */}
-        <div className="flex items-center gap-1 bg-white text-orange-600 px-2 py-1 rounded-md shadow-sm">
+        {/* 3) 🔍 Tìm kiếm → 4) 🌐 Ngôn ngữ (phải) */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={goSearch}
+            aria-label="Tìm kiếm"
+            className="hover:text-yellow-300 transition"
+          >
+            <Search size={22} />
+          </button>
           <Link
             href="/language"
             aria-label="Ngôn ngữ"
-            className="hover:text-orange-700 transition"
+            className="hover:text-yellow-300 transition"
           >
             <Globe size={22} />
           </Link>
-          <button
-            onClick={handleSearchClick}
-            aria-label="Tìm kiếm"
-            className="hover:text-orange-700 transition"
-          >
-            <Search size={20} />
-          </button>
         </div>
       </div>
     </header>
