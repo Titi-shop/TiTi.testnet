@@ -1,127 +1,90 @@
 "use client";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
-import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { useLanguage } from "../../context/LanguageContext";
-
-export default function CustomerOrdersPage() {
-  const { translate } = useLanguage();
-  return (
-    <Suspense fallback={<p className="p-6 text-center">{translate("loading_orders") || "⏳ Đang tải đơn hàng..."}</p>}>
-      <OrdersWrapper />
-    </Suspense>
-  );
-}
-
-function OrdersWrapper() {
-  const params = useSearchParams();
-  const statusParam = params?.get("status") ?? null;
-  return <OrdersContent statusParam={statusParam} />;
-}
-
-function OrdersContent({ statusParam }: { statusParam: string | null }) {
-  const { translate, language } = useLanguage();
+export default function AllOrdersPage() {
+  const { user, piReady } = useAuth();
+  const router = useRouter();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState<string>("");
 
-  // ✅ Lấy username từ Pi login (đồng bộ với pilogin/page.tsx)
   useEffect(() => {
+    if (!piReady || !user) return;
+    fetchOrders();
+  }, [piReady, user]);
+
+  const fetchOrders = async () => {
     try {
-      const stored = localStorage.getItem("pi_user");
-      const isLoggedIn = localStorage.getItem("titi_is_logged_in");
-
-      if (stored && isLoggedIn === "true") {
-        const parsed = JSON.parse(stored);
-        const username = parsed?.user?.username || parsed?.username || "guest_user";
-        setCurrentUser(username);
-      } else {
-        setCurrentUser("guest_user");
-      }
-    } catch (err) {
-      console.error("❌ Lỗi đọc pi_user:", err);
-      setCurrentUser("guest_user");
+      const res = await fetch("/api/orders", { cache: "no-store" });
+      const data = await res.json();
+      setOrders(Array.isArray(data) ? data : []);
+    } catch {
+      alert("❌ Lỗi tải đơn hàng");
+    } finally {
+      setLoading(false);
     }
-  }, []);
-
-  // ✅ Map trạng thái nội bộ theo ngôn ngữ
-  const mapStatus: Record<string, string> = {
-    "cho-xac-nhan": translate("waiting_confirm") || "Chờ xác nhận",
-    "cho-lay-hang": translate("waiting_pickup") || "Chờ lấy hàng",
-    "cho-giao-hang": translate("delivering") || "Đang giao",
-    "danh-gia": translate("review") || "Đánh giá",
   };
 
-  // ✅ Tải đơn hàng theo username + trạng thái
-  useEffect(() => {
-    const loadOrders = async () => {
-      if (!currentUser || currentUser === "guest_user") {
-        console.warn("⚠️ Người dùng chưa đăng nhập — bỏ qua tải đơn hàng.");
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const res = await fetch("/api/orders");
-        if (!res.ok) throw new Error("Không thể tải đơn hàng.");
-
-        const data = await res.json();
-        const filtered = data.filter(
-          (o: any) =>
-            o.buyer?.toLowerCase() === currentUser.toLowerCase() &&
-            (statusParam ? o.status === mapStatus[statusParam] : true)
-        );
-
-        setOrders(filtered);
-      } catch (err) {
-        console.error("❌ Lỗi khi tải đơn hàng:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadOrders();
-  }, [statusParam, language, currentUser]);
-
   if (loading)
-    return <p className="p-6 text-center">{translate("loading") || "⏳ Đang tải..."}</p>;
-
-  if (!orders.length)
-    return (
-      <p className="p-6 text-center text-gray-500">
-        {translate("no_orders") || "❗ Không có đơn hàng nào."} <br />
-        👤 {translate("current_user") || "Người dùng"}: <b>{currentUser}</b>
-      </p>
-    );
+    return <p className="text-center text-gray-500 mt-10">⏳ Đang tải...</p>;
 
   return (
-    <div className="p-6 space-y-4 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4 text-orange-600 text-center">
-        📦 {translate("my_orders") || "Đơn hàng của bạn"}
-      </h1>
-      {orders.map((o) => (
-        <div
-          key={o.id}
-          className="border rounded p-4 bg-white shadow hover:shadow-md transition"
+    <main className="max-w-4xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">📦 Tất cả đơn hàng</h1>
+
+      {/* ===== Bộ lọc trạng thái ===== */}
+      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-6">
+        <button
+          onClick={() => router.push("/seller/orders/pending")}
+          className="btn-orange"
         >
-          <p>
-            <b>{translate("order_code") || "Mã đơn"}:</b> {o.id}
-          </p>
-          <p>
-            <b>{translate("status") || "Trạng thái"}:</b> {o.status}
-          </p>
-          <p>
-            <b>{translate("total_amount") || "Tổng tiền"}:</b> {o.total} Pi
-          </p>
-          <ul className="ml-5 list-disc">
-            {o.items.map((it: any, i: number) => (
-              <li key={i}>
-                {it.name} — {it.price} Pi × {it.quantity || 1}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </div>
+          Chờ xác nhận
+        </button>
+        <button
+          onClick={() => router.push("/seller/orders/shipping")}
+          className="btn-orange"
+        >
+          Đang giao
+        </button>
+        <button
+          onClick={() => router.push("/seller/orders/completed")}
+          className="btn-orange"
+        >
+          Hoàn tất
+        </button>
+        <button
+          onClick={() => router.push("/seller/orders/canceled")}
+          className="btn-orange"
+        >
+          Đã hủy
+        </button>
+        <button
+          onClick={() => router.push("/seller/orders/returned")}
+          className="btn-orange"
+        >
+          Hoàn lại
+        </button>
+      </div>
+
+      {/* ===== Danh sách đơn hàng ===== */}
+      {orders.length === 0 ? (
+        <p className="text-center text-gray-500">
+          Không có đơn hàng nào.
+        </p>
+      ) : (
+        orders.map((o) => (
+          <div
+            key={o.id}
+            className="bg-white border rounded p-4 mb-3 shadow hover:shadow-md transition"
+          >
+            <p>🧾 <b>Mã đơn:</b> #{o.id}</p>
+            <p>👤 <b>Người mua:</b> {o.buyer}</p>
+            <p>💰 <b>Tổng:</b> {o.total} Pi</p>
+            <p>📦 <b>Trạng thái:</b> <span className="text-orange-600">{o.status}</span></p>
+          </div>
+        ))
+      )}
+    </main>
   );
 }
