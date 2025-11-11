@@ -4,10 +4,10 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/app/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
-import { Clock, Package, Truck, Star, LogOut } from "lucide-react";
+import { Clock, Package, Truck, Star, RotateCcw } from "lucide-react"; // 👉 thay LogOut bằng RotateCcw
 
 export default function CustomerDashboard() {
-  const { user, logout, piReady } = useAuth();
+  const { user, piReady } = useAuth();
   const { translate } = useLanguage();
   const router = useRouter();
 
@@ -23,17 +23,6 @@ export default function CustomerDashboard() {
         ⏳ Đang tải...
       </main>
     );
-
-  const handleLogoutPi = async () => {
-    try {
-      if (window?.Pi?.logout) await window.Pi.logout();
-    } catch (err) {
-      console.warn("⚠️ Pi logout error:", err);
-    } finally {
-      logout();
-      router.replace("/pilogin");
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-100 pb-10">
@@ -103,13 +92,14 @@ export default function CustomerDashboard() {
             </span>
           </button>
 
+          {/* 🔄 Nút trả hàng */}
           <button
-            onClick={handleLogoutPi}
-            className="flex flex-col items-center text-red-600 hover:text-red-700"
+            onClick={() => router.push("/customer/returns")}
+            className="flex flex-col items-center text-gray-700 hover:text-orange-500"
           >
-            <LogOut size={28} />
+            <RotateCcw size={28} />
             <span className="text-sm mt-1">
-              {translate("logout") || "Đăng xuất"}
+              {translate("return_order") || "Trả hàng"}
             </span>
           </button>
         </div>
