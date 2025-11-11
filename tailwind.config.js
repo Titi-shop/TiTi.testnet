@@ -9,10 +9,11 @@ module.exports = {
     extend: {
       colors: {
         orange: {
-          500: '#f97316', // đảm bảo có màu bg-orange-500
+          500: "#f97316", // ✅ màu bg-orange-500
+          600: "#ea580c", // ✅ thêm màu hover cam đậm hơn
         },
       },
     },
   },
   plugins: [],
-}
+};
