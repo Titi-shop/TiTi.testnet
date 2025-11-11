@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "../context/LanguageContext";
-import { useAuth } from "@/context/AuthContext";
 import {
   PackagePlus,
   Package,
@@ -13,35 +12,56 @@ import {
   Truck,
   Wallet,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function SellerDashboard() {
   const { translate } = useLanguage();
   const { user, piReady } = useAuth();
   const router = useRouter();
 
+  const [isSeller, setIsSeller] = useState(false);
+  const [checking, setChecking] = useState(true);
+
   useEffect(() => {
     if (!piReady) return;
-    if (!user) return router.replace("/pilogin");
+    if (!user) {
+      router.replace("/pilogin");
+      return;
+    }
 
-    const checkRole = async () => {
-      const res = await fetch(`/api/users/role?username=${user.username}`);
-      const data = await res.json();
-      if (data.role !== "seller") router.replace("/customer");
+    const verifyRole = async () => {
+      try {
+        const res = await fetch(`/api/users/role?username=${user.username}`);
+        const data = await res.json();
+        if (data.role === "seller") {
+          setIsSeller(true);
+        } else {
+          router.replace("/customer");
+        }
+      } catch {
+        router.replace("/pilogin");
+      } finally {
+        setChecking(false);
+      }
     };
-    checkRole();
+
+    verifyRole();
   }, [piReady, user, router]);
 
-  if (!piReady || !user)
+  if (!piReady || checking) {
     return (
       <main className="flex items-center justify-center min-h-screen text-gray-500">
-        ⏳ Đang kiểm tra quyền...
+        ⏳ Đang kiểm tra quyền truy cập...
       </main>
     );
+  }
+
+  if (!isSeller) return null;
 
   return (
     <main className="p-6 pb-24 max-w-6xl mx-auto">
       <div className="text-right text-sm text-gray-700 mb-4">
-        👤 {translate("seller_label") || "Người bán"}: <b>{user.username}</b>
+        👤 {translate("seller_label") || "Người bán"}: <b>{user?.username}</b>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5 text-center mt-2">
