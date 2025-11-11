@@ -1,7 +1,9 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "../../context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 
 interface OrderItem {
   name: string;
@@ -16,76 +18,84 @@ interface Order {
   createdAt: string;
   total: number;
   status: string;
-  items?: OrderItem[]; // ✅ optional để không crash
+  items?: OrderItem[];
+  shipping?: {
+    name: string;
+    phone: string;
+    address: string;
+  };
 }
 
 export default function SellerOrdersPage() {
   const { translate } = useLanguage();
+  const { user, piReady } = useAuth();
   const router = useRouter();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
-  const [sellerUser, setSellerUser] = useState<string>("");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isSeller, setIsSeller] = useState(false);
 
+  // ✅ Xác thực & kiểm tra role
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("pi_user");
-      const logged = localStorage.getItem("titi_is_logged_in");
-
-      if (stored && logged === "true") {
-        const parsed = JSON.parse(stored);
-        const username = parsed?.user?.username || parsed?.username || "guest_user";
-        setSellerUser(username);
-        setIsLoggedIn(true);
-      }
-    } catch {
-      setIsLoggedIn(false);
+    if (!piReady) return;
+    if (!user) {
+      router.push("/pilogin");
+      return;
     }
-  }, []);
 
-  useEffect(() => {
-    if (isLoggedIn) fetchOrders();
-    else setLoading(false);
-  }, [isLoggedIn]);
+    const verifyRole = async () => {
+      try {
+        const res = await fetch(`/api/users/role?username=${user.username}`);
+        const data = await res.json();
+        if (data.role === "seller") {
+          setIsSeller(true);
+          await fetchOrders(user.username);
+        } else {
+          router.push("/customer");
+        }
+      } catch {
+        router.push("/pilogin");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const fetchOrders = async () => {
+    verifyRole();
+  }, [piReady, user, router]);
+
+  // ✅ Tải đơn hàng của seller
+  const fetchOrders = async (sellerUsername: string) => {
     try {
       const res = await fetch("/api/orders", { cache: "no-store" });
-      if (!res.ok) throw new Error("Không thể tải danh sách đơn hàng");
       const data = await res.json();
-
-      // ✅ Đảm bảo luôn có items array để tránh crash
       const safeOrders = (Array.isArray(data) ? data : []).map((o: any) => ({
         ...o,
         items: o.items || [],
         status: o.status || "Chờ xác nhận",
       }));
 
-      // ✅ Lọc đơn theo seller
       const filtered = safeOrders.filter(
         (o) =>
           !o.seller ||
-          o.seller?.toLowerCase() === sellerUser.toLowerCase()
+          o.seller?.toLowerCase() === sellerUsername.toLowerCase()
       );
 
       setOrders(filtered);
     } catch (err) {
       console.error("❌ Lỗi tải đơn hàng:", err);
-    } finally {
-      setLoading(false);
     }
   };
 
+  // ✅ Cập nhật trạng thái đơn
   const updateOrderStatus = async (orderId: any, newStatus: string) => {
     setUpdating(orderId);
     try {
       const res = await fetch(`/api/orders/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus, seller: sellerUser }),
+        body: JSON.stringify({ status: newStatus, seller: user?.username }),
       });
       if (!res.ok) throw new Error("Cập nhật thất bại");
       setOrders((prev) =>
@@ -101,85 +111,97 @@ export default function SellerOrdersPage() {
   const filteredOrders =
     filter === "all" ? orders : orders.filter((o) => o.status === filter);
 
-  if (loading)
-    return <p className="text-center text-gray-500 mt-6">⏳ Đang tải đơn hàng...</p>;
-
-  if (!isLoggedIn)
+  if (!piReady || loading)
     return (
-      <main className="p-6 text-center">
-        <h2 className="text-xl text-red-600 mb-3">
-          🔐 Vui lòng đăng nhập bằng Pi Network để quản lý đơn hàng
-        </h2>
-        <button
-          onClick={() => router.push("/pilogin")}
-          className="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-        >
-          👉 Đăng nhập ngay
-        </button>
+      <main className="flex items-center justify-center min-h-screen text-gray-500">
+        ⏳ Đang tải đơn hàng...
+      </main>
+    );
+
+  if (!isSeller)
+    return (
+      <main className="text-center py-20 text-red-500 font-semibold">
+        🔒 Bạn không có quyền truy cập khu vực này.
       </main>
     );
 
   return (
-    <main className="p-4 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-center mb-4 text-blue-600">
-        📦 Quản lý đơn hàng
+    <main className="p-5 max-w-5xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">
+        📦 {translate("manage_orders") || "Quản lý đơn hàng"}
       </h1>
 
       <div className="flex flex-wrap justify-center gap-2 mb-4">
-        {["all", "Chờ xác nhận", "Đang giao", "Hoàn tất", "Đã hủy"].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setFilter(tab)}
-            className={`px-3 py-1 rounded border ${
-              filter === tab ? "bg-blue-600 text-white" : "bg-gray-100"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+        {["all", "Chờ xác nhận", "Đang giao", "Hoàn tất", "Đã hủy"].map(
+          (tab) => (
+            <button
+              key={tab}
+              onClick={() => setFilter(tab)}
+              className={`px-3 py-1 rounded border ${
+                filter === tab
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 text-gray-700"
+              }`}
+            >
+              {tab}
+            </button>
+          )
+        )}
       </div>
 
       {filteredOrders.length === 0 ? (
-        <p className="text-center text-gray-500">Không có đơn hàng nào.</p>
+        <p className="text-center text-gray-500">
+          Không có đơn hàng nào trong mục này.
+        </p>
       ) : (
         <div className="space-y-4">
           {filteredOrders.map((order) => (
-            <div key={order.id} className="border rounded-lg bg-white shadow p-3">
+            <div
+              key={order.id}
+              className="border rounded-lg bg-white shadow p-4 hover:shadow-md transition"
+            >
               <p>🧾 Mã đơn: #{order.id}</p>
               <p>👤 Người mua: {order.buyer}</p>
               <p>🕒 Tạo lúc: {new Date(order.createdAt).toLocaleString()}</p>
               <p>💰 Tổng: {order.total} Pi</p>
-              <p>🧺 Sản phẩm:</p>
-              <ul className="ml-6 list-disc">
-                {order.items?.length ? (
-                  order.items.map((it, i) => (
-                    <li key={i}>
-                      {it.name} — {it.price} Pi × {it.quantity}
-                    </li>
-                  ))
-                ) : (
-                  <li className="text-gray-400 italic">Không có chi tiết sản phẩm</li>
-                )}
-              </ul>
-{order.shipping && (
-  <div className="mt-3 text-sm text-gray-700 bg-gray-50 p-2 rounded">
-    <p>👤 Người nhận: {order.shipping.name}</p>
-    <p>📞 Số điện thoại: {order.shipping.phone}</p>
-    <p>📍 Địa chỉ: {order.shipping.address}</p>
-  </div>
-)}
-              <div className="flex justify-between items-center mt-3">
-                <span className="px-3 py-1 bg-gray-100 rounded text-sm">{order.status}</span>
+
+              {order.items?.length ? (
+                <>
+                  <p>🧺 Sản phẩm:</p>
+                  <ul className="ml-6 list-disc">
+                    {order.items.map((it, i) => (
+                      <li key={i}>
+                        {it.name} — {it.price} Pi × {it.quantity}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p className="text-gray-400 italic">Không có chi tiết sản phẩm</p>
+              )}
+
+              {order.shipping && (
+                <div className="mt-2 text-sm text-gray-700 border-t pt-2">
+                  <p>👤 Người nhận: {order.shipping.name}</p>
+                  <p>📞 {order.shipping.phone}</p>
+                  <p>📍 {order.shipping.address}</p>
+                </div>
+              )}
+
+              <div className="mt-3 flex items-center justify-between">
+                <p>
+                  📊 <b>Trạng thái:</b> {order.status}
+                </p>
+
                 {order.status === "Chờ xác nhận" && (
-  <button
-    onClick={() => updateOrderStatus(order.id, "Đang giao")}
-    disabled={updating === order.id}
-    className="px-3 py-1 bg-blue-600 text-white rounded"
-  >
-    ✅ Xác nhận
-  </button>
-)}
-              
+                  <button
+                    onClick={() => updateOrderStatus(order.id, "Đang giao")}
+                    disabled={updating === order.id}
+                    className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    {updating === order.id ? "⏳ Đang cập nhật..." : "✅ Xác nhận"}
+                  </button>
+                )}
               </div>
             </div>
           ))}
