@@ -5,9 +5,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* (❌) KHÔNG cần @import "tailwindcss";
-   Vì Next.js & Tailwind đã tự cấu hình qua postcss.config.js */
-
 /* ===============================
    2️⃣  Biến màu toàn cục
 ================================ */
@@ -16,14 +13,8 @@
   --foreground: #171717;
 }
 
-/* ✅ Thêm theme tùy chỉnh (nếu dùng Tailwind @theme plugin) */
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-}
-
 /* ===============================
-   3️⃣  Giao diện dark mode (nếu người dùng bật)
+   3️⃣  Giao diện dark mode
 ================================ */
 @media (prefers-color-scheme: dark) {
   :root {
@@ -46,22 +37,24 @@ body {
    5️⃣  Các class tiện ích dùng chung
 ================================ */
 
-/* Nút màu cam */
-.btn-orange {
-  @apply bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-3 rounded text-sm transition;
-}
+/* ✅ Nút màu cam */
+@layer components {
+  .btn-orange {
+    @apply bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-3 rounded text-sm transition;
+  }
 
-/* Nút màu xanh lá (dùng cho “Xác nhận”, “Hoàn tất”) */
-.btn-green {
-  @apply bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded text-sm transition;
-}
+  /* ✅ Nút màu xanh lá */
+  .btn-green {
+    @apply bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded text-sm transition;
+  }
 
-/* Nút màu xám (dùng cho “Hủy”, “Thoát”) */
-.btn-gray {
-  @apply bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-3 rounded text-sm transition;
-}
+  /* ✅ Nút màu xám */
+  .btn-gray {
+    @apply bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-3 rounded text-sm transition;
+  }
 
-/* Thẻ (card) hiển thị nội dung gọn đẹp */
-.card {
-  @apply bg-white border rounded-lg p-4 shadow hover:shadow-md transition;
+  /* ✅ Thẻ (card) hiển thị nội dung */
+  .card {
+    @apply bg-white border rounded-lg p-4 shadow hover:shadow-md transition;
+  }
 }
