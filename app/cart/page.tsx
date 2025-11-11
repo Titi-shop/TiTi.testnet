@@ -2,44 +2,45 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useCart } from "../context/CartContext";
+import { useCart } from "@/context/CartContext";
 import { useRouter } from "next/navigation";
-import { useLanguage } from "../context/LanguageContext";
-import { useAuth } from "@/context/AuthContext"; // ✅ Thêm để kiểm tra đăng nhập
+import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext"; // ✅ Dùng login chung toàn app
 
 export default function CartPage() {
   const { cart, removeFromCart, updateQty } = useCart();
   const { translate } = useLanguage();
-  const { user, piReady } = useAuth(); // ✅ Nhận thông tin login và SDK từ AuthContext
+  const { user, piReady } = useAuth(); // ✅ Lấy thông tin login từ AuthContext
   const router = useRouter();
 
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [loadingPay, setLoadingPay] = useState(false);
 
-  // ✅ Chọn hoặc bỏ chọn từng sản phẩm
+  // ✅ Chọn / bỏ chọn sản phẩm
   const toggleSelect = (id: string) => {
     setSelectedItems((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
   };
 
-  // ✅ Chọn / Bỏ chọn tất cả
+  // ✅ Chọn / bỏ chọn tất cả
   const selectAll = () => {
     if (selectedItems.length === cart.length) setSelectedItems([]);
     else setSelectedItems(cart.map((i) => i.id));
   };
 
-  // ✅ Thanh toán các sản phẩm đã chọn
+  // ✅ Thanh toán
   const handlePaySelected = async () => {
     try {
       // 🧩 Kiểm tra đăng nhập
       if (!user) {
-        alert("⚠️ Bạn cần đăng nhập bằng Pi để thanh toán.");
+        alert("⚠️ Vui lòng đăng nhập trước khi thanh toán.");
         return router.push("/pilogin");
       }
 
-      // 🧩 Kiểm tra Pi SDK sẵn sàng
+      // 🧩 Kiểm tra SDK
       if (!piReady || typeof window === "undefined" || !window.Pi) {
-        alert("⚠️ Vui lòng mở trong Pi Browser và chờ SDK tải xong!");
+        alert("⚙️ Hãy mở trong Pi Browser và chờ SDK tải xong!");
         return;
       }
 
@@ -48,23 +49,43 @@ export default function CartPage() {
         return;
       }
 
+      setLoadingPay(true);
+
       const selectedProducts = cart.filter((i) => selectedItems.includes(i.id));
       const total = selectedProducts.reduce(
         (sum, i) => sum + i.price * (i.quantity || 1),
         0
       );
-
       const buyer = user.username;
       const orderId = Date.now();
 
-      // ✅ Xác thực người dùng (Pi SDK)
-      const scopes = ["payments", "username", "wallet_address"];
-      const auth = await window.Pi.authenticate(scopes, (payment: any) =>
-        console.log("⚠️ Payment chưa hoàn tất:", payment)
-      );
-      console.log("✅ Pi Auth:", auth);
+      // ✅ Dùng token có sẵn (không hiện popup)
+      let accessToken = user?.accessToken;
 
-      // ✅ Gọi thanh toán thật qua Pi Network
+      // Nếu chưa có (token cũ hết hạn) → login lại
+      if (!accessToken) {
+        const scopes = ["username", "payments", "wallet_address"];
+        const auth = await window.Pi.authenticate(scopes, (payment: any) =>
+          console.log("⚠️ Payment chưa hoàn tất:", payment)
+        );
+        accessToken = auth.accessToken;
+      }
+
+      // ✅ Xác minh token với backend
+      const verifyRes = await fetch("/api/pi/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken }),
+      });
+
+      const verifyData = await verifyRes.json();
+      if (!verifyData?.success) {
+        alert("❌ Lỗi xác minh tài khoản. Hãy đăng nhập lại.");
+        localStorage.removeItem("pi_user");
+        return router.push("/pilogin");
+      }
+
+      // ✅ Gọi thanh toán thật qua Pi SDK
       const payment = await window.Pi.createPayment(
         {
           amount: total,
@@ -87,13 +108,14 @@ export default function CartPage() {
             });
           },
           onCancel: () => alert("❌ " + translate("payment_cancelled")),
-          onError: (err: any) => console.error("💥 " + translate("payment_error"), err),
+          onError: (err: any) =>
+            console.error("💥 " + translate("payment_error"), err),
         }
       );
 
       console.log("💰 Kết quả thanh toán:", payment);
 
-      // ✅ Lưu đơn hàng vào backend
+      // ✅ Lưu đơn hàng
       const orderData = {
         id: orderId,
         buyer,
@@ -109,7 +131,7 @@ export default function CartPage() {
         body: JSON.stringify(orderData),
       });
 
-      // ✅ Xóa sản phẩm đã thanh toán khỏi giỏ hàng
+      // ✅ Xóa các sản phẩm đã thanh toán
       selectedProducts.forEach((i) => removeFromCart(i.id));
 
       alert(`🎉 ${translate("payment_success")}`);
@@ -117,10 +139,12 @@ export default function CartPage() {
     } catch (error) {
       console.error("❌ Thanh toán thất bại:", error);
       alert("💥 " + translate("payment_failed"));
+    } finally {
+      setLoadingPay(false);
     }
   };
 
-  // ✅ Tổng tiền
+  // ✅ Tính tổng tiền
   const total = cart
     .filter((i) => selectedItems.includes(i.id))
     .reduce((sum, i) => sum + i.price * (i.quantity || 1), 0);
@@ -243,17 +267,16 @@ export default function CartPage() {
                   </span>
                 </p>
 
-                {/* ✅ Nút thanh toán thật qua Pi */}
                 <button
                   onClick={handlePaySelected}
-                  disabled={selectedItems.length === 0}
+                  disabled={selectedItems.length === 0 || loadingPay}
                   className={`mt-2 px-5 py-2 rounded-lg font-semibold text-white ${
-                    selectedItems.length === 0
+                    selectedItems.length === 0 || loadingPay
                       ? "bg-gray-400 cursor-not-allowed"
                       : "bg-[#ff6600] hover:bg-[#e65500]"
                   }`}
                 >
-                  💳 {translate("order_now")}
+                  {loadingPay ? "⏳ Processing..." : "💳 " + translate("order_now")}
                 </button>
               </div>
             </div>
