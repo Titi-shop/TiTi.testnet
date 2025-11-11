@@ -1,24 +1,31 @@
 "use client";
-
 import { useAuth } from "@/context/AuthContext";
 
-function LoginWithPi() {
-  <button onClick={pilogin}>Đăng nhập với Pi</button>
+export default function LoginWithPi() {
+  const { user, piReady, pilogin, logout, loading } = useAuth();
 
-  if (user) {
-    return (
-      <div className="text-center text-green-600 mt-4">
-        👤 Xin chào, {user.username}
-      </div>
-    );
+  if (loading) {
+    return <p className="text-gray-400 text-center mt-4">⏳ Đang kiểm tra phiên...</p>;
   }
 
   if (!piReady) {
     return (
       <div className="text-center text-gray-500 mt-4">
-        ⏳ Đang tải Pi SDK...
-        <br />
-        (Hãy mở trong Pi Browser)
+        ⏳ Đang tải Pi SDK...<br /> (Vui lòng mở trong Pi Browser)
+      </div>
+    );
+  }
+
+  if (user) {
+    return (
+      <div className="flex flex-col items-center mt-4">
+        <p className="text-green-600 mb-2">👤 Xin chào, {user.username}</p>
+        <button
+          onClick={logout}
+          className="bg-red-500 text-white px-5 py-2 rounded-md hover:bg-red-600"
+        >
+          Đăng xuất
+        </button>
       </div>
     );
   }
@@ -29,10 +36,8 @@ function LoginWithPi() {
         onClick={pilogin}
         className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600"
       >
-        User pilogin
+        Đăng nhập với Pi
       </button>
     </div>
   );
 }
-
-export default LoginWithPi; // ✅ PHẢI CÓ DÒNG NÀY
