@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "../../context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 
 interface Product {
   id: number;
@@ -16,67 +17,56 @@ interface Product {
 
 export default function SellerStockPage() {
   const { translate } = useLanguage();
+  const { user, piReady } = useAuth();
   const router = useRouter();
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" | "" }>({
     text: "",
     type: "",
   });
-  const [sellerUser, setSellerUser] = useState<string>("");
-  const [role, setRole] = useState<string>("buyer");
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [role, setRole] = useState("buyer");
 
-  // ✅ Xác thực người dùng
+  // ✅ Kiểm tra quyền seller
   useEffect(() => {
-    async function loadUser() {
+    if (!piReady) return;
+    if (!user) {
+      router.push("/pilogin");
+      return;
+    }
+
+    const verify = async () => {
       try {
-        const stored = localStorage.getItem("pi_user");
-        const logged = localStorage.getItem("titi_is_logged_in");
-
-        if (!stored || logged !== "true") {
-          router.push("/pilogin");
-          return;
-        }
-
-        const parsed = JSON.parse(stored);
-        const username =
-          (parsed?.user?.username || parsed?.username || "").trim().toLowerCase();
-
-        if (!username) {
-          router.push("/pilogin");
-          return;
-        }
-
-        setSellerUser(username);
-
-        const res = await fetch(`/api/users/role?username=${username}`);
+        const res = await fetch(`/api/users/role?username=${user.username}`);
         const data = await res.json();
         setRole(data.role || "buyer");
-
-        if (data.role !== "seller") {
-          setMessage({ text: "🚫 Bạn không có quyền truy cập khu vực kho hàng!", type: "error" });
-          setTimeout(() => router.push("/customer"), 2000);
+        if (data.role === "seller") {
+          await fetchProducts(user.username);
         } else {
-          await fetchProducts(username);
+          setMessage({
+            text: "🚫 Bạn không có quyền truy cập khu vực kho hàng!",
+            type: "error",
+          });
+          setTimeout(() => router.push("/customer"), 2000);
         }
       } catch (err) {
         console.error("❌ Lỗi xác thực:", err);
         router.push("/pilogin");
       }
-    }
+    };
 
-    loadUser();
-  }, [router]);
+    verify();
+  }, [piReady, user, router]);
 
-  // ✅ Tải danh sách sản phẩm
+  // ✅ Lấy danh sách sản phẩm
   const fetchProducts = async (username: string) => {
     try {
       const res = await fetch("/api/products", { cache: "no-store" });
       const data = await res.json();
       const filtered = data.filter(
-        (p: any) =>
-          (p.seller || "").trim().toLowerCase() === (username || "").trim().toLowerCase()
+        (p: any) => (p.seller || "").trim().toLowerCase() === username.trim().toLowerCase()
       );
       setProducts(filtered);
     } catch (err) {
@@ -87,63 +77,55 @@ export default function SellerStockPage() {
     }
   };
 
-  // ✅ Xử lý xóa sản phẩm
+  // ✅ Xóa sản phẩm
   const handleDelete = async (id: number) => {
-    setMessage({ text: "", type: "" });
     const product = products.find((p) => p.id === id);
     if (!product) return;
-
-    const confirmed = confirm(`Bạn có chắc muốn xóa "${product.name}" không?`);
-    if (!confirmed) return;
+    if (!confirm(`Bạn có chắc muốn xóa "${product.name}" không?`)) return;
 
     setDeletingId(id);
     try {
       const res = await fetch(`/api/products?id=${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seller: sellerUser }),
+        body: JSON.stringify({ seller: user?.username }),
       });
       const result = await res.json();
 
       if (result.success) {
         setMessage({ text: "✅ Đã xóa sản phẩm!", type: "success" });
-        await fetchProducts(sellerUser);
+        await fetchProducts(user.username);
       } else {
         setMessage({
           text: result.message || "❌ Không thể xóa sản phẩm.",
           type: "error",
         });
       }
-    } catch (err) {
-      console.error("❌ DELETE Error:", err);
+    } catch {
       setMessage({ text: "Lỗi khi xóa sản phẩm.", type: "error" });
     } finally {
       setDeletingId(null);
     }
   };
 
-  if (loading)
+  if (!piReady || loading)
     return (
-      <main className="p-6 text-center">
-        <p>⏳ Đang tải dữ liệu...</p>
+      <main className="flex items-center justify-center min-h-screen text-gray-500">
+        ⏳ Đang tải dữ liệu...
       </main>
     );
 
   if (role !== "seller")
     return (
-      <main className="p-6 text-center">
-        <h2>🔒 Bạn không có quyền truy cập khu vực này.</h2>
+      <main className="text-center py-20 text-red-500 font-semibold">
+        🔒 Bạn không có quyền truy cập khu vực này.
       </main>
     );
 
   return (
-    <main className="p-4 max-w-5xl mx-auto pb-24">
-      <h1 className="text-2xl font-bold text-center mb-4 text-[#ff6600]">
-        🏪 Cửa hàng của tôi
-      </h1>
-      <p className="text-center text-sm text-gray-500 mb-4">
-        👤 Người bán: <b>{sellerUser}</b>
-      </p>
+    <main className="p-5 max-w-6xl mx-auto">
+      <h1 className="text-xl font-bold mb-3">🏪 {translate("my_store") || "Cửa hàng của tôi"}</h1>
+      <p className="mb-3 text-gray-600">👤 Người bán: <b>{user?.username}</b></p>
 
       {message.text && (
         <p
@@ -159,19 +141,14 @@ export default function SellerStockPage() {
         <p className="text-center text-gray-500">Không có sản phẩm nào.</p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {products.map((product) => (
+          {products.map((p) => (
             <div
-              key={product.id}
-              className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300"
+              key={p.id}
+              className="bg-white rounded-xl shadow border hover:shadow-lg transition overflow-hidden"
             >
               <div className="relative w-full h-44">
-                {product.images?.[0] ? (
-                  <Image
-                    src={product.images[0]}
-                    alt={product.name}
-                    fill
-                    className="object-cover"
-                  />
+                {p.images?.[0] ? (
+                  <Image src={p.images[0]} alt={p.name} fill className="object-cover" />
                 ) : (
                   <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400">
                     Không có ảnh
@@ -180,35 +157,28 @@ export default function SellerStockPage() {
               </div>
 
               <div className="p-3 text-center">
-                <h3 className="font-semibold text-gray-800 truncate">
-                  {product.name}
-                </h3>
-                <p className="text-[#ff6600] font-bold mt-1 text-sm">
-                  {product.price} π
-                </p>
-
+                <h3 className="font-semibold text-gray-800 truncate">{p.name}</h3>
+                <p className="text-[#ff6600] font-bold mt-1 text-sm">{p.price} π</p>
                 <div className="flex justify-center gap-4 mt-2 text-gray-600 text-lg">
                   <button
-                    onClick={() => router.push(`/product/${product.id}`)}
+                    onClick={() => router.push(`/product/${p.id}`)}
                     title="Xem"
                     className="hover:text-blue-500"
                   >
                     👁
                   </button>
                   <button
-                    onClick={() => router.push(`/seller/edit/${product.id}`)}
+                    onClick={() => router.push(`/seller/edit/${p.id}`)}
                     title="Sửa"
                     className="hover:text-green-500"
                   >
                     ✏️
                   </button>
                   <button
-                    onClick={() => handleDelete(product.id)}
-                    disabled={deletingId === product.id}
+                    onClick={() => handleDelete(p.id)}
+                    disabled={deletingId === p.id}
                     title="Xóa"
-                    className={`hover:text-red-500 ${
-                      deletingId === product.id ? "opacity-50" : ""
-                    }`}
+                    className={`hover:text-red-500 ${deletingId === p.id ? "opacity-50" : ""}`}
                   >
                     🗑
                   </button>
