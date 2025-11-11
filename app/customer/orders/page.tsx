@@ -31,10 +31,11 @@ export default function AllOrdersPage() {
 
   return (
     <main className="max-w-4xl mx-auto p-4">
+      {/* ===== Tiêu đề ===== */}
       <h1 className="text-2xl font-bold mb-4">📦 Tất cả đơn hàng</h1>
 
       {/* ===== Bộ lọc trạng thái ===== */}
-      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-6">
         <button
           onClick={() => router.push("/seller/orders/pending")}
           className="btn-orange"
@@ -76,12 +77,21 @@ export default function AllOrdersPage() {
         orders.map((o) => (
           <div
             key={o.id}
-            className="bg-white border rounded p-4 mb-3 shadow hover:shadow-md transition"
+            className="bg-white border rounded-lg p-4 mb-3 shadow hover:shadow-md transition"
           >
-            <p>🧾 <b>Mã đơn:</b> #{o.id}</p>
-            <p>👤 <b>Người mua:</b> {o.buyer}</p>
-            <p>💰 <b>Tổng:</b> {o.total} Pi</p>
-            <p>📦 <b>Trạng thái:</b> <span className="text-orange-600">{o.status}</span></p>
+            <div className="space-y-1">
+              <p>🧾 <b>Mã đơn:</b> #{o.id}</p>
+              <p>👤 <b>Người mua:</b> {o.buyer}</p>
+              <p>💰 <b>Tổng:</b> {o.total} Pi</p>
+              <p>
+                📦 <b>Trạng thái:</b>{" "}
+                <span className="text-orange-600 font-semibold">
+                  {o.status}
+                </span>
+              </p>
+            </div>
+
+            {/* ❌ Không còn nút xác nhận ở đây */}
           </div>
         ))
       )}
