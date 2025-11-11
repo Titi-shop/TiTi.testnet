@@ -3,10 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useAuth } from "@/context/AuthContext";
 import { Upload, ArrowLeft, Edit3, Save } from "lucide-react";
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { user, loading: authLoading, logout } = useAuth();
+
   const [profile, setProfile] = useState<any>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -16,43 +19,25 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // ✅ Lấy thông tin user khi mở trang
+  // 🟢 Tự động tải thông tin hồ sơ
   useEffect(() => {
-    const stored =
-      localStorage.getItem("pi_user") || localStorage.getItem("user_info");
-
-    if (!stored) {
+    if (authLoading) return;
+    if (!user?.username) {
       setError("❌ Bạn chưa đăng nhập. Vui lòng đăng nhập lại.");
       setLoading(false);
       return;
     }
 
-    try {
-      const user = JSON.parse(stored);
-      const pi_uid = user?.user?.uid || user?.pi_uid || null;
-      const username = user?.user?.username || user?.username || "guest_user";
-
-      if (!pi_uid && !username) {
-        setError("Không tìm thấy thông tin tài khoản.");
-        setLoading(false);
-        return;
-      }
-
-      fetch(`/api/profile?pi_uid=${pi_uid || ""}&username=${username || ""}`)
-        .then(async (res) => {
-          if (!res.ok) throw new Error("Lỗi kết nối đến máy chủ");
-          const data = await res.json();
-          setProfile(data || {});
-          setAvatar(data?.avatar || null);
-        })
-        .catch(() => setError("Không tải được hồ sơ."))
-        .finally(() => setLoading(false));
-    } catch (err) {
-      console.error("Lỗi parse user:", err);
-      setError("Dữ liệu người dùng không hợp lệ.");
-      setLoading(false);
-    }
-  }, []);
+    fetch(`/api/profile?username=${user.username}`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Lỗi khi tải hồ sơ.");
+        const data = await res.json();
+        setProfile(data || {});
+        setAvatar(data?.avatar || null);
+      })
+      .catch(() => setError("Không tải được hồ sơ."))
+      .finally(() => setLoading(false));
+  }, [authLoading, user]);
 
   // 📸 Upload ảnh đại diện
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,25 +47,24 @@ export default function ProfilePage() {
     const previewURL = URL.createObjectURL(file);
     setPreview(previewURL);
 
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
       setUploading(true);
-      const res = await fetch("/api/uploadAvatar", {
+      const res = await fetch("/api/upload", {
         method: "POST",
-        body: formData,
+        headers: { "x-filename": file.name },
+        body: file,
       });
+
       const data = await res.json();
-      if (res.ok) {
+      if (res.ok && data.url) {
         setAvatar(data.url);
         setProfile((prev: any) => ({ ...prev, avatar: data.url }));
         alert("✅ Ảnh đại diện đã được cập nhật!");
       } else {
-        alert("❌ Lỗi tải ảnh: " + data.error);
+        alert("❌ Lỗi tải ảnh: " + (data.error || "Không xác định"));
       }
-    } catch (error) {
-      console.error("Upload failed:", error);
+    } catch (err) {
+      console.error("Upload failed:", err);
       alert("⚠️ Không thể tải ảnh lên máy chủ.");
     } finally {
       setUploading(false);
@@ -89,20 +73,26 @@ export default function ProfilePage() {
 
   // 💾 Lưu thay đổi hồ sơ
   const handleSaveProfile = async () => {
-    if (!profile) return;
+    if (!profile || !user?.username) return;
+
     setSaving(true);
     try {
       const res = await fetch("/api/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profile),
+        body: JSON.stringify({
+          ...profile,
+          username: user.username,
+          avatar,
+        }),
       });
+
       const data = await res.json();
       if (res.ok && data.success) {
         alert("✅ Hồ sơ đã được cập nhật!");
         setEditing(false);
       } else {
-        alert("❌ Cập nhật thất bại!");
+        alert("❌ Cập nhật thất bại: " + (data.error || ""));
       }
     } catch (err) {
       console.error("❌ Lỗi khi lưu hồ sơ:", err);
@@ -112,7 +102,9 @@ export default function ProfilePage() {
     }
   };
 
-  if (loading) return <p className="p-4 text-center">⏳ Đang tải...</p>;
+  if (loading || authLoading)
+    return <p className="p-4 text-center">⏳ Đang tải...</p>;
+
   if (error)
     return (
       <main className="p-4 text-center text-red-500">
@@ -184,74 +176,51 @@ export default function ProfilePage() {
         <p className="mt-4 text-lg font-semibold text-gray-800">
           {profile?.displayName || profile?.username || "Người dùng"}
         </p>
-        {uploading && <p className="text-sm text-gray-500 mt-2">Đang tải ảnh...</p>}
+        {uploading && (
+          <p className="text-sm text-gray-500 mt-2">Đang tải ảnh...</p>
+        )}
       </div>
 
       {/* ===== Thông tin người dùng ===== */}
       <div className="bg-white mt-6 mx-4 p-4 rounded-lg shadow space-y-3">
-        <div>
-          <strong>Tên hiển thị:</strong>{" "}
-          {editing ? (
-            <input
-              value={profile?.displayName || ""}
-              onChange={(e) =>
-                setProfile((prev: any) => ({
-                  ...prev,
-                  displayName: e.target.value,
-                }))
-              }
-              className="border p-1 rounded w-full mt-1"
-            />
-          ) : (
-            <span>{profile?.displayName || "(chưa có)"}</span>
-          )}
-        </div>
-
-        <div>
-          <strong>Email:</strong>{" "}
-          {editing ? (
-            <input
-              value={profile?.email || ""}
-              onChange={(e) =>
-                setProfile((prev: any) => ({ ...prev, email: e.target.value }))
-              }
-              className="border p-1 rounded w-full mt-1"
-            />
-          ) : (
-            <span>{profile?.email || "(chưa có)"}</span>
-          )}
-        </div>
-
-        <div>
-          <strong>Điện thoại:</strong>{" "}
-          {editing ? (
-            <input
-              value={profile?.phone || ""}
-              onChange={(e) =>
-                setProfile((prev: any) => ({ ...prev, phone: e.target.value }))
-              }
-              className="border p-1 rounded w-full mt-1"
-            />
-          ) : (
-            <span>{profile?.phone || "(chưa có)"}</span>
-          )}
-        </div>
-
-        <div>
-          <strong>Địa chỉ:</strong>{" "}
-          {editing ? (
-            <textarea
-              value={profile?.address || ""}
-              onChange={(e) =>
-                setProfile((prev: any) => ({ ...prev, address: e.target.value }))
-              }
-              className="border p-1 rounded w-full mt-1"
-              rows={2}
-            />
-          ) : (
-            <span>{profile?.address || "(chưa có)"}</span>
-          )}
-        </div>
+        {[
+          { label: "Tên hiển thị", key: "displayName" },
+          { label: "Email", key: "email" },
+          { label: "Điện thoại", key: "phone" },
+          { label: "Địa chỉ", key: "address" },
+        ].map(({ label, key }) => (
+          <div key={key}>
+            <strong>{label}:</strong>{" "}
+            {editing ? (
+              key === "address" ? (
+                <textarea
+                  value={profile?.[key] || ""}
+                  onChange={(e) =>
+                    setProfile((prev: any) => ({
+                      ...prev,
+                      [key]: e.target.value,
+                    }))
+                  }
+                  className="border p-1 rounded w-full mt-1"
+                  rows={2}
+                />
+              ) : (
+                <input
+                  value={profile?.[key] || ""}
+                  onChange={(e) =>
+                    setProfile((prev: any) => ({
+                      ...prev,
+                      [key]: e.target.value,
+                    }))
+                  }
+                  className="border p-1 rounded w-full mt-1"
+                />
+              )
+            ) : (
+              <span>{profile?.[key] || "(chưa có)"}</span>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* ===== Nút hành động ===== */}
