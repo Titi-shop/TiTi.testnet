@@ -1,15 +1,15 @@
 "use client";
-export const dynamic = "force-dynamic"; // ✅ Ngăn Next.js prerender gây lỗi build
+export const dynamic = "force-dynamic"; // tránh lỗi prerender trên vercel
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Upload, ArrowLeft, Edit3, Save } from "lucide-react";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, piReady, pilogin, logout } = useAuth();
 
   const [profile, setProfile] = useState<any>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -20,30 +20,46 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // 🟢 Tải hồ sơ người dùng
+  // 🟢 tải hồ sơ user
   useEffect(() => {
     if (authLoading) return;
-    if (!user?.username) {
-      setError("❌ Bạn chưa đăng nhập. Vui lòng đăng nhập lại.");
+
+    let username = user?.username;
+    if (!username) {
+      try {
+        const saved = localStorage.getItem("pi_user");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          username = parsed?.username || parsed?.user?.username;
+        }
+      } catch {}
+    }
+
+    if (!username) {
+      setError("❌ Không tải được hồ sơ. Bạn chưa đăng nhập.");
       setLoading(false);
       return;
     }
 
-    fetch(`/api/profile?username=${encodeURIComponent(user.username)}`)
-      .then(async (res) => {
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch(`/api/profile?username=${encodeURIComponent(username!)}`);
         if (!res.ok) throw new Error("Không thể tải hồ sơ.");
         const data = await res.json();
-        setProfile(data || {});
+        setProfile(data);
         setAvatar(data?.avatar || null);
-      })
-      .catch((err) => {
-        console.error("❌ Lỗi khi tải hồ sơ:", err);
+      } catch (err) {
+        console.error("❌ Lỗi tải hồ sơ:", err);
         setError("Không tải được hồ sơ.");
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
   }, [authLoading, user]);
 
-  // 📸 Upload avatar
+  // 📸 upload avatar
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -58,7 +74,6 @@ export default function ProfilePage() {
         headers: { "x-filename": file.name },
         body: file,
       });
-
       const data = await res.json();
       if (res.ok && data.url) {
         setAvatar(data.url);
@@ -75,10 +90,9 @@ export default function ProfilePage() {
     }
   };
 
-  // 💾 Lưu thay đổi hồ sơ
+  // 💾 lưu hồ sơ
   const handleSaveProfile = async () => {
     if (!profile || !user?.username) return;
-
     setSaving(true);
     try {
       const res = await fetch("/api/profile", {
@@ -90,10 +104,9 @@ export default function ProfilePage() {
           avatar,
         }),
       });
-
       const data = await res.json();
       if (res.ok && data.success) {
-        alert("✅ Hồ sơ đã được cập nhật!");
+        alert("✅ Hồ sơ đã được lưu!");
         setEditing(false);
       } else {
         alert("❌ Cập nhật thất bại: " + (data.error || ""));
@@ -106,25 +119,28 @@ export default function ProfilePage() {
     }
   };
 
-  if (loading || authLoading)
-    return <p className="p-4 text-center">⏳ Đang tải...</p>;
+  if (loading || authLoading) return <p className="p-4 text-center">⏳ Đang tải...</p>;
 
   if (error)
     return (
       <main className="p-4 text-center text-red-500">
         <p>{error}</p>
-        <button
-          onClick={() => router.replace("/pilogin")}
-          className="mt-4 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded"
-        >
-          🔐 Đăng nhập lại
-        </button>
+        {piReady ? (
+          <button
+            onClick={pilogin}
+            className="mt-4 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded"
+          >
+            🔐 Đăng nhập lại
+          </button>
+        ) : (
+          <p className="mt-4 text-gray-600">🕓 Đang chờ Pi SDK...</p>
+        )}
       </main>
     );
 
   return (
     <main className="min-h-screen bg-gray-50 pb-10">
-      {/* ===== Thanh tiêu đề ===== */}
+      {/* ===== thanh tiêu đề ===== */}
       <div className="flex items-center bg-white p-4 shadow-sm">
         <button
           onClick={() => router.back()}
@@ -132,12 +148,10 @@ export default function ProfilePage() {
         >
           <ArrowLeft size={22} />
         </button>
-        <h1 className="text-lg font-semibold text-gray-800 mx-auto">
-          Hồ sơ người dùng
-        </h1>
+        <h1 className="text-lg font-semibold text-gray-800 mx-auto">Hồ sơ người dùng</h1>
       </div>
 
-      {/* ===== Avatar ===== */}
+      {/* ===== avatar ===== */}
       <div className="flex flex-col items-center mt-8">
         <div className="relative w-28 h-28">
           {preview ? (
@@ -160,7 +174,7 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* 📤 Nút đổi ảnh */}
+          {/* nút đổi ảnh */}
           <label
             htmlFor="avatar-upload"
             className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full cursor-pointer hover:bg-orange-600 transition"
@@ -176,16 +190,13 @@ export default function ProfilePage() {
           />
         </div>
 
-        {/* Tên hiển thị */}
         <p className="mt-4 text-lg font-semibold text-gray-800">
           {profile?.displayName || profile?.username || "Người dùng"}
         </p>
-        {uploading && (
-          <p className="text-sm text-gray-500 mt-2">Đang tải ảnh...</p>
-        )}
+        {uploading && <p className="text-sm text-gray-500 mt-2">Đang tải ảnh...</p>}
       </div>
 
-      {/* ===== Thông tin người dùng ===== */}
+      {/* ===== thông tin ===== */}
       <div className="bg-white mt-6 mx-4 p-4 rounded-lg shadow space-y-3">
         {[
           { label: "Tên hiển thị", key: "displayName" },
@@ -200,10 +211,7 @@ export default function ProfilePage() {
                 <textarea
                   value={profile?.[key] || ""}
                   onChange={(e) =>
-                    setProfile((prev: any) => ({
-                      ...prev,
-                      [key]: e.target.value,
-                    }))
+                    setProfile((prev: any) => ({ ...prev, [key]: e.target.value }))
                   }
                   className="border p-1 rounded w-full mt-1"
                   rows={2}
@@ -212,10 +220,7 @@ export default function ProfilePage() {
                 <input
                   value={profile?.[key] || ""}
                   onChange={(e) =>
-                    setProfile((prev: any) => ({
-                      ...prev,
-                      [key]: e.target.value,
-                    }))
+                    setProfile((prev: any) => ({ ...prev, [key]: e.target.value }))
                   }
                   className="border p-1 rounded w-full mt-1"
                 />
@@ -227,7 +232,7 @@ export default function ProfilePage() {
         ))}
       </div>
 
-      {/* ===== Nút hành động ===== */}
+      {/* ===== nút hành động ===== */}
       <div className="flex justify-center gap-4 mt-6">
         {!editing ? (
           <button
@@ -251,6 +256,16 @@ export default function ProfilePage() {
             {saving ? "Đang lưu..." : "Lưu thay đổi"}
           </button>
         )}
+      </div>
+
+      {/* nút đăng xuất */}
+      <div className="flex justify-center mt-6">
+        <button
+          onClick={logout}
+          className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded"
+        >
+          🚪 Đăng xuất
+        </button>
       </div>
     </main>
   );
