@@ -2,35 +2,47 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useCart } from "../context/CartContext";
+import { useCart } from "@/context/CartContext";
 import { useRouter } from "next/navigation";
-import { useLanguage } from "../context/LanguageContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext"; // ✅ Thêm để kiểm tra đăng nhập
 
 export default function CartPage() {
-  const { cart, removeFromCart, updateQty, clearCart } = useCart();
-  const router = useRouter();
+  const { cart, removeFromCart, updateQty } = useCart();
   const { translate } = useLanguage();
+  const { user, piReady } = useAuth(); // ✅ Nhận thông tin login và SDK từ AuthContext
+  const router = useRouter();
 
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
+  // ✅ Chọn hoặc bỏ chọn từng sản phẩm
   const toggleSelect = (id: string) => {
     setSelectedItems((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
   };
 
+  // ✅ Chọn / Bỏ chọn tất cả
   const selectAll = () => {
     if (selectedItems.length === cart.length) setSelectedItems([]);
     else setSelectedItems(cart.map((i) => i.id));
   };
 
-  // ✅ Thanh toán nhiều sản phẩm được chọn
+  // ✅ Thanh toán các sản phẩm đã chọn
   const handlePaySelected = async () => {
     try {
-      if (!window.Pi) {
-        alert("⚠️ " + translate("please_open_in_pi_browser"));
+      // 🧩 Kiểm tra đăng nhập
+      if (!user) {
+        alert("⚠️ Bạn cần đăng nhập bằng Pi để thanh toán.");
+        return router.push("/pilogin");
+      }
+
+      // 🧩 Kiểm tra Pi SDK sẵn sàng
+      if (!piReady || typeof window === "undefined" || !window.Pi) {
+        alert("⚠️ Vui lòng mở trong Pi Browser và chờ SDK tải xong!");
         return;
       }
+
       if (selectedItems.length === 0) {
         alert("⚠️ " + translate("please_select_item"));
         return;
@@ -42,15 +54,17 @@ export default function CartPage() {
         0
       );
 
-      const userInfo = JSON.parse(localStorage.getItem("user_info") || "{}");
-      const buyer = userInfo.username || "guest_user";
+      const buyer = user.username;
       const orderId = Date.now();
 
+      // ✅ Xác thực người dùng (Pi SDK)
       const scopes = ["payments", "username", "wallet_address"];
-      const auth = await window.Pi.authenticate(scopes, (res) => res);
+      const auth = await window.Pi.authenticate(scopes, (payment: any) =>
+        console.log("⚠️ Payment chưa hoàn tất:", payment)
+      );
       console.log("✅ Pi Auth:", auth);
 
-      // ✅ Gọi thanh toán thực qua Pi
+      // ✅ Gọi thanh toán thật qua Pi Network
       const payment = await window.Pi.createPayment(
         {
           amount: total,
@@ -58,14 +72,14 @@ export default function CartPage() {
           metadata: { orderId, buyer, items: selectedProducts },
         },
         {
-          onReadyForServerApproval: async (paymentId) => {
+          onReadyForServerApproval: async (paymentId: string) => {
             await fetch("/api/pi/approve", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ paymentId, orderId }),
             });
           },
-          onReadyForServerCompletion: async (paymentId, txid) => {
+          onReadyForServerCompletion: async (paymentId: string, txid: string) => {
             await fetch("/api/pi/complete", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -73,13 +87,13 @@ export default function CartPage() {
             });
           },
           onCancel: () => alert("❌ " + translate("payment_cancelled")),
-          onError: (err) => console.error("💥 " + translate("payment_error"), err),
+          onError: (err: any) => console.error("💥 " + translate("payment_error"), err),
         }
       );
 
       console.log("💰 Kết quả thanh toán:", payment);
 
-      // ✅ Lưu đơn hàng
+      // ✅ Lưu đơn hàng vào backend
       const orderData = {
         id: orderId,
         buyer,
@@ -95,7 +109,7 @@ export default function CartPage() {
         body: JSON.stringify(orderData),
       });
 
-      // ✅ Xóa sản phẩm đã thanh toán khỏi giỏ
+      // ✅ Xóa sản phẩm đã thanh toán khỏi giỏ hàng
       selectedProducts.forEach((i) => removeFromCart(i.id));
 
       alert(`🎉 ${translate("payment_success")}`);
@@ -106,10 +120,12 @@ export default function CartPage() {
     }
   };
 
+  // ✅ Tổng tiền
   const total = cart
     .filter((i) => selectedItems.includes(i.id))
     .reduce((sum, i) => sum + i.price * (i.quantity || 1), 0);
 
+  // ✅ Giao diện
   return (
     <main className="min-h-screen bg-gray-50 p-4 flex flex-col items-center">
       <div className="w-full max-w-2xl bg-white rounded-xl shadow p-4">
@@ -140,7 +156,11 @@ export default function CartPage() {
                   {/* Hình ảnh */}
                   <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
                     {it.images?.[0] ? (
-                      <img src={it.images[0]} alt={it.name} className="w-full h-full object-cover" />
+                      <img
+                        src={it.images[0]}
+                        alt={it.name}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
                         {translate("no_image")}
@@ -152,14 +172,18 @@ export default function CartPage() {
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-800">{it.name}</h3>
                     <p className="font-bold text-[#ff6600]">{it.price} π</p>
-                    <p className="text-gray-500 text-sm line-clamp-2">{it.description}</p>
+                    <p className="text-gray-500 text-sm line-clamp-2">
+                      {it.description}
+                    </p>
                   </div>
 
                   {/* Số lượng */}
                   <div className="flex flex-col items-end gap-2">
                     <div className="flex items-center border rounded overflow-hidden">
                       <button
-                        onClick={() => updateQty(it.id, Math.max(1, (it.quantity || 1) - 1))}
+                        onClick={() =>
+                          updateQty(it.id, Math.max(1, (it.quantity || 1) - 1))
+                        }
                         className="px-2 py-1 text-gray-600 hover:text-[#ff6600]"
                       >
                         −
@@ -214,7 +238,9 @@ export default function CartPage() {
               <div className="text-right">
                 <p className="text-sm">
                   {translate("total")}:{" "}
-                  <span className="font-bold text-[#ff6600]">{total.toFixed(2)} π</span>
+                  <span className="font-bold text-[#ff6600]">
+                    {total.toFixed(2)} π
+                  </span>
                 </p>
 
                 {/* ✅ Nút thanh toán thật qua Pi */}
