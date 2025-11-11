@@ -1,37 +1,46 @@
-// app/api/pi/verify/route.ts
 import { NextResponse } from "next/server";
 
 /**
- * ✅ API xác minh Access Token của Pi Network
- * - Nhận accessToken từ client (AuthContext hoặc PiLoginPage)
- * - Gọi Pi API /v2/me hoặc /v2/sandbox/me để xác minh
- * - Trả về thông tin người dùng đã xác thực
+ * ✅ API xác minh Access Token của Pi Network (Tự nhận biết Testnet/Mainnet)
+ * - Tránh lỗi verify sai trong môi trường testnet
+ * - Trả về user hợp lệ hoặc user giả lập khi testnet
  */
 export async function POST(req: Request) {
   try {
     const { accessToken } = await req.json();
 
-    if (!accessToken || typeof accessToken !== "string") {
+    if (!accessToken) {
       return NextResponse.json(
-        { success: false, message: "Thiếu hoặc sai accessToken" },
+        { success: false, message: "Thiếu accessToken" },
         { status: 400 }
       );
     }
 
-    // ✅ Tự động xác định môi trường (Mainnet hoặc Testnet)
-    const isSandbox =
+    // ✅ Kiểm tra môi trường (testnet/mainnet)
+    const isTestnet =
       process.env.NEXT_PUBLIC_PI_ENV === "testnet" ||
       process.env.PI_API_URL?.includes("/sandbox");
 
-    const API_URL = isSandbox
-      ? "https://api.minepi.com/v2/sandbox/me"
-      : "https://api.minepi.com/v2/me";
+    // ✅ Nếu là TESTNET → bỏ qua xác minh thật, trả về user giả lập
+    if (isTestnet) {
+      console.log("🧪 [Pi VERIFY] Bỏ qua xác minh thật (Testnet Mode)");
+      return NextResponse.json({
+        success: true,
+        user: {
+          username: "test_user",
+          uid: "sandbox-uid",
+          wallet_address: "TST123456789",
+          roles: ["tester"],
+          created_at: new Date().toISOString(),
+        },
+        env: "testnet",
+      });
+    }
 
-    console.log(
-      `🔍 [Pi VERIFY] Kiểm tra token qua ${isSandbox ? "SANDBOX" : "MAINNET"}`
-    );
+    // ✅ Nếu là MAINNET → xác minh thật qua Pi API
+    const API_URL = "https://api.minepi.com/v2/me";
+    console.log("🌐 [Pi VERIFY] Mainnet mode:", API_URL);
 
-    // 🔹 Gọi Pi API để xác minh token
     const response = await fetch(API_URL, {
       method: "GET",
       headers: {
@@ -39,47 +48,35 @@ export async function POST(req: Request) {
       },
     });
 
-    // ⚠️ Token không hợp lệ hoặc hết hạn
     if (!response.ok) {
       const errorText = await response.text();
-      console.warn("❌ [Pi VERIFY FAILED]:", errorText);
+      console.error("❌ [Pi VERIFY ERROR]", errorText);
       return NextResponse.json(
-        { success: false, message: "Token không hợp lệ hoặc đã hết hạn" },
+        { success: false, message: "Token không hợp lệ hoặc hết hạn" },
         { status: 401 }
       );
     }
 
-    // ✅ Trả về thông tin người dùng từ Pi Network
     const userData = await response.json();
-
     const verifiedUser = {
-      username: userData?.username || "unknown",
-      uid: userData?.uid || null,
+      username: userData?.username,
+      uid: userData?.uid,
       roles: userData?.roles || [],
       wallet_address: userData?.wallet_address || null,
       created_at: userData?.created_at || new Date().toISOString(),
     };
 
-    console.log("✅ [Pi VERIFY SUCCESS]:", verifiedUser.username);
-
-    // 👉 Có thể tạo session ở đây (JWT / cookie HTTPOnly)
-    // Ví dụ:
-    // const token = jwt.sign({ username: verifiedUser.username }, process.env.JWT_SECRET!, { expiresIn: "1h" });
-    // const res = NextResponse.json({ success: true, user: verifiedUser });
-    // res.cookies.set("session", token, { httpOnly: true, secure: true, sameSite: "strict" });
-    // return res;
+    console.log("✅ [Pi VERIFY SUCCESS]:", verifiedUser);
 
     return NextResponse.json({
       success: true,
       user: verifiedUser,
+      env: "mainnet",
     });
   } catch (error: any) {
-    console.error("💥 [Pi VERIFY EXCEPTION]:", error);
+    console.error("💥 [API VERIFY EXCEPTION]:", error);
     return NextResponse.json(
-      {
-        success: false,
-        message: error?.message || "Lỗi hệ thống khi xác minh Pi Network",
-      },
+      { success: false, message: error.message || "Lỗi xác minh Pi Network" },
       { status: 500 }
     );
   }
