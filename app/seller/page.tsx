@@ -25,7 +25,7 @@ export default function SellerDashboard() {
   useEffect(() => {
     if (!piReady) return;
     if (!user) {
-      router.replace("/pilogin");
+      router.replace("/search");
       return;
     }
 
