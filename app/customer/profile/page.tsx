@@ -9,7 +9,7 @@ import { Upload, ArrowLeft, Edit3, Save } from "lucide-react";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, loading: authLoading, piReady, pilogin, logout } = useAuth();
+  const { user, loading: authLoading, piReady, pilogin } = useAuth();
 
   const [profile, setProfile] = useState<any>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -24,7 +24,6 @@ export default function ProfilePage() {
   useEffect(() => {
     if (authLoading) return;
 
-    // ✅ Thử lấy username theo nhiều cách (context → localStorage → pi_user)
     let username =
       user?.username ||
       localStorage.getItem("titi_username") ||
@@ -133,11 +132,24 @@ export default function ProfilePage() {
     }
   };
 
-  // 🕓 Trạng thái đang tải
+  // 🚪 Hàm đăng xuất → API + redirect /account
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/logout", { method: "POST" });
+    } catch (e) {
+      console.warn("Không thể gọi API logout:", e);
+    } finally {
+      localStorage.removeItem("pi_user");
+      localStorage.removeItem("titi_username");
+      localStorage.removeItem("titi_is_logged_in");
+      alert("🚪 Bạn đã đăng xuất!");
+      window.location.href = "/account"; // 👉 chuyển về trang account
+    }
+  };
+
   if (loading || authLoading)
     return <p className="p-4 text-center">⏳ Đang tải hồ sơ...</p>;
 
-  // ❌ Nếu lỗi
   if (error)
     return (
       <main className="p-4 text-center text-red-500">
@@ -155,7 +167,6 @@ export default function ProfilePage() {
       </main>
     );
 
-  // ✅ Hiển thị giao diện chính
   return (
     <main className="min-h-screen bg-gray-50 pb-10">
       {/* ===== tiêu đề ===== */}
@@ -256,7 +267,7 @@ export default function ProfilePage() {
       {/* ===== nút đăng xuất ===== */}
       <div className="flex justify-center mt-6">
         <button
-          onClick={logout}
+          onClick={handleLogout}
           className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded"
         >
           🚪 Đăng xuất
