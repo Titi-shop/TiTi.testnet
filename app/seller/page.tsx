@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 import {
   PackagePlus,
   Package,
@@ -15,59 +16,32 @@ import {
 
 export default function SellerDashboard() {
   const { translate } = useLanguage();
+  const { user, piReady } = useAuth();
   const router = useRouter();
-  const [sellerUser, setSellerUser] = useState<string>("");
-  const [isSeller, setIsSeller] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    const verifyAccess = async () => {
-      try {
-        const stored = localStorage.getItem("pi_user");
-        const logged = localStorage.getItem("titi_is_logged_in");
+    if (!piReady) return;
+    if (!user) return router.replace("/pilogin");
 
-        // ❌ Nếu chưa đăng nhập → chuyển hướng đến trang tìm kiếm
-        if (!stored || logged !== "true") return router.replace("/search");
-
-        const username =
-          JSON.parse(stored)?.user?.username ||
-          JSON.parse(stored)?.username ||
-          "guest_user";
-        setSellerUser(username);
-
-        // ✅ Kiểm tra quyền người bán
-        const res = await fetch(`/api/users/role?username=${username}`);
-        const data = await res.json();
-
-        if (data?.role === "seller") setIsSeller(true);
-        else router.replace("/search");
-      } catch {
-        router.replace("/search");
-      } finally {
-        setIsChecking(false);
-      }
+    const checkRole = async () => {
+      const res = await fetch(`/api/users/role?username=${user.username}`);
+      const data = await res.json();
+      if (data.role !== "seller") router.replace("/customer");
     };
+    checkRole();
+  }, [piReady, user, router]);
 
-    verifyAccess();
-  }, [router]);
-
-  // 🕓 Khi đang kiểm tra quyền
-  if (isChecking) {
+  if (!piReady || !user)
     return (
       <main className="flex items-center justify-center min-h-screen text-gray-500">
-      
+        ⏳ Đang kiểm tra quyền...
       </main>
     );
-  }
 
-  // ❌ Nếu không phải người bán (đã redirect nhưng thêm chặn dự phòng)
-  if (!isSeller) return null;
-
-  // ✅ Khi là người bán
   return (
     <main className="p-6 pb-24 max-w-6xl mx-auto">
       <div className="text-right text-sm text-gray-700 mb-4">
-        👤 {translate("seller_label") || "Người bán"}: <b>{sellerUser}</b>
+        👤 {translate("seller_label") || "Người bán"}: <b>{user.username}</b>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5 text-center mt-2">
@@ -80,7 +54,6 @@ export default function SellerDashboard() {
             📦 {translate("post_product") || "Đăng sản phẩm"}
           </span>
         </Link>
-
         <Link
           href="/seller/stock"
           className="bg-blue-500 hover:bg-blue-600 text-white p-6 rounded-lg shadow transition"
@@ -90,7 +63,6 @@ export default function SellerDashboard() {
             🏬 {translate("manage_stock") || "Kho hàng"}
           </span>
         </Link>
-
         <Link
           href="/seller/orders"
           className="bg-green-500 hover:bg-green-600 text-white p-6 rounded-lg shadow transition"
@@ -100,7 +72,6 @@ export default function SellerDashboard() {
             🧾 {translate("process_orders") || "Xử lý đơn"}
           </span>
         </Link>
-
         <Link
           href="/seller/status"
           className="bg-purple-500 hover:bg-purple-600 text-white p-6 rounded-lg shadow transition"
@@ -110,7 +81,6 @@ export default function SellerDashboard() {
             📊 {translate("update_status") || "Cập nhật trạng thái"}
           </span>
         </Link>
-
         <Link
           href="/seller/delivery"
           className="bg-orange-500 hover:bg-orange-600 text-white p-6 rounded-lg shadow transition"
@@ -120,7 +90,6 @@ export default function SellerDashboard() {
             🚚 {translate("delivery") || "Giao hàng"}
           </span>
         </Link>
-
         <Link
           href="/seller/wallet"
           className="bg-emerald-500 hover:bg-emerald-600 text-white p-6 rounded-lg shadow transition"
