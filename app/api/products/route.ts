@@ -6,12 +6,16 @@ import { headers } from "next/headers";
  * ====================================
  * 🧩 TiTi Shop - API Quản lý sản phẩm
  * ------------------------------------
- * ✅ Dành cho Next.js 15 / Edge runtime
  * ✅ Chạy ổn định trên Pi Browser + Vercel
- * ✅ Không lỗi "ERR_INVALID_URL"
- * ✅ Dễ hiểu, gọn, chú thích rõ
+ * ✅ Tự động phát hiện testnet/mainnet
+ * ✅ Cho phép testnet bỏ qua role seller
  * ====================================
  */
+
+// 🔹 Nhận biết môi trường Pi
+const isTestnet =
+  process.env.NEXT_PUBLIC_PI_ENV === "testnet" ||
+  process.env.PI_API_URL?.includes("/sandbox");
 
 /** Đọc danh sách sản phẩm từ Blob */
 async function readProducts() {
@@ -49,7 +53,12 @@ async function writeProducts(products: any[]) {
 /** Kiểm tra role người dùng có phải seller không */
 async function isSeller(username: string): Promise<boolean> {
   try {
-    // ✅ Lấy domain thật từ header (hoạt động trên cả server & client)
+    if (isTestnet) {
+      console.log("🧪 Testnet mode: tự động cho phép seller");
+      return true;
+    }
+
+    // ✅ Lấy domain thật từ header
     const host = headers().get("host");
     const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
     const baseUrl = `${protocol}://${host}`;
@@ -108,6 +117,7 @@ export async function POST(req: Request) {
       description: description || "",
       images: images || [],
       seller: sellerLower,
+      env: isTestnet ? "testnet" : "mainnet", // ✅ môi trường sản phẩm
       createdAt: new Date().toISOString(),
     };
 
