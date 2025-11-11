@@ -57,18 +57,19 @@ export async function POST(req: Request) {
     const orders = await readOrders();
 
     const newOrder = {
-      id: order.id ?? `ORD-${Date.now()}`,
-      buyer: order.buyer || "unknown",
-      items: order.items ?? [],
-      total: Number(order.total ?? 0),
-      status: order.status ?? "Chờ xác nhận",
-      note: order.note ?? "",
-      shipping: order.shipping ?? {},
-      paymentId: order.paymentId ?? "", // ✅ thêm để liên kết với giao dịch Pi
-      txid: order.txid ?? "", // ✅ thêm mã giao dịch blockchain
-      createdAt: order.createdAt ?? new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+  id: order.id ?? `ORD-${Date.now()}`,
+  buyer: order.buyer || "unknown",
+  items: order.items ?? [],
+  total: Number(order.total ?? 0),
+  status: order.status ?? "Chờ xác nhận",
+  note: order.note ?? "",
+  shipping: order.shipping ?? {},
+  paymentId: order.paymentId ?? "",
+  txid: order.txid ?? "",
+  env: isTestnet ? "testnet" : "mainnet", // ✅ thêm dòng này
+  createdAt: order.createdAt ?? new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
 
     orders.unshift(newOrder);
     await writeOrders(orders);
