@@ -30,12 +30,14 @@ export default function AllOrdersPage() {
     return <p className="text-center text-gray-500 mt-10">⏳ Đang tải...</p>;
 
   return (
-    <main className="max-w-4xl mx-auto p-4">
+    <main className="max-w-5xl mx-auto p-4">
       {/* ===== Tiêu đề ===== */}
-      <h1 className="text-2xl font-bold mb-4">📦 Tất cả đơn hàng</h1>
+      <h1 className="text-2xl font-bold mb-4 text-center">
+        📦 Tất cả đơn hàng
+      </h1>
 
-      {/* ===== Bộ lọc trạng thái ===== */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-6">
+      {/* ===== Thanh trạng thái ===== */}
+      <div className="flex flex-wrap justify-center gap-2 mb-6">
         <button
           onClick={() => router.push("/seller/orders/pending")}
           className="btn-orange"
@@ -70,18 +72,18 @@ export default function AllOrdersPage() {
 
       {/* ===== Danh sách đơn hàng ===== */}
       {orders.length === 0 ? (
-        <p className="text-center text-gray-500">
-          Không có đơn hàng nào.
-        </p>
+        <p className="text-center text-gray-500">Không có đơn hàng nào.</p>
       ) : (
         orders.map((o) => (
           <div
             key={o.id}
-            className="bg-white border rounded-lg p-4 mb-3 shadow hover:shadow-md transition"
+            className="bg-white border rounded-lg p-4 mb-4 shadow hover:shadow-md transition"
           >
+            {/* ===== Thông tin đơn hàng ===== */}
             <div className="space-y-1">
               <p>🧾 <b>Mã đơn:</b> #{o.id}</p>
               <p>👤 <b>Người mua:</b> {o.buyer}</p>
+              <p>🕒 <b>Tạo lúc:</b> {new Date(o.createdAt).toLocaleString()}</p>
               <p>💰 <b>Tổng:</b> {o.total} Pi</p>
               <p>
                 📦 <b>Trạng thái:</b>{" "}
@@ -91,7 +93,7 @@ export default function AllOrdersPage() {
               </p>
             </div>
 
-            {/* ❌ Không còn nút xác nhận ở đây */}
+            {/* ===== Không có nút Xác nhận ===== */}
           </div>
         ))
       )}
