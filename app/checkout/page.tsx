@@ -19,27 +19,30 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [shipping, setShipping] = useState<any>(null);
 
-  // ✅ Lấy thông tin địa chỉ giao hàng
+  // ✅ Lấy địa chỉ giao hàng từ localStorage
   useEffect(() => {
     const saved = localStorage.getItem("shipping_info");
     if (saved) setShipping(JSON.parse(saved));
   }, []);
 
-  // 💳 Thanh toán qua Pi (logic gốc)
+  // ✅ Thanh toán qua Pi Network
   const handlePayWithPi = async () => {
     if (!piReady || !window.Pi) {
-      alert("⚠️ Pi SDK chưa sẵn sàng. Hãy mở trong Pi Browser.");
+      alert("⚠️ Pi SDK chưa sẵn sàng. Hãy mở trong Pi Browser!");
       return;
     }
+
     if (!user?.username) {
       alert("🔑 Vui lòng đăng nhập Pi trước khi thanh toán!");
       router.push("/pilogin");
       return;
     }
+
     if (cart.length === 0) {
       alert("🛒 Giỏ hàng trống!");
       return;
     }
+
     if (!shipping?.name || !shipping?.phone || !shipping?.address) {
       alert("📦 Vui lòng nhập đầy đủ địa chỉ giao hàng!");
       router.push("/customer/address");
@@ -49,35 +52,61 @@ export default function CheckoutPage() {
     setLoading(true);
     try {
       const orderId = `ORD-${Date.now()}`;
+      const accessToken =
+        user?.accessToken ||
+        JSON.parse(localStorage.getItem("pi_user") || "{}").accessToken;
+
+      // ✅ Xác minh token Pi (tự động bỏ qua nếu testnet)
+      const verifyRes = await fetch("/api/pi/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken }),
+      });
+      const verifyData = await verifyRes.json();
+
+      if (!verifyData?.success) {
+        alert("❌ Lỗi xác minh tài khoản. Hãy đăng nhập lại.");
+        localStorage.removeItem("pi_user");
+        router.push("/pilogin");
+        return;
+      }
+
+      console.log("✅ Xác minh thành công:", verifyData.user);
+
+      // ✅ Tạo thông tin thanh toán
       const paymentData = {
         amount: Number(total.toFixed(2)),
         memo: `Thanh toán đơn hàng #${orderId}`,
         metadata: {
           orderId,
-          buyer: user.username,
+          buyer: verifyData.user.username,
           items: cart,
           shipping,
         },
       };
 
       const callbacks = {
+        // ✅ Khi sẵn sàng để server approve
         onReadyForServerApproval: async (paymentId: string) => {
           console.log("⏳ onReadyForServerApproval:", paymentId);
           await fetch("/api/pi/approve", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ paymentId }),
+            body: JSON.stringify({ paymentId, orderId }),
           });
         },
 
+        // ✅ Khi sẵn sàng để hoàn tất thanh toán
         onReadyForServerCompletion: async (paymentId: string, txid: string) => {
           console.log("✅ onReadyForServerCompletion:", paymentId, txid);
+
+          // Ghi đơn hàng (giả lập)
           await fetch("/api/orders", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               id: orderId,
-              buyer: user.username,
+              buyer: verifyData.user.username,
               items: cart,
               total,
               txid,
@@ -87,6 +116,7 @@ export default function CheckoutPage() {
             }),
           });
 
+          // Gọi API hoàn tất giao dịch Pi
           await fetch("/api/pi/complete", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -98,27 +128,30 @@ export default function CheckoutPage() {
           router.push("/customer/pending");
         },
 
+        // ✅ Hủy thanh toán
         onCancel: async (paymentId: string) => {
           console.log("🛑 onCancel:", paymentId);
           alert("❌ Giao dịch đã huỷ.");
         },
 
+        // ✅ Lỗi thanh toán
         onError: (error: any) => {
           console.error("💥 onError:", error);
           alert("💥 Lỗi thanh toán: " + error.message);
         },
       };
 
+      // ✅ Gọi Pi SDK
       await window.Pi.createPayment(paymentData, callbacks);
     } catch (err: any) {
       console.error("❌ Lỗi thanh toán:", err);
-      alert("❌ Giao dịch thất bại hoặc bị huỷ.");
+      alert("💥 Giao dịch thất bại hoặc bị huỷ.");
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Xử lý đường dẫn ảnh an toàn
+  // ✅ Xử lý ảnh fallback
   const resolveImageUrl = (img?: string) => {
     if (!img) return "/placeholder.png";
     if (img.startsWith("http")) return img;
@@ -163,17 +196,15 @@ export default function CheckoutPage() {
           <span className="text-blue-500 text-sm ml-3">Chỉnh sửa ➜</span>
         </div>
 
-        {/* sản phẩm  */}
+        {/* Sản phẩm */}
         <div className="p-4 bg-white mt-2 border-t">
-          <h2 className="font-semibold text-gray-800 mb-2">sản phẩm</h2>
+          <h2 className="font-semibold text-gray-800 mb-2">Sản phẩm</h2>
           {cart.length === 0 ? (
             <p className="text-gray-500 text-sm">Không có sản phẩm nào.</p>
           ) : (
             <div className="space-y-3">
               {cart.map((item, i) => {
                 const imageUrl = resolveImageUrl(item.image || item.images?.[0]);
-
-
                 return (
                   <div
                     key={i}
