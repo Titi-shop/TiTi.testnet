@@ -2,9 +2,9 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useCart } from "@/context/CartContext";
+import { useCart } from "../context/CartContext";
 import { useRouter } from "next/navigation";
-import { useLanguage } from "@/context/LanguageContext";
+import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "@/context/AuthContext"; // ✅ Dùng login chung toàn app
 
 export default function CartPage() {
