@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
-import { useAuth } from "./context/AuthContext"; // ✅ Thêm để kiểm tra đăng nhập
+import { useAuth } from "../context/AuthContext"; // ✅ Thêm để kiểm tra đăng nhập
 
 export default function CartPage() {
   const { cart, removeFromCart, updateQty } = useCart();
