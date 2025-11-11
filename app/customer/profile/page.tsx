@@ -1,5 +1,5 @@
 "use client";
-export const dynamic = "force-dynamic"; // tránh lỗi prerender trên vercel
+export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
@@ -20,20 +20,24 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // 🟢 tải hồ sơ user
+  // 🟢 Tải hồ sơ người dùng
   useEffect(() => {
     if (authLoading) return;
 
-    let username = user?.username;
-    if (!username) {
-      try {
-        const saved = localStorage.getItem("pi_user");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          username = parsed?.username || parsed?.user?.username;
-        }
-      } catch {}
-    }
+    // ✅ Thử lấy username theo nhiều cách (context → localStorage → pi_user)
+    let username =
+      user?.username ||
+      localStorage.getItem("titi_username") ||
+      (() => {
+        try {
+          const saved = localStorage.getItem("pi_user");
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            return parsed?.username || parsed?.user?.username;
+          }
+        } catch {}
+        return null;
+      })();
 
     if (!username) {
       setError("❌ Không tải được hồ sơ. Bạn chưa đăng nhập.");
@@ -48,6 +52,7 @@ export default function ProfilePage() {
         const data = await res.json();
         setProfile(data);
         setAvatar(data?.avatar || null);
+        setError(null);
       } catch (err) {
         console.error("❌ Lỗi tải hồ sơ:", err);
         setError("Không tải được hồ sơ.");
@@ -59,11 +64,10 @@ export default function ProfilePage() {
     fetchProfile();
   }, [authLoading, user]);
 
-  // 📸 upload avatar
+  // 📸 Upload avatar
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const previewURL = URL.createObjectURL(file);
     setPreview(previewURL);
 
@@ -90,9 +94,19 @@ export default function ProfilePage() {
     }
   };
 
-  // 💾 lưu hồ sơ
+  // 💾 Lưu hồ sơ
   const handleSaveProfile = async () => {
-    if (!profile || !user?.username) return;
+    if (!profile) return;
+    const username =
+      user?.username ||
+      localStorage.getItem("titi_username") ||
+      JSON.parse(localStorage.getItem("pi_user") || "{}")?.username;
+
+    if (!username) {
+      alert("⚠️ Không thể xác định người dùng.");
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await fetch("/api/profile", {
@@ -100,7 +114,7 @@ export default function ProfilePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...profile,
-          username: user.username,
+          username,
           avatar,
         }),
       });
@@ -119,8 +133,11 @@ export default function ProfilePage() {
     }
   };
 
-  if (loading || authLoading) return <p className="p-4 text-center">⏳ Đang tải...</p>;
+  // 🕓 Trạng thái đang tải
+  if (loading || authLoading)
+    return <p className="p-4 text-center">⏳ Đang tải hồ sơ...</p>;
 
+  // ❌ Nếu lỗi
   if (error)
     return (
       <main className="p-4 text-center text-red-500">
@@ -138,14 +155,12 @@ export default function ProfilePage() {
       </main>
     );
 
+  // ✅ Hiển thị giao diện chính
   return (
     <main className="min-h-screen bg-gray-50 pb-10">
-      {/* ===== thanh tiêu đề ===== */}
+      {/* ===== tiêu đề ===== */}
       <div className="flex items-center bg-white p-4 shadow-sm">
-        <button
-          onClick={() => router.back()}
-          className="text-gray-600 hover:text-orange-500"
-        >
+        <button onClick={() => router.back()} className="text-gray-600 hover:text-orange-500">
           <ArrowLeft size={22} />
         </button>
         <h1 className="text-lg font-semibold text-gray-800 mx-auto">Hồ sơ người dùng</h1>
@@ -155,39 +170,21 @@ export default function ProfilePage() {
       <div className="flex flex-col items-center mt-8">
         <div className="relative w-28 h-28">
           {preview ? (
-            <Image
-              src={preview}
-              alt="Preview"
-              fill
-              className="rounded-full object-cover border-4 border-orange-500"
-            />
+            <Image src={preview} alt="Preview" fill className="rounded-full object-cover border-4 border-orange-500" />
           ) : avatar ? (
-            <Image
-              src={avatar}
-              alt="Avatar"
-              fill
-              className="rounded-full object-cover border-4 border-orange-500"
-            />
+            <Image src={avatar} alt="Avatar" fill className="rounded-full object-cover border-4 border-orange-500" />
           ) : (
             <div className="w-28 h-28 rounded-full bg-orange-200 text-orange-600 flex items-center justify-center text-4xl font-bold border-4 border-orange-500">
               {profile?.username?.charAt(0).toUpperCase()}
             </div>
           )}
-
-          {/* nút đổi ảnh */}
           <label
             htmlFor="avatar-upload"
             className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full cursor-pointer hover:bg-orange-600 transition"
           >
             <Upload size={18} className="text-white" />
           </label>
-          <input
-            id="avatar-upload"
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleFileChange}
-          />
+          <input id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
         </div>
 
         <p className="mt-4 text-lg font-semibold text-gray-800">
@@ -247,9 +244,7 @@ export default function ProfilePage() {
             onClick={handleSaveProfile}
             disabled={saving}
             className={`${
-              saving
-                ? "bg-gray-400"
-                : "bg-green-600 hover:bg-green-700 active:bg-green-800"
+              saving ? "bg-gray-400" : "bg-green-600 hover:bg-green-700 active:bg-green-800"
             } text-white font-semibold py-2 px-6 rounded flex items-center gap-2`}
           >
             <Save size={18} />
@@ -258,7 +253,7 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* nút đăng xuất */}
+      {/* ===== nút đăng xuất ===== */}
       <div className="flex justify-center mt-6">
         <button
           onClick={logout}
