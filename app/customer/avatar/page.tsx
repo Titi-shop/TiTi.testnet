@@ -75,12 +75,11 @@ export default function AvatarPage() {
       <div className="bg-white p-6 rounded-xl shadow-lg text-center w-80">
         <div className="relative w-24 h-24 mx-auto mb-4">
           <img
-            src={
-              preview ||
-              `/api/getAvatar?username=${user.username}` ||
-              "/default-avatar.png"
-            }
-            alt="avatar"
+           src={
+  preview
+    ? preview
+    : `/api/getAvatar?username=${user.username}`
+           }
             className="w-24 h-24 rounded-full object-cover border-4 border-orange-500"
           />
           <label className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full cursor-pointer hover:bg-orange-600 transition">
