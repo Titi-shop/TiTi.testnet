@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { ArrowLeft, Upload, LogOut, Edit3 } from "lucide-react";
+import { Upload, ArrowLeft, Edit3, Save } from "lucide-react";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -17,6 +17,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // 🟢 Tải hồ sơ người dùng
   useEffect(() => {
@@ -44,9 +46,7 @@ export default function ProfilePage() {
 
     const fetchProfile = async () => {
       try {
-        const res = await fetch(
-          `/api/profile?username=${encodeURIComponent(username!)}`
-        );
+        const res = await fetch(`/api/profile?username=${encodeURIComponent(username!)}`);
         if (!res.ok) throw new Error("Không thể tải hồ sơ.");
         const data = await res.json();
         setProfile(data);
@@ -93,7 +93,46 @@ export default function ProfilePage() {
     }
   };
 
-  // 🚪 Đăng xuất
+  // 💾 Lưu hồ sơ
+  const handleSaveProfile = async () => {
+    if (!profile) return;
+    const username =
+      user?.username ||
+      localStorage.getItem("titi_username") ||
+      JSON.parse(localStorage.getItem("pi_user") || "{}")?.username;
+
+    if (!username) {
+      alert("⚠️ Không thể xác định người dùng.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...profile,
+          username,
+          avatar,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert("✅ Hồ sơ đã được lưu!");
+        setEditing(false);
+      } else {
+        alert("❌ Cập nhật thất bại: " + (data.error || ""));
+      }
+    } catch (err) {
+      console.error("❌ Lỗi khi lưu hồ sơ:", err);
+      alert("⚠️ Không thể lưu thay đổi.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 🚪 Hàm đăng xuất → API + redirect /account
   const handleLogout = async () => {
     try {
       await fetch("/api/logout", { method: "POST" });
@@ -104,7 +143,7 @@ export default function ProfilePage() {
       localStorage.removeItem("titi_username");
       localStorage.removeItem("titi_is_logged_in");
       alert("🚪 Bạn đã đăng xuất!");
-      window.location.href = "/account";
+      window.location.href = "/account"; // 👉 chuyển về trang account
     }
   };
 
@@ -129,40 +168,25 @@ export default function ProfilePage() {
     );
 
   return (
-    <main className="min-h-screen bg-gray-50 pb-24 relative">
-      {/* 🔙 Thanh tiêu đề */}
-      <div className="flex items-center bg-white p-4 shadow-sm fixed top-0 left-0 right-0 z-10">
-        <button
-          onClick={() => router.back()}
-          className="text-gray-600 hover:text-orange-500"
-        >
+    <main className="min-h-screen bg-gray-50 pb-10">
+      {/* ===== tiêu đề ===== */}
+      <div className="flex items-center bg-white p-4 shadow-sm">
+        <button onClick={() => router.back()} className="text-gray-600 hover:text-orange-500">
           <ArrowLeft size={22} />
         </button>
-        <h1 className="text-lg font-semibold text-gray-800 mx-auto">
-          Hồ sơ cá nhân
-        </h1>
+        <h1 className="text-lg font-semibold text-gray-800 mx-auto">Hồ sơ người dùng</h1>
       </div>
 
-      <div className="pt-16 px-4 flex flex-col items-center">
-        {/* 🧍 Avatar */}
+      {/* ===== avatar ===== */}
+      <div className="flex flex-col items-center mt-8">
         <div className="relative w-28 h-28">
           {preview ? (
-            <Image
-              src={preview}
-              alt="Preview"
-              fill
-              className="rounded-full object-cover border-4 border-orange-500"
-            />
+            <Image src={preview} alt="Preview" fill className="rounded-full object-cover border-4 border-orange-500" />
           ) : avatar ? (
-            <Image
-              src={avatar}
-              alt="Avatar"
-              fill
-              className="rounded-full object-cover border-4 border-orange-500"
-            />
+            <Image src={avatar} alt="Avatar" fill className="rounded-full object-cover border-4 border-orange-500" />
           ) : (
             <div className="w-28 h-28 rounded-full bg-orange-200 text-orange-600 flex items-center justify-center text-4xl font-bold border-4 border-orange-500">
-              {profile?.username?.charAt(0)?.toUpperCase() || "U"}
+              {profile?.username?.charAt(0).toUpperCase()}
             </div>
           )}
           <label
@@ -171,61 +195,82 @@ export default function ProfilePage() {
           >
             <Upload size={18} className="text-white" />
           </label>
-          <input
-            id="avatar-upload"
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleFileChange}
-          />
+          <input id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
         </div>
 
-        <h2 className="mt-4 text-lg font-semibold text-gray-800">
+        <p className="mt-4 text-lg font-semibold text-gray-800">
           {profile?.displayName || profile?.username || "Người dùng"}
-        </h2>
-        {uploading && (
-          <p className="text-sm text-gray-500 mt-1">Đang tải ảnh...</p>
-        )}
+        </p>
+        {uploading && <p className="text-sm text-gray-500 mt-2">Đang tải ảnh...</p>}
       </div>
 
-      {/* 🧾 Thông tin cá nhân */}
-      <div className="bg-white mt-6 mx-4 p-4 rounded-xl shadow-md space-y-3">
+      {/* ===== thông tin ===== */}
+      <div className="bg-white mt-6 mx-4 p-4 rounded-lg shadow space-y-3">
         {[
           { label: "Tên hiển thị", key: "displayName" },
           { label: "Email", key: "email" },
           { label: "Điện thoại", key: "phone" },
           { label: "Địa chỉ", key: "address" },
-          { label: "Tỉnh / Thành phố", key: "province" },
-          { label: "Quốc gia", key: "country" },
         ].map(({ label, key }) => (
-          <div
-            key={key}
-            className="flex justify-between border-b border-gray-100 pb-2"
-          >
-            <span className="text-gray-600">{label}</span>
-            <span className="text-gray-800 font-medium text-right">
-              {profile?.[key] || "(chưa có)"}
-            </span>
+          <div key={key}>
+            <strong>{label}:</strong>{" "}
+            {editing ? (
+              key === "address" ? (
+                <textarea
+                  value={profile?.[key] || ""}
+                  onChange={(e) =>
+                    setProfile((prev: any) => ({ ...prev, [key]: e.target.value }))
+                  }
+                  className="border p-1 rounded w-full mt-1"
+                  rows={2}
+                />
+              ) : (
+                <input
+                  value={profile?.[key] || ""}
+                  onChange={(e) =>
+                    setProfile((prev: any) => ({ ...prev, [key]: e.target.value }))
+                  }
+                  className="border p-1 rounded w-full mt-1"
+                />
+              )
+            ) : (
+              <span>{profile?.[key] || "(chưa có)"}</span>
+            )}
           </div>
         ))}
       </div>
 
-      {/* ⚙️ Nút hành động */}
-      <div className="flex flex-col items-center mt-8 gap-3">
-        <button
-          onClick={() => router.push("/customer/profile/edit")}
-          className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-6 rounded flex items-center gap-2"
-        >
-          <Edit3 size={18} />
-          Chỉnh sửa
-        </button>
+      {/* ===== nút hành động ===== */}
+      <div className="flex justify-center gap-4 mt-6">
+        {!editing ? (
+          <button
+            onClick={() => setEditing(true)}
+            className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-6 rounded flex items-center gap-2"
+          >
+            <Edit3 size={18} />
+            Chỉnh sửa
+          </button>
+        ) : (
+          <button
+            onClick={handleSaveProfile}
+            disabled={saving}
+            className={`${
+              saving ? "bg-gray-400" : "bg-green-600 hover:bg-green-700 active:bg-green-800"
+            } text-white font-semibold py-2 px-6 rounded flex items-center gap-2`}
+          >
+            <Save size={18} />
+            {saving ? "Đang lưu..." : "Lưu thay đổi"}
+          </button>
+        )}
+      </div>
 
+      {/* ===== nút đăng xuất ===== */}
+      <div className="flex justify-center mt-6">
         <button
           onClick={handleLogout}
-          className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded flex items-center gap-2"
+          className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded"
         >
-          <LogOut size={18} />
-          Đăng xuất
+          🚪 Đăng xuất
         </button>
       </div>
     </main>
