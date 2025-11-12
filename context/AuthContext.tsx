@@ -30,16 +30,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   // ✅ Kiểm tra SDK Pi đã sẵn sàng chưa
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (typeof window !== "undefined" && window.Pi) {
-        setPiReady(true);
-        clearInterval(timer);
-      }
-    }, 400);
-    return () => clearInterval(timer);
-  }, []);
+useEffect(() => {
+  if (typeof window !== "undefined" && window.Pi) {
+    try {
+      window.Pi.init({ version: "2.0", sandbox: true }); // ✅ đổi false khi chạy mainnet
+      console.log("✅ Pi SDK đã khởi tạo!");
+    } catch (err) {
+      console.error("❌ Lỗi khởi tạo Pi SDK:", err);
+    }
+  }
 
+  const timer = setInterval(() => {
+    if (typeof window !== "undefined" && window.Pi) {
+      setPiReady(true);
+      clearInterval(timer);
+    }
+  }, 400);
+  return () => clearInterval(timer);
+}, []);
   // ✅ Khôi phục user khi reload
   useEffect(() => {
     try {
