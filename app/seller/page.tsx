@@ -8,8 +8,6 @@ import {
   PackagePlus,
   Package,
   ClipboardList,
-  RefreshCcw,
-  Truck,
   Wallet,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -23,23 +21,30 @@ export default function SellerDashboard() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
+    // Nếu Pi chưa sẵn sàng thì chờ
     if (!piReady) return;
+
+    // Nếu chưa có user thì quay về trang tìm kiếm
     if (!user) {
       router.replace("/search");
       return;
     }
 
+    // ✅ Kiểm tra quyền thật sự của user
     const verifyRole = async () => {
       try {
         const res = await fetch(`/api/users/role?username=${user.username}`);
         const data = await res.json();
+
         if (data.role === "seller") {
           setIsSeller(true);
         } else {
-          router.replace("/customer");
+          // Nếu không phải seller → quay về /search
+          router.replace("/search");
         }
-      } catch {
-        router.replace("/pilogin");
+      } catch (error) {
+        console.error("❌ Lỗi kiểm tra role:", error);
+        router.replace("/search");
       } finally {
         setChecking(false);
       }
@@ -48,6 +53,7 @@ export default function SellerDashboard() {
     verifyRole();
   }, [piReady, user, router]);
 
+  // Loading trong khi kiểm tra quyền
   if (!piReady || checking) {
     return (
       <main className="flex items-center justify-center min-h-screen text-gray-500">
@@ -56,66 +62,58 @@ export default function SellerDashboard() {
     );
   }
 
+  // ❌ Không phải seller thì không render gì thêm
   if (!isSeller) return null;
 
+  // ✅ Giao diện chỉ hiển thị cho Seller
   return (
     <main className="p-6 pb-24 max-w-6xl mx-auto">
       <div className="text-right text-sm text-gray-700 mb-4">
-        👤 {translate("seller_label") || "Người bán"}: <b>{user?.username}</b>
+        👤 {translate("seller_label") || "Người bán"}:{" "}
+        <b>{user?.username}</b>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5 text-center mt-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5 text-center mt-2">
+        {/* Đăng sản phẩm */}
         <Link
           href="/seller/post"
-          className="bg-amber-500 hover:bg-amber-600 text-white p-6 rounded-lg shadow transition"
+          className="bg-amber-500 hover:bg-amber-600 text-white p-6 rounded-lg shadow hover:shadow-lg transition-transform hover:scale-105"
         >
-          <PackagePlus size={36} />
-          <span className="mt-2 font-semibold block">
+          <PackagePlus size={36} className="mx-auto mb-2" />
+          <span className="font-semibold block">
             📦 {translate("post_product") || "Đăng sản phẩm"}
           </span>
         </Link>
+
+        {/* Kho hàng */}
         <Link
           href="/seller/stock"
-          className="bg-blue-500 hover:bg-blue-600 text-white p-6 rounded-lg shadow transition"
+          className="bg-blue-500 hover:bg-blue-600 text-white p-6 rounded-lg shadow hover:shadow-lg transition-transform hover:scale-105"
         >
-          <Package size={36} />
-          <span className="mt-2 font-semibold block">
+          <Package size={36} className="mx-auto mb-2" />
+          <span className="font-semibold block">
             🏬 {translate("manage_stock") || "Kho hàng"}
           </span>
         </Link>
+
+        {/* Xử lý đơn */}
         <Link
           href="/seller/orders"
-          className="bg-green-500 hover:bg-green-600 text-white p-6 rounded-lg shadow transition"
+          className="bg-green-500 hover:bg-green-600 text-white p-6 rounded-lg shadow hover:shadow-lg transition-transform hover:scale-105"
         >
-          <ClipboardList size={36} />
-          <span className="mt-2 font-semibold block">
+          <ClipboardList size={36} className="mx-auto mb-2" />
+          <span className="font-semibold block">
             🧾 {translate("process_orders") || "Xử lý đơn"}
           </span>
         </Link>
-        <Link
-          href="/seller/status"
-          className="bg-purple-500 hover:bg-purple-600 text-white p-6 rounded-lg shadow transition"
-        >
-          <RefreshCcw size={36} />
-          <span className="mt-2 font-semibold block">
-            📊 {translate("update_status") || "Cập nhật trạng thái"}
-          </span>
-        </Link>
-        <Link
-          href="/seller/delivery"
-          className="bg-orange-500 hover:bg-orange-600 text-white p-6 rounded-lg shadow transition"
-        >
-          <Truck size={36} />
-          <span className="mt-2 font-semibold block">
-            🚚 {translate("delivery") || "Giao hàng"}
-          </span>
-        </Link>
+
+        {/* Ví Pi */}
         <Link
           href="/seller/wallet"
-          className="bg-emerald-500 hover:bg-emerald-600 text-white p-6 rounded-lg shadow transition"
+          className="bg-emerald-500 hover:bg-emerald-600 text-white p-6 rounded-lg shadow hover:shadow-lg transition-transform hover:scale-105"
         >
-          <Wallet size={36} />
-          <span className="mt-2 font-semibold block">
+          <Wallet size={36} className="mx-auto mb-2" />
+          <span className="font-semibold block">
             💰 {translate("wallet") || "Ví Pi"}
           </span>
         </Link>
