@@ -217,7 +217,7 @@ export default function ProfilePage() {
           className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-6 rounded flex items-center gap-2"
         >
           <Edit3 size={18} />
-          Chỉnh sửa hồ sơ
+          Chỉnh sửa
         </button>
 
         <button
