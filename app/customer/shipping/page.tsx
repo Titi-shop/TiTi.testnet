@@ -13,7 +13,7 @@ export default function CustomerShippingPage() {
   const [currentUser, setCurrentUser] = useState<string>("guest_user");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // ✅ Lấy thông tin từ localStorage của Pi login
+  // ✅ Lấy thông tin đăng nhập từ Pi login
   useEffect(() => {
     try {
       const stored = localStorage.getItem("pi_user");
@@ -21,7 +21,8 @@ export default function CustomerShippingPage() {
 
       if (stored && logged === "true") {
         const parsed = JSON.parse(stored);
-        const username = parsed?.user?.username || parsed?.username || "guest_user";
+        const username =
+          parsed?.user?.username || parsed?.username || "guest_user";
         setCurrentUser(username);
         setIsLoggedIn(true);
       } else {
@@ -33,7 +34,7 @@ export default function CustomerShippingPage() {
     }
   }, []);
 
-  // 🧾 Lấy danh sách đơn hàng của người dùng
+  // ✅ Tải đơn hàng đang giao
   useEffect(() => {
     if (!isLoggedIn) {
       setLoading(false);
@@ -44,15 +45,20 @@ export default function CustomerShippingPage() {
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch("/api/orders");
+      const res = await fetch("/api/orders", { cache: "no-store" });
       if (!res.ok) throw new Error("Không thể tải danh sách đơn hàng");
 
       const data = await res.json();
 
-      // ✅ Lọc đơn "Đang giao" của người dùng hiện tại
+      const filterByLang = {
+        vi: ["Đang giao"],
+        en: ["Delivering"],
+        zh: ["配送中"],
+      }[language];
+
       const filtered = data.filter(
         (o: any) =>
-          (o.status === "Đang giao" || o.status === translate("delivering")) &&
+          filterByLang.includes(o.status) &&
           o.buyer?.toLowerCase() === currentUser.toLowerCase()
       );
 
@@ -64,9 +70,15 @@ export default function CustomerShippingPage() {
     }
   };
 
-  // ✅ Người mua xác nhận "Đã nhận hàng"
+  // ✅ Xác nhận đã nhận hàng
   const confirmReceived = async (id: number) => {
-    if (!confirm(translate("confirm_received") || "Xác nhận rằng bạn đã nhận được hàng?")) return;
+    if (
+      !confirm(
+        translate("confirm_received") ||
+          "Bạn có chắc chắn đã nhận được hàng?"
+      )
+    )
+      return;
 
     try {
       const res = await fetch("/api/orders", {
@@ -81,15 +93,21 @@ export default function CustomerShippingPage() {
 
       if (!res.ok) throw new Error("Không thể cập nhật trạng thái.");
 
-      alert(translate("thanks_confirm") || "✅ Cảm ơn bạn! Đơn hàng đã được xác nhận hoàn tất.");
+      alert(
+        translate("thanks_confirm") ||
+          "✅ Cảm ơn bạn! Đơn hàng đã được xác nhận hoàn tất."
+      );
       fetchOrders();
     } catch (error) {
       console.error("❌ Lỗi xác nhận:", error);
-      alert(translate("error_confirm") || "Có lỗi xảy ra khi xác nhận đơn hàng.");
+      alert(
+        translate("error_confirm") ||
+          "Có lỗi xảy ra khi xác nhận đơn hàng."
+      );
     }
   };
 
-  // 🔄 Giao diện tải
+  // 🕓 Giao diện khi đang tải
   if (loading)
     return (
       <p className="text-center mt-6 text-gray-500">
@@ -100,63 +118,89 @@ export default function CustomerShippingPage() {
   // 🔒 Nếu chưa đăng nhập
   if (!isLoggedIn)
     return (
-      <main className="p-6 text-center">
+      <main className="p-6 text-center min-h-screen flex flex-col items-center justify-center bg-gray-50">
         <h2 className="text-xl text-red-600 mb-3">
-          🔐 {translate("login_required") || "Vui lòng đăng nhập bằng Pi Network"}
+          🔐{" "}
+          {translate("login_required") ||
+            "Vui lòng đăng nhập bằng Pi Network"}
         </h2>
         <button
           onClick={() => router.push("/pilogin")}
-          className="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+          className="mt-3 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded"
         >
           👉 {translate("go_to_login") || "Đăng nhập ngay"}
         </button>
       </main>
     );
 
-  // ✅ Hiển thị danh sách đơn hàng
-  return (
-    <main className="p-6 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold mb-5 text-center text-orange-600">
-        🚚 {translate("shipping_orders_title") || "Đơn hàng đang giao"}
-      </h1>
+  // ✅ Tính tổng đơn và tổng Pi
+  const totalOrders = orders.length;
+  const totalPi = orders.reduce(
+    (sum, o) => sum + (parseFloat(o.total) || 0),
+    0
+  );
 
+  // ✅ Giao diện hiển thị
+  return (
+    <main className="p-4 max-w-4xl mx-auto bg-gray-50 min-h-screen pb-24">
+      {/* ===== Nút quay lại + Tiêu đề ===== */}
+      <div className="flex items-center mb-4">
+        <button
+          onClick={() => router.back()}
+          className="text-orange-500 font-semibold text-lg mr-2"
+        >
+          ←
+        </button>
+        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+          🚚 {translate("shipping_orders_title") || "Đơn hàng đang giao"}
+        </h1>
+      </div>
+
+      {/* ===== Khối tổng đơn & tổng Pi ===== */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="bg-white border rounded-lg p-4 text-center shadow">
+          <p className="text-gray-500 text-sm">Tổng đơn</p>
+          <p className="text-2xl font-bold text-gray-800">{totalOrders}</p>
+        </div>
+        <div className="bg-white border rounded-lg p-4 text-center shadow">
+          <p className="text-gray-500 text-sm">Tổng Pi</p>
+          <p className="text-2xl font-bold text-gray-800">
+            {totalPi.toFixed(2)} Pi
+          </p>
+        </div>
+      </div>
+
+      {/* ===== Danh sách đơn hàng ===== */}
       {orders.length === 0 ? (
         <p className="text-center text-gray-500">
-          {translate("no_shipping_orders") || "Bạn chưa có đơn hàng nào đang giao."}
+          {translate("no_shipping_orders") ||
+            "Bạn chưa có đơn hàng nào đang giao."}
           <br />
-          👤 {translate("current_user") || "Tài khoản"}: <b>{currentUser}</b>
+          👤 {translate("current_user") || "Tài khoản"}:{" "}
+          <b>{currentUser}</b>
         </p>
       ) : (
         <div className="space-y-5">
           {orders.map((order) => (
             <div
               key={order.id}
-              className="border rounded-lg p-5 shadow bg-white hover:shadow-md transition"
+              className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition"
             >
               <div className="flex justify-between items-center mb-2">
                 <h2 className="font-semibold text-lg">
-                  🧾 {translate("order_code") || "Mã đơn"}: #{order.id}
+                  🧾 #{order.id}
                 </h2>
                 <span className="px-3 py-1 rounded text-sm font-medium bg-blue-100 text-blue-700">
                   {order.status}
                 </span>
               </div>
 
-              <p>
-                <b>📦 {translate("seller_label") || "Người bán"}:</b> TiTi Shop
-              </p>
-              <p>
-                <b>💰 {translate("total_amount") || "Tổng tiền"}:</b> {order.total} Pi
-              </p>
-              <p>
-                <b>🕒 {translate("created_at") || "Ngày tạo"}:</b>{" "}
-                {order.createdAt
-                  ? new Date(order.createdAt).toLocaleString()
-                  : translate("unknown") || "Không xác định"}
-              </p>
+              <p>👤 <b>Người mua:</b> {order.buyer}</p>
+              <p>💰 <b>Tổng:</b> {order.total} Pi</p>
+              <p>📅 <b>Ngày tạo:</b> {order.createdAt}</p>
 
               <div className="mt-2">
-                <b>🧺 {translate("products_label") || "Sản phẩm"}:</b>
+                <b>🧺 Sản phẩm:</b>
                 <ul className="ml-6 list-disc text-gray-700">
                   {order.items?.map((item: any, idx: number) => (
                     <li key={idx}>
@@ -166,7 +210,7 @@ export default function CustomerShippingPage() {
                 </ul>
               </div>
 
-              <div className="mt-4 flex gap-3">
+              <div className="mt-4">
                 <button
                   onClick={() => confirmReceived(order.id)}
                   className="bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded"
@@ -178,6 +222,9 @@ export default function CustomerShippingPage() {
           ))}
         </div>
       )}
+
+      {/* ===== Đệm tránh che phần chân ===== */}
+      <div className="h-20"></div>
     </main>
   );
 }
