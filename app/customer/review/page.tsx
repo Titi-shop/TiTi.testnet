@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 
@@ -15,6 +16,7 @@ interface Order {
 }
 
 export default function ReviewPage() {
+  const router = useRouter();
   const { translate } = useLanguage();
   const { user, piReady } = useAuth();
 
@@ -105,11 +107,21 @@ export default function ReviewPage() {
     );
 
   return (
-    <main className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-5 text-center text-yellow-600">
-        ⭐ Đánh giá đơn hàng
-      </h1>
+    <main className="p-4 max-w-4xl mx-auto bg-gray-50 min-h-screen pb-24">
+      {/* ===== Nút quay lại + Tiêu đề ===== */}
+      <div className="flex items-center mb-4">
+        <button
+          onClick={() => router.back()}
+          className="text-orange-500 font-semibold text-lg mr-2"
+        >
+          ←
+        </button>
+        <h1 className="text-2xl font-bold text-yellow-600 flex items-center gap-2">
+          ⭐ Đánh giá đơn hàng
+        </h1>
+      </div>
 
+      {/* ===== Nội dung chính ===== */}
       {!orders.length ? (
         <p className="text-center text-gray-500">
           Không có đơn hàng nào cần đánh giá.
@@ -134,7 +146,7 @@ export default function ReviewPage() {
                 💰 Tổng tiền: <b>{order.total} Pi</b>
               </p>
 
-              {/* ⭐⭐⭐⭐⭐ Hàng 5 ngôi sao */}
+              {/* ⭐⭐⭐⭐⭐ Đánh giá sao */}
               <div className="mt-3 flex gap-1">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
@@ -179,6 +191,9 @@ export default function ReviewPage() {
           ))}
         </div>
       )}
+
+      {/* ===== Đệm chống che phần chân ===== */}
+      <div className="h-20"></div>
     </main>
   );
 }
