@@ -93,6 +93,10 @@ export default function PickupOrdersPage() {
       </main>
     );
 
+  // ✅ Tính tổng đơn và tổng Pi
+  const totalOrders = orders.length;
+  const totalPi = orders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
+
   // ✅ Hiển thị danh sách đơn
   return (
     <main className="p-6 max-w-4xl mx-auto min-h-screen pb-24 bg-gray-50">
@@ -147,6 +151,16 @@ export default function PickupOrdersPage() {
           ))}
         </div>
       )}
+
+      {/* ===== Tổng đơn & Tổng Pi ===== */}
+      <div className="mt-8 border-t pt-4 text-center">
+        <p className="text-gray-600">
+          🧾 <b>Tổng đơn:</b> {totalOrders}
+        </p>
+        <p className="text-gray-600">
+          💰 <b>Tổng Pi:</b> {totalPi.toFixed(2)} Pi
+        </p>
+      </div>
 
       {/* ===== Đệm chống che phần chân ===== */}
       <div className="h-20"></div>
