@@ -17,11 +17,12 @@ export default function SellerWalletPage() {
 
   const [username, setUsername] = useState<string>("");
   const [role, setRole] = useState<string>("buyer");
+  const [env, setEnv] = useState<string>("unknown");
   const [balance, setBalance] = useState<number>(0);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Khởi tạo và kiểm tra quyền truy cập
+  // ✅ Kiểm tra đăng nhập & lấy quyền người dùng thực từ API
   useEffect(() => {
     const initWallet = async () => {
       try {
@@ -37,9 +38,10 @@ export default function SellerWalletPage() {
         const name = parsed?.user?.username || parsed?.username || "guest_user";
         setUsername(name);
 
-        // 🔹 Gọi API lấy role thật của user
+        // 🔹 Lấy role thực từ API (testnet auto-seller)
         const roleRes = await fetch(`/api/users/role?username=${name}`);
         const roleData = await roleRes.json();
+
         const userRole =
           roleData?.role ||
           parsed?.role ||
@@ -48,14 +50,16 @@ export default function SellerWalletPage() {
 
         setRole(userRole);
         localStorage.setItem("user_role", userRole);
+        setEnv(roleData?.env || "unknown");
 
+        // ❗ Nếu không phải người bán hoặc admin → chuyển hướng
         if (userRole !== "seller" && userRole !== "admin") {
           alert("⚠️ Tài khoản này không thuộc khu vực người bán!");
           router.replace("/customer");
           return;
         }
 
-        // ✅ Load ví cá nhân
+        // ✅ Nạp dữ liệu ví từ localStorage
         const storedBalance = localStorage.getItem(`wallet_${name}_balance`);
         const storedTx = localStorage.getItem(`wallet_${name}_transactions`);
         setBalance(storedBalance ? parseFloat(storedBalance) : 0);
@@ -71,7 +75,7 @@ export default function SellerWalletPage() {
     initWallet();
   }, [router]);
 
-  // 🪙 Thêm giao dịch mẫu
+  // 🪙 Tạo giao dịch mẫu
   const addTransaction = (type: string, amount: number) => {
     const newTx = {
       id: Date.now(),
@@ -141,6 +145,8 @@ export default function SellerWalletPage() {
           <span className="text-sm text-gray-400">
             ({role === "admin" ? "Quản trị viên" : "Tài khoản người bán"})
           </span>
+          <br />
+          <span className="text-xs text-blue-500">🌐 {env.toUpperCase()}</span>
         </p>
 
         {/* ===== Số dư ===== */}
