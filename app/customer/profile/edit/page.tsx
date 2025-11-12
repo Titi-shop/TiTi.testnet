@@ -10,6 +10,9 @@ export default function EditProfilePage() {
     displayName: "",
     email: "",
     phone: "",
+    country: "",
+    province: "",
+    district: "",
     address: "",
   });
   const [saving, setSaving] = useState(false);
@@ -93,36 +96,100 @@ export default function EditProfilePage() {
       ) : (
         <>
           <div className="space-y-4">
+            {/* Thông tin cơ bản */}
             {[
               ["displayName", "Tên người dùng"],
               ["email", "Email"],
               ["phone", "Số điện thoại"],
-              ["address", "Địa chỉ"],
             ].map(([field, label]) => (
               <div key={field}>
                 <label className="block text-sm text-gray-700">{label}</label>
-                {field === "address" ? (
-                  <textarea
-                    value={info[field as keyof typeof info] || ""}
-                    onChange={(e) =>
-                      setInfo({ ...info, [field]: e.target.value })
-                    }
-                    className="w-full border px-3 py-2 rounded h-20"
-                  />
-                ) : (
-                  <input
-                    type="text"
-                    value={info[field as keyof typeof info] || ""}
-                    onChange={(e) =>
-                      setInfo({ ...info, [field]: e.target.value })
-                    }
-                    className="w-full border px-3 py-2 rounded"
-                  />
-                )}
+                <input
+                  type="text"
+                  value={info[field as keyof typeof info] || ""}
+                  onChange={(e) =>
+                    setInfo({ ...info, [field]: e.target.value })
+                  }
+                  className="w-full border px-3 py-2 rounded"
+                />
               </div>
             ))}
+
+            {/* 🆕 Nhóm địa chỉ chi tiết */}
+            <div className="border-t pt-4 mt-4">
+              <h2 className="font-semibold text-gray-800 mb-2">
+                📍 Thông tin địa chỉ
+              </h2>
+
+              {/* Quốc gia */}
+              <div>
+                <label className="block text-sm text-gray-700">Quốc gia</label>
+                <select
+                  className="w-full border px-3 py-2 rounded"
+                  value={info.country}
+                  onChange={(e) =>
+                    setInfo({ ...info, country: e.target.value })
+                  }
+                >
+                  <option value="">-- Chọn quốc gia --</option>
+                  <option value="Việt Nam">🇻🇳 Việt Nam</option>
+                  <option value="Hoa Kỳ">🇺🇸 Hoa Kỳ</option>
+                  <option value="Nhật Bản">🇯🇵 Nhật Bản</option>
+                  <option value="Hàn Quốc">🇰🇷 Hàn Quốc</option>
+                  <option value="Pháp">🇫🇷 Pháp</option>
+                </select>
+              </div>
+
+              {/* Tỉnh / Thành */}
+              <div>
+                <label className="block text-sm text-gray-700">
+                  Tỉnh / Thành phố
+                </label>
+                <input
+                  type="text"
+                  value={info.province}
+                  onChange={(e) =>
+                    setInfo({ ...info, province: e.target.value })
+                  }
+                  className="w-full border px-3 py-2 rounded"
+                  placeholder="VD: Hà Nội"
+                />
+              </div>
+
+              {/* Quận / Huyện */}
+              <div>
+                <label className="block text-sm text-gray-700">
+                  Quận / Huyện
+                </label>
+                <input
+                  type="text"
+                  value={info.district}
+                  onChange={(e) =>
+                    setInfo({ ...info, district: e.target.value })
+                  }
+                  className="w-full border px-3 py-2 rounded"
+                  placeholder="VD: Hoàng Mai"
+                />
+              </div>
+
+              {/* Địa chỉ cụ thể */}
+              <div>
+                <label className="block text-sm text-gray-700">
+                  Địa chỉ chi tiết
+                </label>
+                <textarea
+                  value={info.address}
+                  onChange={(e) =>
+                    setInfo({ ...info, address: e.target.value })
+                  }
+                  className="w-full border px-3 py-2 rounded h-20"
+                  placeholder="VD: Số 12, ngõ 34, đường Giải Phóng..."
+                />
+              </div>
+            </div>
           </div>
 
+          {/* Nút lưu và quay lại */}
           <div className="flex justify-between mt-6">
             <button
               onClick={handleSave}
