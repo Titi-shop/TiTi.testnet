@@ -1,222 +1,114 @@
-"use client";
+export const dynamic = "force-dynamic";
+import { NextResponse } from "next/server";
+import { kv } from "@vercel/kv";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useLanguage } from "../../context/LanguageContext";
-import {
-  Wallet as WalletIcon,
-  ArrowUpCircle,
-  ArrowDownCircle,
-  History,
-  LogOut,
-} from "lucide-react";
+/**
+ * =========================================
+ * 👤 API: /api/users/role
+ * -----------------------------------------
+ * ✅ Phân quyền người dùng (seller / buyer)
+ * ✅ Hoạt động tốt cho cả testnet & mainnet
+ * ✅ Dữ liệu tách biệt giữa 2 môi trường
+ * ✅ Cho phép testnet auto-seller
+ * =========================================
+ */
 
-export default function SellerWalletPage() {
-  const router = useRouter();
-  const { translate } = useLanguage();
+// 🔹 Phát hiện môi trường (testnet hoặc mainnet)
+const isTestnet =
+  process.env.NEXT_PUBLIC_PI_ENV === "testnet" ||
+  process.env.PI_API_URL?.includes("/sandbox");
 
-  const [username, setUsername] = useState<string>("");
-  const [role, setRole] = useState<string>("buyer");
-  const [env, setEnv] = useState<string>("unknown");
-  const [balance, setBalance] = useState<number>(0);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+// 🔸 Danh sách người bán mặc định
+const DEFAULT_SELLERS = ["nguyenminhduc1991111", "vothao11996611"];
 
-  // ✅ Kiểm tra đăng nhập & lấy quyền người dùng thực từ API
-  useEffect(() => {
-    const initWallet = async () => {
-      try {
-        const storedUser = localStorage.getItem("pi_user");
-        const logged = localStorage.getItem("titi_is_logged_in");
+// 🔸 Chuẩn hoá username (xoá khoảng trắng, viết thường)
+function normalize(str: string): string {
+  return str.trim().toLowerCase();
+}
 
-        if (!storedUser || logged !== "true") {
-          router.replace("/pilogin");
-          return;
-        }
+// ----------------------------
+// 🔹 POST: Gán quyền cho user
+// ----------------------------
+export async function POST(req: Request) {
+  try {
+    const { username, role } = await req.json();
 
-        const parsed = JSON.parse(storedUser);
-        const name = parsed?.user?.username || parsed?.username || "guest_user";
-        setUsername(name);
+    if (!username || !role)
+      return NextResponse.json({ error: "Thiếu dữ liệu" }, { status: 400 });
 
-        // 🔹 Lấy role thực từ API (testnet auto-seller)
-        const roleRes = await fetch(`/api/users/role?username=${name}`);
-        const roleData = await roleRes.json();
+    const normalized = normalize(username);
+    const envPrefix = isTestnet ? "testnet" : "mainnet";
+    const key = `user_role:${envPrefix}:${normalized}`;
 
-        const userRole =
-          roleData?.role ||
-          parsed?.role ||
-          localStorage.getItem("user_role") ||
-          "buyer";
+    if (!["seller", "buyer"].includes(role))
+      return NextResponse.json(
+        { error: "Role không hợp lệ" },
+        { status: 400 }
+      );
 
-        setRole(userRole);
-        localStorage.setItem("user_role", userRole);
-        setEnv(roleData?.env || "unknown");
+    await kv.set(key, role);
 
-        // ❗ Nếu không phải người bán hoặc admin → chuyển hướng
-        if (userRole !== "seller" && userRole !== "admin") {
-          alert("⚠️ Tài khoản này không thuộc khu vực người bán!");
-          router.replace("/customer");
-          return;
-        }
+    console.log(`✅ [${envPrefix}] Gán role cho ${normalized}: ${role}`);
 
-        // ✅ Nạp dữ liệu ví từ localStorage
-        const storedBalance = localStorage.getItem(`wallet_${name}_balance`);
-        const storedTx = localStorage.getItem(`wallet_${name}_transactions`);
-        setBalance(storedBalance ? parseFloat(storedBalance) : 0);
-        setTransactions(storedTx ? JSON.parse(storedTx) : []);
-      } catch (err) {
-        console.error("❌ Lỗi đọc dữ liệu ví:", err);
-        router.replace("/pilogin");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initWallet();
-  }, [router]);
-
-  // 🪙 Tạo giao dịch mẫu
-  const addTransaction = (type: string, amount: number) => {
-    const newTx = {
-      id: Date.now(),
-      type,
-      amount,
-      date: new Date().toLocaleString(),
-    };
-
-    const updatedTx = [newTx, ...transactions];
-    setTransactions(updatedTx);
-    localStorage.setItem(
-      `wallet_${username}_transactions`,
-      JSON.stringify(updatedTx)
+    return NextResponse.json({ success: true, username: normalized, role, env: envPrefix });
+  } catch (err: any) {
+    console.error("❌ Lỗi lưu quyền:", err);
+    return NextResponse.json(
+      { success: false, error: err.message },
+      { status: 500 }
     );
+  }
+}
 
-    const newBalance =
-      type === "deposit" ? balance + amount : Math.max(balance - amount, 0);
-    setBalance(newBalance);
-    localStorage.setItem(`wallet_${username}_balance`, newBalance.toString());
-  };
+// ----------------------------
+// 🔹 GET: Lấy quyền của user
+// ----------------------------
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const username = searchParams.get("username");
 
-  // 🚪 Đăng xuất
-  const handleLogout = async () => {
-    try {
-      if (window.Pi && typeof window.Pi.logout === "function") {
-        await window.Pi.logout();
-      }
-    } catch {}
-    localStorage.removeItem("pi_user");
-    localStorage.removeItem("titi_is_logged_in");
-    localStorage.removeItem("user_role");
-    router.push("/pilogin");
-  };
+    if (!username)
+      return NextResponse.json({ error: "Thiếu username" }, { status: 400 });
 
-  if (loading)
-    return (
-      <main className="text-center mt-10 text-gray-500">
-        ⏳ {translate("loading_wallet") || "Đang tải ví..."}
-      </main>
+    const normalized = normalize(username);
+    const envPrefix = isTestnet ? "testnet" : "mainnet";
+    const key = `user_role:${envPrefix}:${normalized}`;
+
+    // 🔸 Auto seller trong testnet để dễ test
+    if (isTestnet) {
+      console.log(`🧪 [TESTNET] Auto gán seller cho ${normalized}`);
+      await kv.set(key, "seller");
+      return NextResponse.json({
+        success: true,
+        username: normalized,
+        role: "seller",
+        env: envPrefix,
+      });
+    }
+
+    // 🔸 Lấy role từ KV (hoặc mặc định là buyer)
+    let role = (await kv.get<string>(key)) || "buyer";
+
+    // 🔸 Nếu user trong danh sách mặc định → ép role seller
+    if (DEFAULT_SELLERS.some((u) => normalize(u) === normalized)) {
+      role = "seller";
+      await kv.set(key, role);
+    }
+
+    console.log(`👤 [${envPrefix}] Role của ${normalized}: ${role}`);
+
+    return NextResponse.json({
+      success: true,
+      username: normalized,
+      role,
+      env: envPrefix,
+    });
+  } catch (err: any) {
+    console.error("❌ Lỗi GET role:", err);
+    return NextResponse.json(
+      { success: false, error: err.message },
+      { status: 500 }
     );
-
-  return (
-    <main className="min-h-screen bg-gray-50 p-4 pb-20">
-      <div className="max-w-md mx-auto bg-white rounded-2xl shadow-md p-5">
-        {/* ===== Header ===== */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <WalletIcon className="w-6 h-6 text-purple-600" />
-            <h1 className="text-xl font-semibold text-gray-800">
-              {translate("seller_wallet") || "Ví Người Bán"}
-            </h1>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="text-red-500 hover:text-red-600 text-sm flex items-center gap-1"
-          >
-            <LogOut size={16} />
-            {translate("logout") || "Đăng xuất"}
-          </button>
-        </div>
-
-        {/* ===== Thông tin Seller ===== */}
-        <p className="text-center text-gray-500 mb-3">
-          👤 {translate("seller_label") || "Người bán"}:{" "}
-          <span className="font-semibold">{username}</span>
-          <br />
-          <span className="text-sm text-gray-400">
-            ({role === "admin" ? "Quản trị viên" : "Tài khoản người bán"})
-          </span>
-          <br />
-          <span className="text-xs text-blue-500">🌐 {env.toUpperCase()}</span>
-        </p>
-
-        {/* ===== Số dư ===== */}
-        <div className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white p-5 rounded-xl mb-4 text-center">
-          <p className="text-sm opacity-80">
-            {translate("current_balance") || "Số dư hiện tại"}
-          </p>
-          <h2 className="text-3xl font-bold">{balance.toFixed(2)} π</h2>
-        </div>
-
-        {/* ===== Nút thao tác ===== */}
-        <div className="flex justify-around mb-5">
-          <button
-            onClick={() => addTransaction("deposit", 1)}
-            className="flex flex-col items-center text-green-600 hover:scale-105 transition-transform"
-          >
-            <ArrowDownCircle className="w-7 h-7" />
-            <span className="text-sm">{translate("deposit") || "Nạp Pi"}</span>
-          </button>
-          <button
-            onClick={() => addTransaction("withdraw", 0.5)}
-            className="flex flex-col items-center text-red-500 hover:scale-105 transition-transform"
-          >
-            <ArrowUpCircle className="w-7 h-7" />
-            <span className="text-sm">{translate("withdraw") || "Rút Pi"}</span>
-          </button>
-          <button
-            onClick={() => router.push("/seller")}
-            className="flex flex-col items-center text-blue-500 hover:scale-105 transition-transform"
-          >
-            <History className="w-7 h-7" />
-            <span className="text-sm">
-              {translate("back_dashboard") || "Trang người bán"}
-            </span>
-          </button>
-        </div>
-
-        {/* ===== Lịch sử giao dịch ===== */}
-        <div>
-          <h3 className="text-lg font-semibold mb-2 text-gray-700">
-            {translate("transaction_history") || "Lịch sử giao dịch"}
-          </h3>
-          {transactions.length === 0 ? (
-            <p className="text-gray-400 text-center">
-              {translate("no_transactions") || "Chưa có giao dịch nào."}
-            </p>
-          ) : (
-            <ul className="divide-y divide-gray-200">
-              {transactions.map((tx) => (
-                <li
-                  key={tx.id}
-                  className="flex justify-between items-center py-2 text-sm"
-                >
-                  <span
-                    className={`font-medium ${
-                      tx.type === "deposit" ? "text-green-600" : "text-red-500"
-                    }`}
-                  >
-                    {tx.type === "deposit"
-                      ? translate("deposit") || "Nạp"
-                      : translate("withdraw") || "Rút"}{" "}
-                    {tx.amount} π
-                  </span>
-                  <span className="text-gray-400">{tx.date}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-    </main>
-  );
+  }
 }
