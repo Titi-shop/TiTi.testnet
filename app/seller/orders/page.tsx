@@ -6,8 +6,8 @@ export default function OrdersTabs() {
 
   return (
     <div className="flex flex-wrap gap-2 mt-2">
-      <button onClick={() => router.push("/seller/orders")} className="btn-gray">
-        all
+      <button onClick={() => router.push("/seller/orders/summary")} className="btn-gray">
+        tất cả 
       </button>
       <button onClick={() => router.push("/seller/orders/pending")} className="btn-gray">
         Chờ xác nhận
