@@ -20,7 +20,8 @@ export default function PickupOrdersPage() {
 
       if (stored && logged === "true") {
         const parsed = JSON.parse(stored);
-        const username = parsed?.user?.username || parsed?.username || "guest_user";
+        const username =
+          parsed?.user?.username || parsed?.username || "guest_user";
         setCurrentUser(username);
         setIsLoggedIn(true);
       } else {
@@ -32,7 +33,7 @@ export default function PickupOrdersPage() {
     }
   }, []);
 
-  // ✅ Tải đơn hàng của người dùng hiện tại
+  // ✅ Tải đơn hàng
   useEffect(() => {
     if (!isLoggedIn) {
       setLoading(false);
@@ -47,8 +48,6 @@ export default function PickupOrdersPage() {
       if (!res.ok) throw new Error("Không thể tải danh sách đơn hàng.");
 
       const data = await res.json();
-
-      // ✅ Lọc đơn hàng theo ngôn ngữ và người mua
       const filterByLang = {
         vi: ["Đang giao", "Chờ lấy hàng"],
         en: ["Delivering", "Waiting for pickup"],
@@ -86,7 +85,7 @@ export default function PickupOrdersPage() {
         </h2>
         <button
           onClick={() => router.push("/pilogin")}
-          className="btn-orange mt-3"
+          className="mt-3 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded"
         >
           👉 {t("go_to_login") || "Đăng nhập ngay"}
         </button>
@@ -95,12 +94,15 @@ export default function PickupOrdersPage() {
 
   // ✅ Tính tổng đơn và tổng Pi
   const totalOrders = orders.length;
-  const totalPi = orders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
+  const totalPi = orders.reduce(
+    (sum, o) => sum + (parseFloat(o.total) || 0),
+    0
+  );
 
   // ✅ Hiển thị danh sách đơn
   return (
-    <main className="p-6 max-w-4xl mx-auto min-h-screen pb-24 bg-gray-50">
-      {/* ===== Nút quay lại ===== */}
+    <main className="p-4 max-w-4xl mx-auto bg-gray-50 min-h-screen pb-24">
+      {/* ===== Nút quay lại + tiêu đề ===== */}
       <div className="flex items-center mb-4">
         <button
           onClick={() => router.back()}
@@ -108,17 +110,26 @@ export default function PickupOrdersPage() {
         >
           ←
         </button>
-        <h1 className="text-2xl font-bold text-orange-600">
-          🚚{" "}
-          {language === "vi"
-            ? "Đơn hàng đang giao / chờ lấy hàng"
-            : language === "en"
-            ? "Orders being delivered / waiting for pickup"
-            : "配送中 / 等待取货 的订单"}
+        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+          📦 Tổng đơn hàng
         </h1>
       </div>
 
-      {/* ===== Nội dung ===== */}
+      {/* ===== Khối tổng ===== */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="bg-white border rounded-lg p-4 text-center shadow">
+          <p className="text-gray-500 text-sm">Tổng đơn</p>
+          <p className="text-2xl font-bold text-gray-800">{totalOrders}</p>
+        </div>
+        <div className="bg-white border rounded-lg p-4 text-center shadow">
+          <p className="text-gray-500 text-sm">Tổng Pi</p>
+          <p className="text-2xl font-bold text-gray-800">
+            {totalPi.toFixed(2)} Pi
+          </p>
+        </div>
+      </div>
+
+      {/* ===== Danh sách đơn ===== */}
       {orders.length === 0 ? (
         <p className="text-center text-gray-500">
           {language === "vi"
@@ -134,11 +145,13 @@ export default function PickupOrdersPage() {
           {orders.map((order) => (
             <div
               key={order.id}
-              className="border p-4 rounded bg-white shadow hover:shadow-md transition"
+              className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition"
             >
-              <h2 className="font-semibold">🧾 #{order.id}</h2>
-              <p>💰 {t("product_price")}: {order.total} Pi</p>
-              <p>🚚 {t("update_status")}: {order.status}</p>
+              <p>🧾 <b>Mã đơn:</b> #{order.id}</p>
+              <p>👤 <b>Người mua:</b> {order.buyer}</p>
+              <p>💰 <b>Tổng:</b> {order.total} Pi</p>
+              <p>📅 <b>Ngày tạo:</b> {order.createdAt}</p>
+              <p>📊 <b>Trạng thái:</b> {order.status}</p>
 
               <ul className="mt-2 text-sm">
                 {order.items?.map((item: any, i: number) => (
@@ -152,17 +165,7 @@ export default function PickupOrdersPage() {
         </div>
       )}
 
-      {/* ===== Tổng đơn & Tổng Pi ===== */}
-      <div className="mt-8 border-t pt-4 text-center">
-        <p className="text-gray-600">
-          🧾 <b>Tổng đơn:</b> {totalOrders}
-        </p>
-        <p className="text-gray-600">
-          💰 <b>Tổng Pi:</b> {totalPi.toFixed(2)} Pi
-        </p>
-      </div>
-
-      {/* ===== Đệm chống che phần chân ===== */}
+      {/* ===== Đệm chống che chân ===== */}
       <div className="h-20"></div>
     </main>
   );
