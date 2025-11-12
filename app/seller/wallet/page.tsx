@@ -14,52 +14,61 @@ import {
 export default function SellerWalletPage() {
   const router = useRouter();
   const { translate } = useLanguage();
+
   const [username, setUsername] = useState<string>("");
-  const [role, setRole] = useState<string>("customer");
+  const [role, setRole] = useState<string>("buyer");
   const [balance, setBalance] = useState<number>(0);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Kiểm tra đăng nhập Pi + xác định vai trò người dùng
+  // ✅ Khởi tạo và kiểm tra quyền truy cập
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem("pi_user");
-      const logged = localStorage.getItem("titi_is_logged_in");
+    const initWallet = async () => {
+      try {
+        const storedUser = localStorage.getItem("pi_user");
+        const logged = localStorage.getItem("titi_is_logged_in");
 
-      if (!storedUser || logged !== "true") {
+        if (!storedUser || logged !== "true") {
+          router.replace("/pilogin");
+          return;
+        }
+
+        const parsed = JSON.parse(storedUser);
+        const name = parsed?.user?.username || parsed?.username || "guest_user";
+        setUsername(name);
+
+        // 🔹 Gọi API lấy role thật của user
+        const roleRes = await fetch(`/api/users/role?username=${name}`);
+        const roleData = await roleRes.json();
+        const userRole =
+          roleData?.role ||
+          parsed?.role ||
+          localStorage.getItem("user_role") ||
+          "buyer";
+
+        setRole(userRole);
+        localStorage.setItem("user_role", userRole);
+
+        if (userRole !== "seller" && userRole !== "admin") {
+          alert("⚠️ Tài khoản này không thuộc khu vực người bán!");
+          router.replace("/customer");
+          return;
+        }
+
+        // ✅ Load ví cá nhân
+        const storedBalance = localStorage.getItem(`wallet_${name}_balance`);
+        const storedTx = localStorage.getItem(`wallet_${name}_transactions`);
+        setBalance(storedBalance ? parseFloat(storedBalance) : 0);
+        setTransactions(storedTx ? JSON.parse(storedTx) : []);
+      } catch (err) {
+        console.error("❌ Lỗi đọc dữ liệu ví:", err);
         router.replace("/pilogin");
-        return;
+      } finally {
+        setLoading(false);
       }
+    };
 
-      const parsed = JSON.parse(storedUser);
-      const name = parsed?.user?.username || parsed?.username || "guest_user";
-      setUsername(name);
-
-      // 🔹 Kiểm tra role — mặc định là "customer" nếu không có
-      const userRole =
-        parsed?.role ||
-        parsed?.user?.role ||
-        localStorage.getItem("user_role") ||
-        "customer";
-      setRole(userRole);
-
-      if (userRole !== "seller" && userRole !== "admin") {
-        alert("⚠️ Tài khoản này không thuộc khu vực người bán!");
-        router.replace("/customer");
-        return;
-      }
-
-      // ✅ Load dữ liệu ví riêng theo username
-      const storedBalance = localStorage.getItem(`wallet_${name}_balance`);
-      const storedTx = localStorage.getItem(`wallet_${name}_transactions`);
-      setBalance(storedBalance ? parseFloat(storedBalance) : 0);
-      setTransactions(storedTx ? JSON.parse(storedTx) : []);
-    } catch (err) {
-      console.error("❌ Lỗi đọc dữ liệu:", err);
-      router.replace("/pilogin");
-    } finally {
-      setLoading(false);
-    }
+    initWallet();
   }, [router]);
 
   // 🪙 Thêm giao dịch mẫu
@@ -105,7 +114,7 @@ export default function SellerWalletPage() {
     );
 
   return (
-    <main className="min-h-screen bg-gray-50 p-4">
+    <main className="min-h-screen bg-gray-50 p-4 pb-20">
       <div className="max-w-md mx-auto bg-white rounded-2xl shadow-md p-5">
         {/* ===== Header ===== */}
         <div className="flex items-center justify-between mb-4">
@@ -149,18 +158,14 @@ export default function SellerWalletPage() {
             className="flex flex-col items-center text-green-600 hover:scale-105 transition-transform"
           >
             <ArrowDownCircle className="w-7 h-7" />
-            <span className="text-sm">
-              {translate("deposit") || "Nạp Pi"}
-            </span>
+            <span className="text-sm">{translate("deposit") || "Nạp Pi"}</span>
           </button>
           <button
             onClick={() => addTransaction("withdraw", 0.5)}
             className="flex flex-col items-center text-red-500 hover:scale-105 transition-transform"
           >
             <ArrowUpCircle className="w-7 h-7" />
-            <span className="text-sm">
-              {translate("withdraw") || "Rút Pi"}
-            </span>
+            <span className="text-sm">{translate("withdraw") || "Rút Pi"}</span>
           </button>
           <button
             onClick={() => router.push("/seller")}
