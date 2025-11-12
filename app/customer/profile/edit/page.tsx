@@ -112,9 +112,14 @@ export default function EditProfilePage() {
     setSaving(true);
     try {
       const body = { ...info, avatar };
+
       const res = await fetch("/api/profile", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-uid": info.pi_uid,
+          "x-username": info.displayName,
+        },
         body: JSON.stringify(body),
       });
 
@@ -124,9 +129,11 @@ export default function EditProfilePage() {
         router.push("/customer/profile");
       } else {
         alert("❌ Lưu thất bại!");
+        console.error(data.error);
       }
     } catch (err) {
       console.error("❌ Lỗi khi lưu hồ sơ:", err);
+      alert("❌ Có lỗi xảy ra khi lưu hồ sơ.");
     } finally {
       setSaving(false);
     }
@@ -171,19 +178,15 @@ export default function EditProfilePage() {
           {info.displayName || "Người dùng"}
         </h1>
 
+        {/* 🧾 Form thông tin */}
         <div className="space-y-4">
-          {/* 🧾 Form chỉnh sửa */}
           <div>
-            <label className="block text-sm text-gray-700 mb-1">
-              Tên người dùng
-            </label>
+            <label className="block text-sm text-gray-700 mb-1">Tên người dùng</label>
             <input
               type="text"
               className="w-full border px-3 py-2 rounded"
               value={info.displayName}
-              onChange={(e) =>
-                setInfo({ ...info, displayName: e.target.value })
-              }
+              onChange={(e) => setInfo({ ...info, displayName: e.target.value })}
             />
           </div>
 
@@ -198,16 +201,12 @@ export default function EditProfilePage() {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-700 mb-1">
-              Số điện thoại
-            </label>
+            <label className="block text-sm text-gray-700 mb-1">Số điện thoại</label>
             <div className="flex space-x-2">
               <select
                 className="border px-2 py-2 rounded w-24"
                 value={info.phoneCode}
-                onChange={(e) =>
-                  setInfo({ ...info, phoneCode: e.target.value })
-                }
+                onChange={(e) => setInfo({ ...info, phoneCode: e.target.value })}
               >
                 <option value="+84">🇻🇳 +84</option>
                 <option value="+1">🇺🇸 +1</option>
