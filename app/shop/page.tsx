@@ -1,24 +1,31 @@
 "use client";
 
-import { useLanguage } from "../context/LanguageContext";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
 export default function ShopPage() {
-  const { translate } = useLanguage();
   const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [loadingCategories, setLoadingCategories] = useState(true);
 
-  const categories = [
-    { name: "Sport & Outdoor", icon: "/icons/sport.png" },
-    { name: "Automotive", icon: "/icons/auto.png" },
-    { name: "Grocery", icon: "/icons/grocery.png" },
-    { name: "Home & Living", icon: "/icons/home.png" },
-    { name: "Beauty", icon: "/icons/beauty.png" },
-    { name: "Electronics", icon: "/icons/electronics.png" },
-    { name: "Fashion", icon: "/icons/fashion.png" },
-  ];
+  // 🟢 Load danh mục
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch("/api/categories");
+        const data = await res.json();
+        setCategories(data);
+      } catch (err) {
+        console.error("❌ Lỗi tải danh mục:", err);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    fetchCategories();
+  }, []);
 
+  // 🟢 Load sản phẩm
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -28,72 +35,80 @@ export default function ShopPage() {
       } catch (err) {
         console.error("❌ Lỗi tải sản phẩm:", err);
       } finally {
-        setLoading(false);
+        setLoadingProducts(false);
       }
     };
     fetchProducts();
   }, []);
 
   return (
-    <main className="pb-28 bg-gray-100 min-h-screen">
+    <main className="pb-20 bg-gray-100 min-h-screen">
 
-      {/* 🔶 Banner giống Shopee */}
+      {/* BANNER */}
       <div className="w-full">
         <img
-          src="/banners/shop-banner.jpg"
+          src="/banner.jpg"
           alt="banner"
-          className="w-full h-40 object-cover"
+          className="w-full h-36 object-cover"
         />
       </div>
 
-      {/* 🔶 Category ngang (scrollable) */}
-      <h2 className="text-lg font-bold px-4 mt-4">Category</h2>
+      <div className="px-4 mt-2">
 
-      <div className="flex space-x-6 overflow-x-auto px-4 py-3 scrollbar-hide">
-        {categories.map((c, idx) => (
-          <div
-            key={idx}
-            className="flex flex-col items-center min-w-[70px]"
-          >
-            <img
-              src={c.icon}
-              alt={c.name}
-              className="w-12 h-12 rounded-full bg-white shadow"
-            />
-            <span className="text-xs mt-1 text-center">{c.name}</span>
-          </div>
-        ))}
-      </div>
+        {/* 🟠 DANH MỤC TRƯỢT NGANG */}
+        <h2 className="text-xl font-semibold text-gray-700 mb-2">
+          Category
+        </h2>
 
-      {/* 🔶 Tiêu đề sản phẩm */}
-      <h1 className="text-xl font-bold mt-2 px-4 text-orange-500">
-        🛍️ {translate("shop_title")}
-      </h1>
+        <div className="flex overflow-x-auto space-x-5 pb-3">
+          {loadingCategories ? (
+            <p className="text-gray-500">Đang tải...</p>
+          ) : categories.length === 0 ? (
+            <p className="text-gray-500">Không có danh mục nào.</p>
+          ) : (
+            categories.map((c) => (
+              <Link
+                key={c.id}
+                href={`/category/${c.id}`}
+                className="flex flex-col items-center min-w-[80px]"
+              >
+                <img
+                  src={c.icon || "/placeholder.png"}
+                  alt={c.name}
+                  className="w-14 h-14 rounded-full border object-cover"
+                />
+                <span className="text-sm mt-1 text-center">{c.name}</span>
+              </Link>
+            ))
+          )}
+        </div>
 
-      {/* 🔶 Loading & sản phẩm */}
-      <div className="p-4 max-w-6xl mx-auto">
-        {loading ? (
-          <p className="text-gray-600">⏳ {translate("loading")}</p>
+        {/* 🟣 TIÊU ĐỀ */}
+        <h2 className="text-xl font-bold text-orange-600 mt-4 mb-2">
+          🛍️ Danh mục sản phẩm
+        </h2>
+
+        {/* 🛒 SẢN PHẨM */}
+        {loadingProducts ? (
+          <p className="text-gray-500">Đang tải sản phẩm...</p>
         ) : products.length === 0 ? (
-          <p className="text-gray-500">{translate("no_products")}</p>
+          <p className="text-gray-500">Chưa có sản phẩm.</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             {products.map((p) => (
               <Link
                 key={p.id}
                 href={`/product/${p.id}`}
-                className="border rounded-xl shadow hover:shadow-lg transition p-3 flex flex-col bg-white"
+                className="bg-white p-3 rounded-xl shadow border"
               >
                 <img
                   src={p.images?.[0] || "/placeholder.png"}
                   alt={p.name}
-                  className="rounded-md w-full h-36 object-cover"
+                  className="w-full h-32 object-cover rounded-md"
                 />
-                <h3 className="font-semibold mt-2 text-gray-800 line-clamp-2">
-                  {p.name}
-                </h3>
-                <p className="text-orange-500 font-medium mt-1">
-                  {translate("product_price")}: {p.price} Pi
+                <h3 className="font-medium mt-2">{p.name}</h3>
+                <p className="text-orange-600 font-semibold">
+                  Giá (Pi): {p.price} Pi
                 </p>
               </Link>
             ))}
