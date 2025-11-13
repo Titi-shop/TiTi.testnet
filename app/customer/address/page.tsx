@@ -3,12 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { countries } from "@/data/countries";
-import { phoneRules } from "@/data/phoneRules";
+import { useAuth } from "@/context/AuthContext";
 
 export default function CustomerAddressPage() {
   const router = useRouter();
-
-  const [username, setUsername] = useState("");
+  const { user, loading, pilogin } = useAuth();
 
   const [form, setForm] = useState({
     name: "",
@@ -21,33 +20,26 @@ export default function CustomerAddressPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  // 🔍 Lấy username và load địa chỉ
+  // ▶ Kiểm tra đăng nhập bằng Pi (THAY THẾ localStorage)
   useEffect(() => {
-    const u = localStorage.getItem("titi_username");
+    if (loading) return;
 
-    if (u) {
-      setUsername(u);
-      fetchAddress(u);
-    } else {
-      const first = countries[0];
-      setForm((prev) => ({
-        ...prev,
-        country: first.code,
-        countryCode: first.dial,
-      }));
+    if (!user) {
+      pilogin(); // Chưa đăng nhập → tự login
+      return;
     }
-  }, []);
 
-  // 📌 Load địa chỉ từ API
-  const fetchAddress = async (u: string) => {
+    fetchAddress(user.username); // đã đăng nhập → load địa chỉ
+  }, [user, loading]);
+
+  // ▶ Load địa chỉ từ API
+  const fetchAddress = async (username: string) => {
     try {
-      const res = await fetch(`/api/address?username=${u}`);
+      const res = await fetch(`/api/address?username=${username}`);
       const data = await res.json();
 
       if (data?.address) {
         const saved = data.address;
-
-        // 🔥 tự động sửa mã vùng nếu thiếu
         const countryData = countries.find((c) => c.code === saved.country);
 
         setForm({
@@ -69,7 +61,7 @@ export default function CustomerAddressPage() {
     }
   };
 
-  // 🌍 Khi chọn quốc gia
+  // ▶ Khi chọn quốc gia
   const handleCountryChange = (e: any) => {
     const code = e.target.value;
     const selected = countries.find((c) => c.code === code);
@@ -82,24 +74,16 @@ export default function CustomerAddressPage() {
     });
   };
 
-  // 🧪 Validate số điện thoại
-  const validatePhone = () => {
-    const rule = phoneRules[form.country];
-    if (!rule) return true;
-    return rule.regex.test(form.phone);
-  };
-
-  // 💾 Lưu địa chỉ
+  // ▶ Lưu địa chỉ
   const handleSave = async () => {
     if (!form.name || !form.phone || !form.address) {
       setMessage("⚠️ Vui lòng nhập đầy đủ thông tin!");
       return;
     }
 
-    // 🔥 kiểm tra số điện thoại theo quốc gia
-    if (!validatePhone()) {
-      setMessage("❌ Số điện thoại không đúng định dạng của quốc gia!");
-      return;
+    if (!user) {
+      setMessage("⚠️ Vui lòng đăng nhập trước đã!");
+      return pilogin();
     }
 
     setSaving(true);
@@ -107,14 +91,19 @@ export default function CustomerAddressPage() {
     const res = await fetch("/api/address", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, ...form }),
+      body: JSON.stringify({ username: user.username, ...form }),
     });
 
     const data = await res.json();
 
     if (data.success) {
-      setMessage("✅ Đã lưu địa chỉ thành công!");
+      setMessage("✅ Đã lưu địa chỉ!");
       localStorage.setItem("shipping_info", JSON.stringify(form));
+
+      // ▶ Tự động chuyển sang trang checkout
+      setTimeout(() => {
+        router.push("/checkout");
+      }, 600);
     } else {
       setMessage("❌ Lưu thất bại!");
     }
@@ -122,9 +111,17 @@ export default function CustomerAddressPage() {
     setSaving(false);
   };
 
+  // ▶ Loading lúc AuthContext đang kiểm tra
+  if (loading) {
+    return (
+      <p className="text-gray-500 text-center mt-8">
+        ⏳ Đang kiểm tra đăng nhập...
+      </p>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-gray-100 pb-20 relative">
-
       {/* Nút quay lại */}
       <button
         onClick={() => router.back()}
