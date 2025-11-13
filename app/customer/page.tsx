@@ -1,117 +1,234 @@
 "use client";
+export const dynamic = "force-dynamic";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useLanguage } from "@/app/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
-import { Clock, Package, Truck, Star, RotateCcw } from "lucide-react"; // 👉 thay LogOut bằng RotateCcw
+import { ArrowLeft, Upload, LogOut, Edit3 } from "lucide-react";
 
-export default function CustomerDashboard() {
-  const { user, piReady } = useAuth();
-  const { translate } = useLanguage();
+export default function ProfilePage() {
   const router = useRouter();
+  const { user, loading: authLoading, piReady, pilogin } = useAuth();
 
+  const [profile, setProfile] = useState<any>(null);
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  // 🟢 Tải hồ sơ người dùng
   useEffect(() => {
-    if (piReady && !user) {
-      router.replace("/pilogin");
-    }
-  }, [piReady, user, router]);
+    if (authLoading) return;
 
-  if (!piReady || !user)
+    const username =
+      user?.username ||
+      localStorage.getItem("titi_username") ||
+      (() => {
+        try {
+          const saved = localStorage.getItem("pi_user");
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            return parsed?.username || parsed?.user?.username;
+          }
+        } catch {}
+        return null;
+      })();
+
+    if (!username) {
+      setError("❌ Không tải được hồ sơ. Bạn chưa đăng nhập.");
+      setLoading(false);
+      return;
+    }
+
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch(`/api/profile?username=${encodeURIComponent(username!)}`);
+        if (!res.ok) throw new Error("Không thể tải hồ sơ.");
+        const data = await res.json();
+
+        setProfile(data);
+        setAvatar(`/api/getAvatar?username=${username}`);
+        setError(null);
+      } catch (err) {
+        console.error("❌ Lỗi tải hồ sơ:", err);
+        setError("Không tải được hồ sơ.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [authLoading, user]);
+
+  // 📸 Upload avatar
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const previewURL = URL.createObjectURL(file);
+    setPreview(previewURL);
+
+    try {
+      setUploading(true);
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "x-filename": file.name },
+        body: file,
+      });
+
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setAvatar(data.url);
+        setProfile((prev: any) => ({ ...prev, avatar: data.url }));
+        alert("✅ Ảnh đại diện đã được cập nhật!");
+      } else {
+        alert("❌ Lỗi tải ảnh: " + (data.error || "Không xác định"));
+      }
+    } catch (err) {
+      console.error("Upload failed:", err);
+      alert("⚠️ Không thể tải ảnh lên máy chủ.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // 🚪 Đăng xuất
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/logout", { method: "POST" });
+    } catch {}
+
+    localStorage.removeItem("pi_user");
+    localStorage.removeItem("titi_username");
+    localStorage.removeItem("titi_is_logged_in");
+
+    alert("🚪 Bạn đã đăng xuất!");
+    window.location.href = "/account";
+  };
+
+  if (loading || authLoading)
+    return <p className="p-4 text-center">⏳ Đang tải hồ sơ...</p>;
+
+  if (error)
     return (
-      <main className="min-h-screen flex items-center justify-center text-gray-500">
-        ⏳ Đang tải...
+      <main className="p-4 text-center text-red-500">
+        <p>{error}</p>
+        {piReady ? (
+          <button
+            onClick={pilogin}
+            className="mt-4 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded"
+          >
+            🔐 Đăng nhập lại
+          </button>
+        ) : (
+          <p className="mt-4 text-gray-600">🕓 Đang chờ Pi SDK...</p>
+        )}
       </main>
     );
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-10">
-      {/* Header */}
-      <div className="bg-orange-500 text-white p-6 text-center shadow">
-        <div
-          onClick={() => router.push("/customer/profile")}
-          className="w-16 h-16 bg-white rounded-full mx-auto mb-3 flex items-center justify-center text-orange-500 font-bold text-xl cursor-pointer hover:opacity-90 transition"
+    <main className="min-h-screen bg-gray-100 pb-24 relative">
+
+      {/* 🔙 Nút quay lại */}
+      <button
+        onClick={() => router.back()}
+        className="absolute top-3 left-3 text-orange-600 text-2xl font-bold"
+      >
+        ←
+      </button>
+
+      {/* 🧍 Avatar & Tên */}
+      <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg mt-12 p-6 relative">
+        <div className="relative w-28 h-28 mx-auto mb-4">
+          {preview ? (
+            <Image
+              src={preview}
+              alt="Preview"
+              fill
+              className="rounded-full object-cover border-4 border-orange-500"
+            />
+          ) : avatar ? (
+            <Image
+              src={avatar}
+              alt="Avatar"
+              fill
+              className="rounded-full object-cover border-4 border-orange-500"
+            />
+          ) : (
+            <div className="w-28 h-28 rounded-full bg-orange-200 text-orange-600 flex items-center justify-center text-4xl font-bold border-4 border-orange-500">
+              {user.username.charAt(0).toUpperCase()}
+            </div>
+          )}
+
+          <label
+            htmlFor="avatar-upload"
+            className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full cursor-pointer hover:bg-orange-600 transition"
+          >
+            <Upload size={18} className="text-white" />
+          </label>
+          <input
+            id="avatar-upload"
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+        </div>
+
+        {/* 🔥 HIỂN THỊ USERNAME CHÍNH THỨC */}
+        <h2 className="text-center text-lg font-semibold text-gray-800">
+          @{user.username}
+        </h2>
+
+        {uploading && (
+          <p className="text-sm text-gray-500 mt-1 text-center">
+            Đang tải ảnh...
+          </p>
+        )}
+      </div>
+
+      {/* 🧾 Thông tin */}
+      <div className="bg-white mt-6 mx-4 p-4 rounded-xl shadow-md space-y-3">
+        {[
+          { label: "Tên trong ứng dụng (App Name)", key: "displayName" },
+          { label: "Email", key: "email" },
+          { label: "Điện thoại", key: "phone" },
+          { label: "Địa chỉ", key: "address" },
+          { label: "Tỉnh / Thành phố", key: "province" },
+          { label: "Quốc gia", key: "country" },
+        ].map(({ label, key }) => (
+          <div
+            key={key}
+            className="flex justify-between border-b border-gray-100 pb-2"
+          >
+            <span className="text-gray-600">{label}</span>
+            <span className="text-gray-800 font-medium text-right">
+              {profile?.[key] || "(chưa có)"}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* ⚙️ Nút */}
+      <div className="flex flex-col items-center mt-8 gap-3">
+        <button
+          onClick={() => router.push("/customer/profile/edit")}
+          className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-6 rounded flex items-center gap-2"
         >
-          {user.username.charAt(0).toUpperCase()}
-        </div>
-        <h1 className="text-xl font-semibold">{user.username}</h1>
+          <Edit3 size={18} />
+          Chỉnh sửa hồ sơ
+        </button>
+
+        <button
+          onClick={handleLogout}
+          className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded flex items-center gap-2"
+        >
+          <LogOut size={18} />
+          Đăng xuất
+        </button>
       </div>
-
-      {/* Đơn hàng */}
-      <div className="bg-white mt-4 rounded-lg shadow mx-3">
-        <div className="flex items-center justify-between px-6 py-3 border-b">
-          <h2 className="font-semibold text-gray-800 text-lg">
-            {translate("my_orders") || "Đơn hàng của tôi"}
-          </h2>
-          <button
-            onClick={() => router.push("/customer/orders")}
-            className="text-blue-600 text-sm hover:underline"
-          >
-            {translate("see_all") || "Xem tất cả"} →
-          </button>
-        </div>
-
-        <div className="grid grid-cols-5 text-center py-4">
-          <button
-            onClick={() => router.push("/customer/pending")}
-            className="flex flex-col items-center text-gray-700 hover:text-orange-500"
-          >
-            <Clock size={28} />
-            <span className="text-sm mt-1">
-              {translate("waiting_confirm") || "Chờ xác nhận"}
-            </span>
-          </button>
-
-          <button
-            onClick={() => router.push("/customer/pickup")}
-            className="flex flex-col items-center text-gray-700 hover:text-orange-500"
-          >
-            <Package size={28} />
-            <span className="text-sm mt-1">
-              {translate("waiting_pickup") || "Chờ lấy hàng"}
-            </span>
-          </button>
-
-          <button
-            onClick={() => router.push("/customer/shipping")}
-            className="flex flex-col items-center text-gray-700 hover:text-orange-500"
-          >
-            <Truck size={28} />
-            <span className="text-sm mt-1">
-              {translate("delivering") || "Đang giao"}
-            </span>
-          </button>
-
-          <button
-            onClick={() => router.push("/customer/review")}
-            className="flex flex-col items-center text-gray-700 hover:text-orange-500"
-          >
-            <Star size={28} />
-            <span className="text-sm mt-1">
-              {translate("review") || "Đánh giá"}
-            </span>
-          </button>
-
-          {/* 🔄 Nút trả hàng */}
-          <button
-            onClick={() => router.push("/customer/returns")}
-            className="flex flex-col items-center text-gray-700 hover:text-orange-500"
-          >
-            <RotateCcw size={28} />
-            <span className="text-sm mt-1">
-              {translate("return_order") || "Trả hàng"}
-            </span>
-          </button>
-        </div>
-      </div>
-
-      {/* Ví người dùng */}
-      <div className="bg-white mx-3 mt-4 p-4 rounded-lg shadow text-center">
-        <p className="text-gray-700">
-          💰 {translate("wallet_label") || "Ví Pi"}:{" "}
-          <b>{user?.wallet_address || "Chưa liên kết"}</b>
-        </p>
-      </div>
-    </div>
+    </main>
   );
 }
