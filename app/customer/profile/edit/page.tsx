@@ -12,7 +12,7 @@ export default function EditProfilePage() {
 
   const [info, setInfo] = useState({
     pi_uid: "",
-    appName: "",  // 🔥 Tên hiển thị của app (thay displayName)
+    appName: "",       // Tên dùng trong app
     email: "",
     phoneCode: "+84",
     phone: "",
@@ -45,7 +45,7 @@ export default function EditProfilePage() {
           setInfo((prev) => ({
             ...prev,
             pi_uid: data.pi_uid || "",
-            appName: data.appName || data.displayName || username!,  // 🔥 Dùng appName làm tên chính
+            appName: data.appName || data.displayName || "", // tên phụ
             email: data.email || "",
             phone: data.phone || "",
             address: data.address || "",
@@ -59,7 +59,7 @@ export default function EditProfilePage() {
       .catch(() => console.log("⚠️ Không thể tải hồ sơ"));
   }, [authLoading, user, router]);
 
-  // 📸 Upload preview
+  // 📸 Preview avatar
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -68,7 +68,7 @@ export default function EditProfilePage() {
     }
   };
 
-  // Upload avatar thực tế
+  // Upload avatar thật
   const handleUploadAvatar = async () => {
     if (!selectedFile) {
       alert("⚠️ Vui lòng chọn ảnh trước!");
@@ -100,7 +100,7 @@ export default function EditProfilePage() {
     }
   };
 
-  // 💾 Lưu
+  // 💾 Lưu hồ sơ
   const handleSave = async () => {
     if (!user) {
       alert("❌ Chưa đăng nhập Pi Network.");
@@ -113,9 +113,8 @@ export default function EditProfilePage() {
         ...info,
         username: user.username,
 
-        // 🔥 API CŨ VẪN NHẬN displayName → ta map appName → displayName
+        // API cũ yêu cầu displayName → map từ appName
         displayName: info.appName,
-
         avatar,
       };
 
@@ -179,13 +178,14 @@ export default function EditProfilePage() {
           </label>
         </div>
 
-        {/* 🔥 Hiển thị tên app */}
+        {/* 🔥 Chỉ hiển thị username của Pi Network */}
         <h1 className="text-center text-lg font-semibold text-gray-800 mb-4">
-          {info.appName || "Người dùng"}
+          {user.username}
         </h1>
 
         {/* Form */}
         <div className="space-y-4">
+          {/* App Name */}
           <div>
             <label className="block text-sm text-gray-700 mb-1">
               Tên trong ứng dụng (App Name)
@@ -198,8 +198,7 @@ export default function EditProfilePage() {
             />
           </div>
 
-          {/* -------- GIỮ NGUYÊN CÁC TRƯỜNG KHÁC -------- */}
-
+          {/* Giữ nguyên tất cả các trường còn lại */}
           <div>
             <label className="block text-sm text-gray-700 mb-1">Email</label>
             <input
@@ -220,7 +219,6 @@ export default function EditProfilePage() {
               >
                 <option value="+84">🇻🇳 +84</option>
                 <option value="+1">🇺🇸 +1</option>
-                <option value="+81">🇯🇵 +81</option>
               </select>
               <input
                 type="tel"
@@ -271,7 +269,7 @@ export default function EditProfilePage() {
           </div>
         </div>
 
-        {/* Nút */}
+        {/* Buttons */}
         <div className="flex flex-col mt-6 space-y-3">
           <button
             onClick={handleSave}
