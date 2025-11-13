@@ -12,7 +12,7 @@ export default function EditProfilePage() {
 
   const [info, setInfo] = useState({
     pi_uid: "",
-    appName: "",       // Tên dùng trong app
+    appName: "",
     email: "",
     phoneCode: "+84",
     phone: "",
@@ -30,11 +30,8 @@ export default function EditProfilePage() {
   useEffect(() => {
     if (authLoading) return;
 
-    if (!user) {
-      alert("⚠️ Vui lòng đăng nhập bằng Pi Network trước!");
-      router.replace("/account");
-      return;
-    }
+    // ⚠️ Khi build prerender user = null → phải chặn
+    if (!user) return;
 
     const username = user.username || localStorage.getItem("titi_username");
 
@@ -45,7 +42,7 @@ export default function EditProfilePage() {
           setInfo((prev) => ({
             ...prev,
             pi_uid: data.pi_uid || "",
-            appName: data.appName || data.displayName || "", // tên phụ
+            appName: data.appName || data.displayName || username!,
             email: data.email || "",
             phone: data.phone || "",
             address: data.address || "",
@@ -68,7 +65,7 @@ export default function EditProfilePage() {
     }
   };
 
-  // Upload avatar thật
+  // 📤 Upload avatar thực tế
   const handleUploadAvatar = async () => {
     if (!selectedFile) {
       alert("⚠️ Vui lòng chọn ảnh trước!");
@@ -103,7 +100,7 @@ export default function EditProfilePage() {
   // 💾 Lưu hồ sơ
   const handleSave = async () => {
     if (!user) {
-      alert("❌ Chưa đăng nhập Pi Network.");
+      alert("❌ Bạn chưa đăng nhập.");
       return;
     }
 
@@ -113,7 +110,7 @@ export default function EditProfilePage() {
         ...info,
         username: user.username,
 
-        // API cũ yêu cầu displayName → map từ appName
+        // map appName → displayName (API cũ)
         displayName: info.appName,
         avatar,
       };
@@ -134,7 +131,7 @@ export default function EditProfilePage() {
       } else {
         alert("❌ Lỗi: " + (data.error || ""));
       }
-    } catch (err) {
+    } catch {
       alert("❌ Lỗi khi lưu hồ sơ.");
     } finally {
       setSaving(false);
@@ -143,11 +140,11 @@ export default function EditProfilePage() {
 
   const provinceList = provincesByCountry[info.country] || [];
 
-  if (!piReady && !authLoading) {
+  // ⚠️ Tránh accessing user.username khi null → không lỗi build
+  if (!piReady || authLoading || !user) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center">
-        <p className="text-gray-500 mb-2">🕓 Đang khởi tạo Pi SDK...</p>
-        <p className="text-sm text-gray-400">(Vui lòng mở trong Pi Browser)</p>
+      <main className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500">Đang tải dữ liệu...</p>
       </main>
     );
   }
@@ -166,8 +163,7 @@ export default function EditProfilePage() {
         <div className="relative w-24 h-24 mx-auto mb-4">
           <img
             src={
-              avatar ||
-              `/api/getAvatar?username=${user?.username || "unknown"}`
+              avatar || `/api/getAvatar?username=${user.username}`
             }
             alt="avatar"
             className="w-24 h-24 rounded-full object-cover border-4 border-orange-500"
@@ -178,9 +174,9 @@ export default function EditProfilePage() {
           </label>
         </div>
 
-        {/* 🔥 Chỉ hiển thị username của Pi Network */}
+        {/* 🔥 Chỉ hiển thị user.username */}
         <h1 className="text-center text-lg font-semibold text-gray-800 mb-4">
-          {user.username}
+          {user?.username || "User"}
         </h1>
 
         {/* Form */}
@@ -198,7 +194,7 @@ export default function EditProfilePage() {
             />
           </div>
 
-          {/* Giữ nguyên tất cả các trường còn lại */}
+          {/* Email */}
           <div>
             <label className="block text-sm text-gray-700 mb-1">Email</label>
             <input
@@ -209,6 +205,7 @@ export default function EditProfilePage() {
             />
           </div>
 
+          {/* Phone */}
           <div>
             <label className="block text-sm text-gray-700 mb-1">Số điện thoại</label>
             <div className="flex space-x-2">
@@ -219,6 +216,7 @@ export default function EditProfilePage() {
               >
                 <option value="+84">🇻🇳 +84</option>
                 <option value="+1">🇺🇸 +1</option>
+                <option value="+81">🇯🇵 +81</option>
               </select>
               <input
                 type="tel"
@@ -230,6 +228,7 @@ export default function EditProfilePage() {
             </div>
           </div>
 
+          {/* Address */}
           <div>
             <label className="block text-sm text-gray-700 mb-1">Địa chỉ</label>
             <textarea
@@ -239,12 +238,15 @@ export default function EditProfilePage() {
             />
           </div>
 
+          {/* Country */}
           <div>
             <label className="block text-sm text-gray-700 mb-1">Quốc gia</label>
             <select
               className="w-full border px-3 py-2 rounded"
               value={info.country}
-              onChange={(e) => setInfo({ ...info, country: e.target.value, province: "" })}
+              onChange={(e) =>
+                setInfo({ ...info, country: e.target.value, province: "" })
+              }
             >
               {countries.map((c) => (
                 <option key={c.code} value={c.code}>
@@ -254,6 +256,7 @@ export default function EditProfilePage() {
             </select>
           </div>
 
+          {/* Province */}
           <div>
             <label className="block text-sm text-gray-700 mb-1">Tỉnh / Thành phố</label>
             <select
