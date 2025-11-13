@@ -20,7 +20,7 @@ export default function CustomerDashboard() {
     }
   }, [piReady, user, router]);
 
-  // 🟢 Lấy thông tin hồ sơ để hiển thị avatar + tên hiển thị
+  // 🟢 Lấy thông tin hồ sơ để hiển thị avatar + tên
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -64,17 +64,15 @@ export default function CustomerDashboard() {
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-orange-500 font-bold text-2xl">
-              {user.username?.charAt(0)?.toUpperCase() || "U"}
+              {user.username.charAt(0).toUpperCase()}
             </div>
           )}
         </div>
 
-        {/* 🏷️ Hiển thị tên người dùng (ẩn username Pi nếu không có displayName) */}
-        {profile?.displayName ? (
-          <h1 className="text-xl font-semibold">{profile.displayName}</h1>
-        ) : (
-          <h1 className="text-xl font-semibold opacity-0 select-none">-</h1>
-        )}
+        {/* 🏷️ Hiển thị tên người dùng trong app (displayName) */}
+        <h1 className="text-xl font-semibold">
+          {profile?.displayName || user.username}
+        </h1>
       </div>
 
       {/* Đơn hàng */}
