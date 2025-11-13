@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { ArrowLeft, Upload, LogOut, Edit3 } from "lucide-react";
+import { Upload, LogOut, Edit3 } from "lucide-react";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -14,11 +14,12 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<any>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  // 🟢 Tải hồ sơ người dùng
+  // 🟢 Load hồ sơ
   useEffect(() => {
     if (authLoading) return;
 
@@ -27,9 +28,9 @@ export default function ProfilePage() {
       localStorage.getItem("titi_username") ||
       (() => {
         try {
-          const saved = localStorage.getItem("pi_user");
-          if (saved) {
-            const parsed = JSON.parse(saved);
+          const data = localStorage.getItem("pi_user");
+          if (data) {
+            const parsed = JSON.parse(data);
             return parsed?.username || parsed?.user?.username;
           }
         } catch {}
@@ -42,25 +43,34 @@ export default function ProfilePage() {
       return;
     }
 
-    const fetchProfile = async () => {
+    // 📌 Tải thông tin profile
+    const loadProfile = async () => {
       try {
         const res = await fetch(`/api/profile?username=${encodeURIComponent(username!)}`);
-        if (!res.ok) throw new Error("Không thể tải hồ sơ.");
         const data = await res.json();
 
-        setProfile(data);
-        setAvatar(`/api/getAvatar?username=${username}`);
-        setError(null);
-      } catch (err) {
-        console.error("❌ Lỗi tải hồ sơ:", err);
+        setProfile(data || {});
+      } catch (e) {
         setError("Không tải được hồ sơ.");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProfile();
+    loadProfile();
   }, [authLoading, user]);
+
+  // 🟢 Load avatar riêng từ API
+  useEffect(() => {
+    if (!user?.username) return;
+
+    fetch(`/api/getAvatar?username=${encodeURIComponent(user.username)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.avatar) setAvatar(data.avatar);
+      })
+      .catch(() => console.log("⚠ Không thể tải avatar"));
+  }, [user]);
 
   // 📸 Upload avatar
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,6 +82,7 @@ export default function ProfilePage() {
 
     try {
       setUploading(true);
+
       const res = await fetch("/api/upload", {
         method: "POST",
         headers: { "x-filename": file.name },
@@ -79,16 +90,15 @@ export default function ProfilePage() {
       });
 
       const data = await res.json();
+
       if (res.ok && data.url) {
         setAvatar(data.url);
-        setProfile((prev: any) => ({ ...prev, avatar: data.url }));
-        alert("✅ Ảnh đại diện đã được cập nhật!");
+        alert("✅ Ảnh đại diện đã cập nhật!");
       } else {
-        alert("❌ Lỗi tải ảnh: " + (data.error || "Không xác định"));
+        alert("❌ Lỗi tải: " + (data.error || "Không xác định"));
       }
-    } catch (err) {
-      console.error("Upload failed:", err);
-      alert("⚠️ Không thể tải ảnh lên máy chủ.");
+    } catch (e) {
+      alert("⚠ Không thể upload ảnh");
     } finally {
       setUploading(false);
     }
@@ -118,12 +128,12 @@ export default function ProfilePage() {
         {piReady ? (
           <button
             onClick={pilogin}
-            className="mt-4 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded"
+            className="mt-4 bg-orange-500 text-white px-4 py-2 rounded"
           >
             🔐 Đăng nhập lại
           </button>
         ) : (
-          <p className="mt-4 text-gray-600">🕓 Đang chờ Pi SDK...</p>
+          <p className="mt-4 text-gray-600">🕓 Chờ Pi SDK...</p>
         )}
       </main>
     );
@@ -139,7 +149,7 @@ export default function ProfilePage() {
         ←
       </button>
 
-      {/* 🧍 Avatar & Tên */}
+      {/* Avatar + Username */}
       <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg mt-12 p-6 relative">
         <div className="relative w-28 h-28 mx-auto mb-4">
           {preview ? (
@@ -158,16 +168,18 @@ export default function ProfilePage() {
             />
           ) : (
             <div className="w-28 h-28 rounded-full bg-orange-200 text-orange-600 flex items-center justify-center text-4xl font-bold border-4 border-orange-500">
-              {user.username.charAt(0).toUpperCase()}
+              {user?.username?.charAt(0).toUpperCase() || "U"}
             </div>
           )}
 
+          {/* Upload Button */}
           <label
             htmlFor="avatar-upload"
             className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full cursor-pointer hover:bg-orange-600 transition"
           >
             <Upload size={18} className="text-white" />
           </label>
+
           <input
             id="avatar-upload"
             type="file"
@@ -177,19 +189,17 @@ export default function ProfilePage() {
           />
         </div>
 
-        {/* 🔥 HIỂN THỊ USERNAME CHÍNH THỨC */}
+        {/* Username chính thức */}
         <h2 className="text-center text-lg font-semibold text-gray-800">
           @{user.username}
         </h2>
 
         {uploading && (
-          <p className="text-sm text-gray-500 mt-1 text-center">
-            Đang tải ảnh...
-          </p>
+          <p className="text-sm text-gray-500 mt-1 text-center">Đang tải ảnh...</p>
         )}
       </div>
 
-      {/* 🧾 Thông tin */}
+      {/* Thông tin hồ sơ */}
       <div className="bg-white mt-6 mx-4 p-4 rounded-xl shadow-md space-y-3">
         {[
           { label: "Tên trong ứng dụng (App Name)", key: "displayName" },
@@ -199,10 +209,7 @@ export default function ProfilePage() {
           { label: "Tỉnh / Thành phố", key: "province" },
           { label: "Quốc gia", key: "country" },
         ].map(({ label, key }) => (
-          <div
-            key={key}
-            className="flex justify-between border-b border-gray-100 pb-2"
-          >
+          <div key={key} className="flex justify-between border-b pb-2">
             <span className="text-gray-600">{label}</span>
             <span className="text-gray-800 font-medium text-right">
               {profile?.[key] || "(chưa có)"}
@@ -211,14 +218,14 @@ export default function ProfilePage() {
         ))}
       </div>
 
-      {/* ⚙️ Nút */}
+      {/* Nút hành động */}
       <div className="flex flex-col items-center mt-8 gap-3">
         <button
           onClick={() => router.push("/customer/profile/edit")}
           className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-6 rounded flex items-center gap-2"
         >
           <Edit3 size={18} />
-          Chỉnh sửa hồ sơ
+          Chỉnh sửa
         </button>
 
         <button
