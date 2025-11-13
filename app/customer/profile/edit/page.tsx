@@ -12,7 +12,7 @@ export default function EditProfilePage() {
 
   const [info, setInfo] = useState({
     pi_uid: "",
-    displayName: "",
+    appName: "",
     email: "",
     phoneCode: "+84",
     phone: "",
@@ -45,7 +45,7 @@ export default function EditProfilePage() {
           setInfo((prev) => ({
             ...prev,
             pi_uid: data.pi_uid || "",
-            displayName: data.displayName || username!,
+            appName: data.displayName || username!,
             email: data.email || "",
             phone: data.phone || "",
             address: data.address || "",
@@ -201,14 +201,16 @@ export default function EditProfilePage() {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              className="w-full border px-3 py-2 rounded"
-              value={info.email}
-              onChange={(e) => setInfo({ ...info, email: e.target.value })}
-            />
-          </div>
+  <label className="block text-sm text-gray-700 mb-1">
+    Tên trong ứng dụng (App Name)
+  </label>
+  <input
+    type="text"
+    className="w-full border px-3 py-2 rounded"
+    value={info.appName}
+    onChange={(e) => setInfo({ ...info, appName: e.target.value })}
+  />
+</div>
 
           <div>
             <label className="block text-sm text-gray-700 mb-1">Số điện thoại</label>
