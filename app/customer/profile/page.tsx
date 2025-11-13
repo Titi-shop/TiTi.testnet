@@ -130,21 +130,24 @@ export default function ProfilePage() {
 
   return (
     <main className="min-h-screen bg-gray-50 pb-24 relative">
-      {/* 🔙 Thanh tiêu đề */}
-      <div className="flex items-center bg-white p-4 shadow-sm fixed top-0 left-0 right-0 z-10">
-        <button
-          onClick={() => router.back()}
-          className="text-gray-600 hover:text-orange-500"
-        >
-          <ArrowLeft size={22} />
-        </button>
-        <h1 className="text-lg font-semibold text-gray-800 mx-auto">
+      {/* 🔙 Nút quay lại góc trái cố định */}
+      <button
+        onClick={() => router.back()}
+        className="fixed top-4 left-4 bg-white shadow-md rounded-full p-2 hover:bg-orange-100 z-50 transition"
+        title="Quay lại"
+      >
+        <ArrowLeft size={20} className="text-orange-600" />
+      </button>
+
+      {/* 🔖 Thanh tiêu đề */}
+      <div className="flex items-center justify-center bg-white p-4 shadow-sm fixed top-0 left-0 right-0 z-40">
+        <h1 className="text-lg font-semibold text-gray-800">
           Hồ sơ cá nhân
         </h1>
       </div>
 
-      <div className="pt-16 px-4 flex flex-col items-center">
-        {/* 🧍 Avatar */}
+      {/* 🧍 Avatar & Tên */}
+      <div className="pt-20 px-4 flex flex-col items-center">
         <div className="relative w-28 h-28">
           {preview ? (
             <Image
