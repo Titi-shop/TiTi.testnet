@@ -5,17 +5,17 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { countries } from "@/data/countries";
 import { provincesByCountry } from "@/data/provinces";
-import { phoneRules } from "@/data/phoneRules"; // ✅ thêm
+import { phoneRules } from "@/data/phoneRules";
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const { user, loading: authLoading, piReady, pilogin } = useAuth();
+  const { user, loading: authLoading, piReady } = useAuth();
 
   const [info, setInfo] = useState({
     pi_uid: "",
     appName: "",
     email: "",
-    phoneCode: "+84",
+    phoneCode: "+84", // sẽ được update lại theo country
     phone: "",
     address: "",
     province: "",
@@ -25,7 +25,6 @@ export default function EditProfilePage() {
   const [avatar, setAvatar] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(false);
 
   // 🟢 Load profile
   useEffect(() => {
@@ -38,6 +37,12 @@ export default function EditProfilePage() {
       .then((res) => res.json())
       .then((data) => {
         if (data) {
+          const countryCode = data.country || "VN";
+          const dial =
+            phoneRules[countryCode]?.dialCode ||
+            phoneRules["VN"]?.dialCode ||
+            "+84";
+
           setInfo((prev) => ({
             ...prev,
             pi_uid: data.pi_uid || "",
@@ -46,9 +51,8 @@ export default function EditProfilePage() {
             phone: data.phone || "",
             address: data.address || "",
             province: data.province || "",
-            country: data.country || "VN",
-            phoneCode:
-              phoneRules[data.country || "VN"]?.dialCode || "+84",
+            country: countryCode,
+            phoneCode: dial,
           }));
 
           if (data.avatar) setAvatar(data.avatar);
@@ -57,44 +61,14 @@ export default function EditProfilePage() {
       .catch(() => console.log("⚠️ Không thể tải hồ sơ"));
   }, [authLoading, user, router]);
 
-  // 📸 Preview avatar
+  // 📸 Preview avatar (chỉ preview, không có nút cập nhật riêng)
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
       setAvatar(URL.createObjectURL(file));
-    }
-  };
-
-  // 📤 Upload avatar
-  const handleUploadAvatar = async () => {
-    if (!selectedFile) {
-      alert("⚠️ Vui lòng chọn ảnh trước!");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("username", user?.username || "");
-
-      const res = await fetch("/api/uploadAvatar", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        setAvatar(data.url);
-        alert("✅ Ảnh đại diện đã cập nhật!");
-      } else {
-        alert("❌ Lỗi tải ảnh: " + data.error);
-      }
-    } catch (err: any) {
-      alert("❌ Không thể tải: " + err.message);
-    } finally {
-      setLoading(false);
+      // Nếu sau này muốn upload ngay khi chọn ảnh
+      // có thể thêm logic upload tại đây.
     }
   };
 
@@ -105,7 +79,7 @@ export default function EditProfilePage() {
       return;
     }
 
-    // ✅ KIỂM TRA EMAIL HỢP LỆ
+    // ✅ Kiểm tra email cơ bản
     const emailPattern =
       /^[a-zA-Z0-9._%+-]+@(?:gmail\.com|yahoo\.com|hotmail\.com|outlook\.com|icloud\.com|[\w.-]+\.\w{2,})$/;
 
@@ -119,7 +93,7 @@ export default function EditProfilePage() {
       const body = {
         ...info,
         username: user.username,
-        displayName: info.appName,
+        displayName: info.appName, // map sang key cũ
         avatar,
       };
 
@@ -158,6 +132,7 @@ export default function EditProfilePage() {
 
   return (
     <main className="min-h-screen bg-gray-100 pb-32 relative">
+      {/* 🔙 Nút quay lại */}
       <button
         onClick={() => router.back()}
         className="absolute top-3 left-3 text-orange-600 text-lg font-bold"
@@ -169,19 +144,22 @@ export default function EditProfilePage() {
         {/* Avatar */}
         <div className="relative w-24 h-24 mx-auto mb-4">
           <img
-            src={
-              avatar || `/api/getAvatar?username=${user.username}`
-            }
+            src={avatar || `/api/getAvatar?username=${user.username}`}
             alt="avatar"
             className="w-24 h-24 rounded-full object-cover border-4 border-orange-500"
           />
           <label className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full cursor-pointer">
-            <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+            <input
+              type="file"
+              className="hidden"
+              accept="image/*"
+              onChange={handleFileChange}
+            />
             📸
           </label>
         </div>
 
-        {/* Username */}
+        {/* Username chính thức */}
         <h1 className="text-center text-lg font-semibold text-gray-800 mb-4">
           {user?.username || "User"}
         </h1>
@@ -212,35 +190,18 @@ export default function EditProfilePage() {
             />
           </div>
 
-          {/* Phone */}
+          {/* Phone – giống trang address: mã vùng tự đổi theo quốc gia */}
           <div>
-            <label className="block text-sm text-gray-700 mb-1">Số điện thoại</label>
-            <div className="flex space-x-2">
-              <select
-                className="border px-2 py-2 rounded w-24"
-                value={info.phoneCode}
-                onChange={(e) => {
-                  const dial = e.target.value;
-                  const found = Object.entries(phoneRules).find(
-                    ([code, rule]) => rule.dialCode === dial
-                  );
-                  setInfo({
-                    ...info,
-                    phoneCode: dial,
-                    country: found?.[0] || info.country,
-                  });
-                }}
-              >
-                {Object.entries(phoneRules).map(([code, rule]) => (
-                  <option key={code} value={rule.dialCode}>
-                    {countries.find((c) => c.code === code)?.flag} {rule.dialCode}
-                  </option>
-                ))}
-              </select>
-
+            <label className="block text-sm text-gray-700 mb-1">
+              Số điện thoại
+            </label>
+            <div className="flex mb-1">
+              <span className="px-3 py-2 bg-gray-100 border rounded-l">
+                {info.phoneCode}
+              </span>
               <input
                 type="tel"
-                className="flex-1 border px-3 py-2 rounded"
+                className="flex-1 border px-3 py-2 rounded-r"
                 value={info.phone}
                 onChange={(e) => setInfo({ ...info, phone: e.target.value })}
                 placeholder="Nhập số điện thoại"
@@ -258,20 +219,23 @@ export default function EditProfilePage() {
             />
           </div>
 
-          {/* Country */}
+          {/* Country – đổi quốc gia → đổi luôn mã vùng */}
           <div>
             <label className="block text-sm text-gray-700 mb-1">Quốc gia</label>
             <select
               className="w-full border px-3 py-2 rounded"
               value={info.country}
-              onChange={(e) =>
-                setInfo({
-                  ...info,
-                  country: e.target.value,
-                  phoneCode: phoneRules[e.target.value]?.dialCode || info.phoneCode,
+              onChange={(e) => {
+                const newCountry = e.target.value;
+                const newDial =
+                  phoneRules[newCountry]?.dialCode || info.phoneCode;
+                setInfo((prev) => ({
+                  ...prev,
+                  country: newCountry,
+                  phoneCode: newDial,
                   province: "",
-                })
-              }
+                }));
+              }}
             >
               {countries.map((c) => (
                 <option key={c.code} value={c.code}>
@@ -283,7 +247,9 @@ export default function EditProfilePage() {
 
           {/* Province */}
           <div>
-            <label className="block text-sm text-gray-700 mb-1">Tỉnh / Thành phố</label>
+            <label className="block text-sm text-gray-700 mb-1">
+              Tỉnh / Thành phố
+            </label>
             <select
               className="w-full border px-3 py-2 rounded"
               value={info.province}
@@ -291,13 +257,15 @@ export default function EditProfilePage() {
             >
               <option value="">-- Chọn --</option>
               {provinceList.map((p) => (
-                <option key={p} value={p}>{p}</option>
+                <option key={p} value={p}>
+                  {p}
+                </option>
               ))}
             </select>
           </div>
         </div>
 
-        {/* Buttons */}
+        {/* Chỉ còn NÚT LƯU – đã bỏ nút cập nhật avatar */}
         <div className="flex flex-col mt-6 space-y-3">
           <button
             onClick={handleSave}
@@ -305,14 +273,6 @@ export default function EditProfilePage() {
             className="bg-green-500 text-white py-2 rounded"
           >
             {saving ? "Đang lưu..." : "💾 Lưu thay đổi"}
-          </button>
-
-          <button
-            onClick={handleUploadAvatar}
-            disabled={loading}
-            className="bg-orange-500 text-white py-2 rounded"
-          >
-            {loading ? "Đang tải..." : "📤 Cập nhật ảnh đại diện"}
           </button>
         </div>
       </div>
