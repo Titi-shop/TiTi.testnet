@@ -42,7 +42,6 @@ export default function CustomerAddressPage() {
   // 🌍 Khi chọn quốc gia
   const handleCountryChange = (e: any) => {
     const code = e.target.value;
-
     const selected = countries.find((c) => c.code === code);
 
     setForm({
@@ -79,7 +78,7 @@ export default function CustomerAddressPage() {
   return (
     <main className="min-h-screen bg-gray-100 pb-20 relative">
 
-      {/* 🔙 Nút quay lại */}
+      {/* 🔙 Nút quay lại trên góc trái */}
       <button
         onClick={() => router.back()}
         className="absolute top-3 left-3 z-50 bg-orange-500 text-white px-3 py-1 rounded-full shadow font-bold text-lg"
@@ -139,25 +138,16 @@ export default function CustomerAddressPage() {
           onChange={(e) => setForm({ ...form, address: e.target.value })}
         />
 
-        {/* Nút */}
-        <div className="flex flex-col gap-3">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className={`w-full py-3 rounded text-white font-semibold ${
-              saving ? "bg-gray-400" : "bg-orange-600 hover:bg-orange-700"
-            }`}
-          >
-            {saving ? "Đang lưu..." : "💾 Lưu địa chỉ"}
-          </button>
-
-          <button
-            onClick={() => router.push("/checkout")}
-            className="w-full py-3 rounded text-orange-600 border border-orange-600 hover:bg-orange-50 font-semibold"
-          >
-            ⬅️ Quay lại thanh toán
-          </button>
-        </div>
+        {/* Chỉ để lại nút lưu – đã bỏ nút quay về phía dưới */}
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className={`w-full py-3 rounded text-white font-semibold ${
+            saving ? "bg-gray-400" : "bg-orange-600 hover:bg-orange-700"
+          }`}
+        >
+          {saving ? "Đang lưu..." : "💾 Lưu địa chỉ"}
+        </button>
 
         {message && (
           <p className="mt-3 text-center text-sm text-gray-700">{message}</p>
