@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { countries } from "@/data/countries";
-import { phoneRules } from "@/data/phoneRules"; // ✅ thêm phone rules
+import { phoneRules } from "@/data/phoneRules";
 
 export default function CustomerAddressPage() {
   const router = useRouter();
@@ -24,11 +24,11 @@ export default function CustomerAddressPage() {
   // 🔍 Lấy username và load địa chỉ
   useEffect(() => {
     const u = localStorage.getItem("titi_username");
+
     if (u) {
       setUsername(u);
       fetchAddress(u);
     } else {
-      // Nếu chưa có → mặc định chọn quốc gia đầu tiên
       const first = countries[0];
       setForm((prev) => ({
         ...prev,
@@ -38,21 +38,31 @@ export default function CustomerAddressPage() {
     }
   }, []);
 
-  // 📌 Load địa chỉ đã lưu
+  // 📌 Load địa chỉ từ API
   const fetchAddress = async (u: string) => {
     try {
       const res = await fetch(`/api/address?username=${u}`);
       const data = await res.json();
 
       if (data?.address) {
-        setForm(data.address);
+        const saved = data.address;
+
+        // 🔥 tự động sửa mã vùng nếu thiếu
+        const countryData = countries.find((c) => c.code === saved.country);
+
+        setForm({
+          ...saved,
+          countryCode: countryData ? countryData.dial : "+00",
+        });
       } else {
         const first = countries[0];
-        setForm((prev) => ({
-          ...prev,
+        setForm({
+          name: "",
+          phone: "",
+          address: "",
           country: first.code,
           countryCode: first.dial,
-        }));
+        });
       }
     } catch (err) {
       console.error("❌ Lỗi tải địa chỉ:", err);
@@ -63,23 +73,20 @@ export default function CustomerAddressPage() {
   const handleCountryChange = (e: any) => {
     const code = e.target.value;
     const selected = countries.find((c) => c.code === code);
-
     if (!selected) return;
 
     setForm({
       ...form,
       country: selected.code,
-      countryCode: selected.dial, // 🔥 mã vùng CHUẨN
+      countryCode: selected.dial,
     });
   };
 
-  // 🧪 Validate số điện thoại theo phoneRules.ts
+  // 🧪 Validate số điện thoại
   const validatePhone = () => {
     const rule = phoneRules[form.country];
-    if (!rule) return true; // không có rule thì bỏ qua
-
-    const regex = rule.regex;
-    return regex.test(form.phone);
+    if (!rule) return true;
+    return rule.regex.test(form.phone);
   };
 
   // 💾 Lưu địa chỉ
@@ -89,7 +96,7 @@ export default function CustomerAddressPage() {
       return;
     }
 
-    // 🔥 Kiểm tra số điện thoại
+    // 🔥 kiểm tra số điện thoại theo quốc gia
     if (!validatePhone()) {
       setMessage("❌ Số điện thoại không đúng định dạng của quốc gia!");
       return;
@@ -118,7 +125,7 @@ export default function CustomerAddressPage() {
   return (
     <main className="min-h-screen bg-gray-100 pb-20 relative">
 
-      {/* 🔙 Nút quay lại */}
+      {/* Nút quay lại */}
       <button
         onClick={() => router.back()}
         className="absolute top-3 left-3 z-50 bg-orange-500 text-white px-3 py-1 rounded-full shadow font-bold text-lg"
@@ -127,7 +134,6 @@ export default function CustomerAddressPage() {
       </button>
 
       <div className="max-w-md mx-auto p-6 bg-white rounded-xl shadow mt-14">
-
         <h1 className="text-2xl font-bold text-center text-orange-600 mb-4">
           📍 Địa chỉ giao hàng
         </h1>
@@ -158,7 +164,7 @@ export default function CustomerAddressPage() {
         <label className="block mb-2 font-medium">📞 Số điện thoại</label>
         <div className="flex mb-3">
           <span className="px-3 py-2 bg-gray-100 border rounded-l">
-            {form.countryCode || "+00"}
+            {form.countryCode}
           </span>
           <input
             type="tel"
