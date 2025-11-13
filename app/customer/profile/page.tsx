@@ -129,26 +129,18 @@ export default function ProfilePage() {
     );
 
   return (
-    <main className="min-h-screen bg-gray-50 pb-24 relative">
-      {/* 🔙 Nút quay lại góc trái cố định */}
+    <main className="min-h-screen bg-gray-100 pb-24 relative">
+      {/* 🔙 Nút quay lại như trang edit */}
       <button
         onClick={() => router.back()}
-        className="fixed top-4 left-4 bg-white shadow-md rounded-full p-2 hover:bg-orange-100 z-50 transition"
-        title="Quay lại"
+        className="absolute top-3 left-3 text-orange-600 text-2xl font-bold"
       >
-        <ArrowLeft size={20} className="text-orange-600" />
+        ←
       </button>
 
-      {/* 🔖 Thanh tiêu đề */}
-      <div className="flex items-center justify-center bg-white p-4 shadow-sm fixed top-0 left-0 right-0 z-40">
-        <h1 className="text-lg font-semibold text-gray-800">
-          Hồ sơ cá nhân
-        </h1>
-      </div>
-
       {/* 🧍 Avatar & Tên */}
-      <div className="pt-20 px-4 flex flex-col items-center">
-        <div className="relative w-28 h-28">
+      <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg mt-12 p-6 relative">
+        <div className="relative w-28 h-28 mx-auto mb-4">
           {preview ? (
             <Image
               src={preview}
@@ -183,11 +175,13 @@ export default function ProfilePage() {
           />
         </div>
 
-        <h2 className="mt-4 text-lg font-semibold text-gray-800">
+        <h2 className="text-center text-lg font-semibold text-gray-800">
           {profile?.displayName || profile?.username || "Người dùng"}
         </h2>
         {uploading && (
-          <p className="text-sm text-gray-500 mt-1">Đang tải ảnh...</p>
+          <p className="text-sm text-gray-500 mt-1 text-center">
+            Đang tải ảnh...
+          </p>
         )}
       </div>
 
