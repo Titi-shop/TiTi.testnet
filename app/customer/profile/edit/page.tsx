@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { countries } from "@/data/countries";
 import { provincesByCountry } from "@/data/provinces";
+import { phoneRules } from "@/data/phoneRules";
 
 export default function EditProfilePage() {
   const router = useRouter();
