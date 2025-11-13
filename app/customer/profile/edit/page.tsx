@@ -12,7 +12,7 @@ export default function EditProfilePage() {
 
   const [info, setInfo] = useState({
     pi_uid: "",
-    appName: "",
+    appName: "",      // 🔥 Đổi từ displayName → appName
     email: "",
     phoneCode: "+84",
     phone: "",
@@ -20,24 +20,24 @@ export default function EditProfilePage() {
     province: "",
     country: "VN",
   });
+
   const [avatar, setAvatar] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // 🟢 Khi load trang — kiểm tra login & tải dữ liệu hồ sơ
+  // 🟢 Load profile khi đăng nhập
   useEffect(() => {
     if (authLoading) return;
 
     if (!user) {
       alert("⚠️ Vui lòng đăng nhập bằng Pi Network trước!");
-      router.replace("/account"); // hoặc /pilogin
+      router.replace("/account");
       return;
     }
 
     const username = user.username || localStorage.getItem("titi_username");
 
-    // ✅ Lấy hồ sơ hiện tại từ backend
     fetch(`/api/profile?username=${encodeURIComponent(username!)}`)
       .then((res) => res.json())
       .then((data) => {
@@ -45,7 +45,7 @@ export default function EditProfilePage() {
           setInfo((prev) => ({
             ...prev,
             pi_uid: data.pi_uid || "",
-            appName: data.displayName || username!,
+            appName: data.appName || data.displayName || username!, // 🔥 Ưu tiên appName
             email: data.email || "",
             phone: data.phone || "",
             address: data.address || "",
@@ -58,7 +58,7 @@ export default function EditProfilePage() {
       .catch(() => console.log("⚠️ Không thể tải hồ sơ"));
   }, [authLoading, user, router]);
 
-  // 📸 Upload ảnh đại diện
+  // 📸 Upload avatar
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -109,7 +109,8 @@ export default function EditProfilePage() {
     try {
       const body = {
         ...info,
-        username: user.username, // ✅ thêm username để backend nhận đúng
+        username: user.username,
+        displayName: info.appName, // 🔥 Gửi tên app dưới key cũ (không phá API)
         avatar,
       };
 
@@ -128,10 +129,8 @@ export default function EditProfilePage() {
         router.push("/customer/profile");
       } else {
         alert("❌ Lưu thất bại! " + (data.error || ""));
-        console.error(data.error);
       }
     } catch (err) {
-      console.error("❌ Lỗi khi lưu hồ sơ:", err);
       alert("❌ Có lỗi xảy ra khi lưu hồ sơ.");
     } finally {
       setSaving(false);
@@ -140,7 +139,6 @@ export default function EditProfilePage() {
 
   const provinceList = provincesByCountry[info.country] || [];
 
-  // 🧭 Nếu Pi SDK chưa sẵn sàng
   if (!piReady && !authLoading) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center">
@@ -152,7 +150,6 @@ export default function EditProfilePage() {
 
   return (
     <main className="min-h-screen bg-gray-100 pb-32 relative">
-      {/* 🔙 Nút quay lại */}
       <button
         onClick={() => router.back()}
         className="absolute top-3 left-3 text-orange-600 text-lg font-bold"
@@ -161,7 +158,7 @@ export default function EditProfilePage() {
       </button>
 
       <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg mt-12 p-6">
-        {/* 🧍 Ảnh đại diện */}
+        {/* Avatar */}
         <div className="relative w-24 h-24 mx-auto mb-4">
           <img
             src={
@@ -185,32 +182,33 @@ export default function EditProfilePage() {
         </div>
 
         <h1 className="text-center text-lg font-semibold text-gray-800 mb-4">
-          {info.displayName || user?.username || "Người dùng"}
+          {info.appName || "Người dùng"}
         </h1>
 
-        {/* 🧾 Form thông tin */}
+        {/* Form */}
         <div className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-700 mb-1">Tên hiển thị</label>
+            <label className="block text-sm text-gray-700 mb-1">
+              Tên trong ứng dụng (App Name)
+            </label>
             <input
               type="text"
               className="w-full border px-3 py-2 rounded"
-              value={info.displayName}
-              onChange={(e) => setInfo({ ...info, displayName: e.target.value })}
+              value={info.appName}
+              onChange={(e) => setInfo({ ...info, appName: e.target.value })}
             />
           </div>
 
+          {/* Các trường còn lại giữ nguyên */}
           <div>
-  <label className="block text-sm text-gray-700 mb-1">
-    Tên trong ứng dụng (App Name)
-  </label>
-  <input
-    type="text"
-    className="w-full border px-3 py-2 rounded"
-    value={info.appName}
-    onChange={(e) => setInfo({ ...info, appName: e.target.value })}
-  />
-</div>
+            <label className="block text-sm text-gray-700 mb-1">Email</label>
+            <input
+              type="email"
+              className="w-full border px-3 py-2 rounded"
+              value={info.email}
+              onChange={(e) => setInfo({ ...info, email: e.target.value })}
+            />
+          </div>
 
           <div>
             <label className="block text-sm text-gray-700 mb-1">Số điện thoại</label>
@@ -282,7 +280,7 @@ export default function EditProfilePage() {
           </div>
         </div>
 
-        {/* ⚙️ Nút lưu */}
+        {/* Nút lưu */}
         <div className="flex flex-col mt-6 space-y-3">
           <button
             onClick={handleSave}
