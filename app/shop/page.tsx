@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useLanguage } from "@/context/LanguageContext";
+import { useLanguage } from "../context/LanguageContext";
 import Link from "next/link";
 
 export default function ShopPage() {
