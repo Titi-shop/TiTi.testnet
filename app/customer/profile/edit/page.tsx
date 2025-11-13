@@ -170,14 +170,13 @@ export default function EditProfilePage() {
         {/* 🧍 Avatar */}
         <div className="relative w-24 h-24 mx-auto mb-4">
           <img
-            src={
-              avatar ||
-              `/api/getAvatar?username=${info.displayName}` ||
-              "/default-avatar.png"
-            }
-            alt="avatar"
-            className="w-24 h-24 rounded-full object-cover border-4 border-orange-500"
-          />
+  src={
+    avatar ||
+    (info.displayName ? `/api/getAvatar?username=${info.displayName}` : "/default-avatar.png")
+  }
+  alt="avatar"
+  ...
+/>
           <label className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full cursor-pointer hover:bg-orange-600 transition">
             <input
               type="file"
