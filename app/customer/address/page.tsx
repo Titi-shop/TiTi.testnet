@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 
 export default function CustomerAddressPage() {
   const router = useRouter();
-  const { user, loading, pilogin } = useAuth();
+  const { user, loading } = useAuth(); // ✔ Không dùng autologin
 
   const [form, setForm] = useState({
     name: "",
@@ -20,19 +20,25 @@ export default function CustomerAddressPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  // ▶ Kiểm tra đăng nhập bằng Pi (THAY THẾ localStorage)
+  /**
+   * ================================
+   *  1) LOAD ADDRESS KHI USER ĐÃ LOGIN
+   * ================================
+   */
   useEffect(() => {
-    if (loading) return;
+    if (loading) return; // Đợi AuthContext hoàn tất
 
-    if (!user) {
-      pilogin(); // Chưa đăng nhập → tự login
-      return;
-    }
+    // ❗ Nếu chưa login → không tự login → giống profile/edit
+    if (!user) return;
 
-    fetchAddress(user.username); // đã đăng nhập → load địa chỉ
+    fetchAddress(user.username);
   }, [user, loading]);
 
-  // ▶ Load địa chỉ từ API
+  /**
+   * ================================
+   *  2) FETCH ADDRESS TỪ BACKEND
+   * ================================
+   */
   const fetchAddress = async (username: string) => {
     try {
       const res = await fetch(`/api/address?username=${username}`);
@@ -40,7 +46,10 @@ export default function CustomerAddressPage() {
 
       if (data?.address) {
         const saved = data.address;
-        const countryData = countries.find((c) => c.code === saved.country);
+
+        const countryData = countries.find(
+          (c) => c.code === saved.country
+        );
 
         setForm({
           ...saved,
@@ -61,7 +70,11 @@ export default function CustomerAddressPage() {
     }
   };
 
-  // ▶ Khi chọn quốc gia
+  /**
+   * ================================
+   *  3) ĐỔI QUỐC GIA
+   * ================================
+   */
   const handleCountryChange = (e: any) => {
     const code = e.target.value;
     const selected = countries.find((c) => c.code === code);
@@ -74,7 +87,11 @@ export default function CustomerAddressPage() {
     });
   };
 
-  // ▶ Lưu địa chỉ
+  /**
+   * ================================
+   *  4) LƯU ĐỊA CHỈ
+   * ================================
+   */
   const handleSave = async () => {
     if (!form.name || !form.phone || !form.address) {
       setMessage("⚠️ Vui lòng nhập đầy đủ thông tin!");
@@ -82,16 +99,21 @@ export default function CustomerAddressPage() {
     }
 
     if (!user) {
-      setMessage("⚠️ Vui lòng đăng nhập trước đã!");
-      return pilogin();
+      setMessage("⚠️ Bạn chưa đăng nhập!");
+      return;
     }
 
     setSaving(true);
 
+    const payload = {
+      username: user.username,
+      ...form,
+    };
+
     const res = await fetch("/api/address", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: user.username, ...form }),
+      body: JSON.stringify(payload),
     });
 
     const data = await res.json();
@@ -100,10 +122,10 @@ export default function CustomerAddressPage() {
       setMessage("✅ Đã lưu địa chỉ!");
       localStorage.setItem("shipping_info", JSON.stringify(form));
 
-      // ▶ Tự động chuyển sang trang checkout
+      // Chuyển sang checkout
       setTimeout(() => {
         router.push("/checkout");
-      }, 600);
+      }, 500);
     } else {
       setMessage("❌ Lưu thất bại!");
     }
@@ -111,18 +133,41 @@ export default function CustomerAddressPage() {
     setSaving(false);
   };
 
-  // ▶ Loading lúc AuthContext đang kiểm tra
+  /**
+   * ================================
+   *  5) UI KHI CHƯA CÓ USER
+   * ================================
+   */
   if (loading) {
     return (
-      <p className="text-gray-500 text-center mt-8">
-        ⏳ Đang kiểm tra đăng nhập...
-      </p>
+      <main className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500">⏳ Đang tải...</p>
+      </main>
     );
   }
 
+  if (!user) {
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center">
+        <p className="text-gray-600 mb-4">Bạn cần đăng nhập bằng Pi để tiếp tục</p>
+        <button
+          onClick={() => router.push("/login")}
+          className="bg-orange-600 text-white px-5 py-2 rounded"
+        >
+          Đăng nhập với Pi
+        </button>
+      </main>
+    );
+  }
+
+  /**
+   * ================================
+   *  6) UI CHÍNH
+   * ================================
+   */
   return (
     <main className="min-h-screen bg-gray-100 pb-20 relative">
-      {/* Nút quay lại */}
+
       <button
         onClick={() => router.back()}
         className="absolute top-3 left-3 z-50 bg-orange-500 text-white px-3 py-1 rounded-full shadow font-bold text-lg"
@@ -166,8 +211,8 @@ export default function CustomerAddressPage() {
           <input
             type="tel"
             className="border p-2 w-full rounded-r"
-            placeholder="Nhập số điện thoại"
             value={form.phone}
+            placeholder="Nhập số điện thoại"
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
           />
         </div>
