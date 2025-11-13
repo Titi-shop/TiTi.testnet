@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { countries } from "@/data/countries";
 import { provincesByCountry } from "@/data/provinces";
-import { phoneRules } from "@/data/phoneRules";
+import { phoneRules } from "@/data/phoneRules"; // ✅ thêm
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -30,8 +30,6 @@ export default function EditProfilePage() {
   // 🟢 Load profile
   useEffect(() => {
     if (authLoading) return;
-
-    // ⚠️ Khi build prerender user = null → phải chặn
     if (!user) return;
 
     const username = user.username || localStorage.getItem("titi_username");
@@ -49,6 +47,8 @@ export default function EditProfilePage() {
             address: data.address || "",
             province: data.province || "",
             country: data.country || "VN",
+            phoneCode:
+              phoneRules[data.country || "VN"]?.dialCode || "+84",
           }));
 
           if (data.avatar) setAvatar(data.avatar);
@@ -66,7 +66,7 @@ export default function EditProfilePage() {
     }
   };
 
-  // 📤 Upload avatar thực tế
+  // 📤 Upload avatar
   const handleUploadAvatar = async () => {
     if (!selectedFile) {
       alert("⚠️ Vui lòng chọn ảnh trước!");
@@ -105,13 +105,20 @@ export default function EditProfilePage() {
       return;
     }
 
+    // ✅ KIỂM TRA EMAIL HỢP LỆ
+    const emailPattern =
+      /^[a-zA-Z0-9._%+-]+@(?:gmail\.com|yahoo\.com|hotmail\.com|outlook\.com|icloud\.com|[\w.-]+\.\w{2,})$/;
+
+    if (info.email && !emailPattern.test(info.email)) {
+      alert("⚠️ Email không hợp lệ, vui lòng kiểm tra lại!");
+      return;
+    }
+
     setSaving(true);
     try {
       const body = {
         ...info,
         username: user.username,
-
-        // map appName → displayName (API cũ)
         displayName: info.appName,
         avatar,
       };
@@ -141,7 +148,6 @@ export default function EditProfilePage() {
 
   const provinceList = provincesByCountry[info.country] || [];
 
-  // ⚠️ Tránh accessing user.username khi null → không lỗi build
   if (!piReady || authLoading || !user) {
     return (
       <main className="min-h-screen flex items-center justify-center">
@@ -175,7 +181,7 @@ export default function EditProfilePage() {
           </label>
         </div>
 
-        {/* 🔥 Chỉ hiển thị user.username */}
+        {/* Username */}
         <h1 className="text-center text-lg font-semibold text-gray-800 mb-4">
           {user?.username || "User"}
         </h1>
@@ -213,12 +219,25 @@ export default function EditProfilePage() {
               <select
                 className="border px-2 py-2 rounded w-24"
                 value={info.phoneCode}
-                onChange={(e) => setInfo({ ...info, phoneCode: e.target.value })}
+                onChange={(e) => {
+                  const dial = e.target.value;
+                  const found = Object.entries(phoneRules).find(
+                    ([code, rule]) => rule.dialCode === dial
+                  );
+                  setInfo({
+                    ...info,
+                    phoneCode: dial,
+                    country: found?.[0] || info.country,
+                  });
+                }}
               >
-                <option value="+84">🇻🇳 +84</option>
-                <option value="+1">🇺🇸 +1</option>
-                <option value="+81">🇯🇵 +81</option>
+                {Object.entries(phoneRules).map(([code, rule]) => (
+                  <option key={code} value={rule.dialCode}>
+                    {countries.find((c) => c.code === code)?.flag} {rule.dialCode}
+                  </option>
+                ))}
               </select>
+
               <input
                 type="tel"
                 className="flex-1 border px-3 py-2 rounded"
@@ -246,7 +265,12 @@ export default function EditProfilePage() {
               className="w-full border px-3 py-2 rounded"
               value={info.country}
               onChange={(e) =>
-                setInfo({ ...info, country: e.target.value, province: "" })
+                setInfo({
+                  ...info,
+                  country: e.target.value,
+                  phoneCode: phoneRules[e.target.value]?.dialCode || info.phoneCode,
+                  province: "",
+                })
               }
             >
               {countries.map((c) => (
