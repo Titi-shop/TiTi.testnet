@@ -62,17 +62,18 @@ export default function ProfilePage() {
 
     fetchProfile();
   }, [authLoading, user]);
-  // 🟢 Load avatar riêng từ API getAvatar
-useEffect(() => {
-  if (!profile?.username) return;
 
-  fetch(`/api/getAvatar?username=${profile.username}`)
-    .then((res) => res.json())
-    .then((data) => {
-      if (data?.avatar) setAvatar(data.avatar);
-    })
-    .catch((err) => console.warn("Không tải avatar:", err));
-}, [profile]);
+  // 🟢 Load avatar riêng từ API getAvatar
+  useEffect(() => {
+    if (!profile?.username) return;
+
+    fetch(`/api/getAvatar?username=${profile.username}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.avatar) setAvatar(data.avatar);
+      })
+      .catch((err) => console.warn("Không tải avatar:", err));
+  }, [profile]);
 
   // 📸 Upload avatar
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -141,7 +142,7 @@ useEffect(() => {
 
   return (
     <main className="min-h-screen bg-gray-100 pb-24 relative">
-      {/* 🔙 Nút quay lại như trang edit */}
+      {/* 🔙 Nút quay lại */}
       <button
         onClick={() => router.back()}
         className="absolute top-3 left-3 text-orange-600 text-2xl font-bold"
@@ -168,7 +169,7 @@ useEffect(() => {
             />
           ) : (
             <div className="w-28 h-28 rounded-full bg-orange-200 text-orange-600 flex items-center justify-center text-4xl font-bold border-4 border-orange-500">
-              {profile?.username?.charAt(0)?.toUpperCase() || "U"}
+              {profile?.displayName?.charAt(0)?.toUpperCase() || "U"}
             </div>
           )}
           <label
@@ -186,9 +187,11 @@ useEffect(() => {
           />
         </div>
 
+        {/* ✔️ Hiển thị đúng tên trong app (đã chỉnh) */}
         <h2 className="text-center text-lg font-semibold text-gray-800">
-          {profile?.displayName || profile?.username || "Người dùng"}
+          {profile?.displayName || "Người dùng"}
         </h2>
+
         {uploading && (
           <p className="text-sm text-gray-500 mt-1 text-center">
             Đang tải ảnh...
@@ -199,7 +202,7 @@ useEffect(() => {
       {/* 🧾 Thông tin cá nhân */}
       <div className="bg-white mt-6 mx-4 p-4 rounded-xl shadow-md space-y-3">
         {[
-          { label: "Tên hiển thị", key: "displayName" },
+          { label: "Tên trong ứng dụng (App Name)", key: "displayName" },
           { label: "Email", key: "email" },
           { label: "Điện thoại", key: "phone" },
           { label: "Địa chỉ", key: "address" },
