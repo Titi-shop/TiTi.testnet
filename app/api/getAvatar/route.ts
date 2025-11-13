@@ -9,13 +9,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Thiếu username" }, { status: 400 });
   }
 
-  const avatarUrl = await kv.get<string>(`avatar:${username}`);
+  // Lấy profile từ KV
+  const profile = await kv.get<Record<string, any>>(`user_profile:${username}`);
 
-  // Nếu chưa có ảnh -> trả về ảnh mặc định
-  if (!avatarUrl) {
-    return NextResponse.redirect("https://your-default-avatar-url.png");
-  }
+  const avatar = profile?.avatar || null;
 
-  // Trả về redirect đến ảnh thực tế
-  return NextResponse.redirect(avatarUrl);
+  return NextResponse.json({
+    avatar: avatar ?? null,
+  });
 }
