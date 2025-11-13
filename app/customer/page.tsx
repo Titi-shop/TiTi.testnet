@@ -1,21 +1,44 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/app/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
-import { Clock, Package, Truck, Star, RotateCcw } from "lucide-react"; // 👉 thay LogOut bằng RotateCcw
+import { Clock, Package, Truck, Star, RotateCcw } from "lucide-react";
 
 export default function CustomerDashboard() {
   const { user, piReady } = useAuth();
   const { translate } = useLanguage();
   const router = useRouter();
 
+  const [profile, setProfile] = useState<any>(null);
+  const [avatar, setAvatar] = useState<string | null>(null);
+
   useEffect(() => {
     if (piReady && !user) {
       router.replace("/pilogin");
     }
   }, [piReady, user, router]);
+
+  // 🟢 Lấy thông tin hồ sơ để hiển thị avatar + tên
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const username = user?.username;
+        if (!username) return;
+        const res = await fetch(`/api/profile?username=${encodeURIComponent(username)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setProfile(data);
+          setAvatar(data.avatar || null);
+        }
+      } catch (err) {
+        console.error("⚠️ Lỗi tải hồ sơ:", err);
+      }
+    };
+
+    if (user) fetchProfile();
+  }, [user]);
 
   if (!piReady || !user)
     return (
@@ -28,13 +51,28 @@ export default function CustomerDashboard() {
     <div className="min-h-screen bg-gray-100 pb-10">
       {/* Header */}
       <div className="bg-orange-500 text-white p-6 text-center shadow">
+        {/* 🧍 Avatar người dùng */}
         <div
           onClick={() => router.push("/customer/profile")}
-          className="w-16 h-16 bg-white rounded-full mx-auto mb-3 flex items-center justify-center text-orange-500 font-bold text-xl cursor-pointer hover:opacity-90 transition"
+          className="w-20 h-20 bg-white rounded-full mx-auto mb-3 overflow-hidden cursor-pointer hover:opacity-90 transition"
         >
-          {user.username.charAt(0).toUpperCase()}
+          {avatar ? (
+            <img
+              src={avatar}
+              alt="Avatar"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-orange-500 font-bold text-2xl">
+              {user.username.charAt(0).toUpperCase()}
+            </div>
+          )}
         </div>
-        <h1 className="text-xl font-semibold">{user.username}</h1>
+
+        {/* 🏷️ Hiển thị tên người dùng trong app (displayName) */}
+        <h1 className="text-xl font-semibold">
+          {profile?.displayName || user.username}
+        </h1>
       </div>
 
       {/* Đơn hàng */}
