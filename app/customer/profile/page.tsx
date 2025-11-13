@@ -22,7 +22,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (authLoading) return;
 
-    let username =
+    const username =
       user?.username ||
       localStorage.getItem("titi_username") ||
       (() => {
@@ -44,13 +44,12 @@ export default function ProfilePage() {
 
     const fetchProfile = async () => {
       try {
-        const res = await fetch(
-          `/api/profile?username=${encodeURIComponent(username!)}`
-        );
+        const res = await fetch(`/api/profile?username=${encodeURIComponent(username!)}`);
         if (!res.ok) throw new Error("Không thể tải hồ sơ.");
         const data = await res.json();
+
         setProfile(data);
-        setAvatar(data?.avatar || null);
+        setAvatar(`/api/getAvatar?username=${username}`);
         setError(null);
       } catch (err) {
         console.error("❌ Lỗi tải hồ sơ:", err);
@@ -63,22 +62,11 @@ export default function ProfilePage() {
     fetchProfile();
   }, [authLoading, user]);
 
-  // 🟢 Load avatar riêng từ API getAvatar
-  useEffect(() => {
-    if (!profile?.username) return;
-
-    fetch(`/api/getAvatar?username=${profile.username}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.avatar) setAvatar(data.avatar);
-      })
-      .catch((err) => console.warn("Không tải avatar:", err));
-  }, [profile]);
-
   // 📸 Upload avatar
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const previewURL = URL.createObjectURL(file);
     setPreview(previewURL);
 
@@ -89,6 +77,7 @@ export default function ProfilePage() {
         headers: { "x-filename": file.name },
         body: file,
       });
+
       const data = await res.json();
       if (res.ok && data.url) {
         setAvatar(data.url);
@@ -109,15 +98,14 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     try {
       await fetch("/api/logout", { method: "POST" });
-    } catch (e) {
-      console.warn("Không thể gọi API logout:", e);
-    } finally {
-      localStorage.removeItem("pi_user");
-      localStorage.removeItem("titi_username");
-      localStorage.removeItem("titi_is_logged_in");
-      alert("🚪 Bạn đã đăng xuất!");
-      window.location.href = "/account";
-    }
+    } catch {}
+
+    localStorage.removeItem("pi_user");
+    localStorage.removeItem("titi_username");
+    localStorage.removeItem("titi_is_logged_in");
+
+    alert("🚪 Bạn đã đăng xuất!");
+    window.location.href = "/account";
   };
 
   if (loading || authLoading)
@@ -142,6 +130,7 @@ export default function ProfilePage() {
 
   return (
     <main className="min-h-screen bg-gray-100 pb-24 relative">
+
       {/* 🔙 Nút quay lại */}
       <button
         onClick={() => router.back()}
@@ -169,9 +158,10 @@ export default function ProfilePage() {
             />
           ) : (
             <div className="w-28 h-28 rounded-full bg-orange-200 text-orange-600 flex items-center justify-center text-4xl font-bold border-4 border-orange-500">
-              {profile?.displayName?.charAt(0)?.toUpperCase() || "U"}
+              {user.username.charAt(0).toUpperCase()}
             </div>
           )}
+
           <label
             htmlFor="avatar-upload"
             className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full cursor-pointer hover:bg-orange-600 transition"
@@ -187,9 +177,9 @@ export default function ProfilePage() {
           />
         </div>
 
-        {/* ✔️ Hiển thị đúng tên trong app (đã chỉnh) */}
+        {/* 🔥 HIỂN THỊ USERNAME CHÍNH THỨC */}
         <h2 className="text-center text-lg font-semibold text-gray-800">
-          {profile?.displayName || "Người dùng"}
+          @{user.username}
         </h2>
 
         {uploading && (
@@ -199,7 +189,7 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* 🧾 Thông tin cá nhân */}
+      {/* 🧾 Thông tin */}
       <div className="bg-white mt-6 mx-4 p-4 rounded-xl shadow-md space-y-3">
         {[
           { label: "Tên trong ứng dụng (App Name)", key: "displayName" },
@@ -221,7 +211,7 @@ export default function ProfilePage() {
         ))}
       </div>
 
-      {/* ⚙️ Nút hành động */}
+      {/* ⚙️ Nút */}
       <div className="flex flex-col items-center mt-8 gap-3">
         <button
           onClick={() => router.push("/customer/profile/edit")}
