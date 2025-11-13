@@ -40,35 +40,42 @@ export default function CustomerAddressPage() {
    * ================================
    */
   const fetchAddress = async (username: string) => {
-    try {
-      const res = await fetch(`/api/address?username=${username}`);
-      const data = await res.json();
+  try {
+    const res = await fetch(`/api/address?username=${username}`);
+    const data = await res.json();
 
-      if (data?.address) {
-        const saved = data.address;
+    if (data?.address) {
+      const saved = data.address;
 
-        const countryData = countries.find(
-          (c) => c.code === saved.country
-        );
+      // ❗ FIX: nếu API trả về rỗng → tự lấy VN hoặc country[0]
+      const countryCode = saved.country || "VN";
 
-        setForm({
-          ...saved,
-          countryCode: countryData ? countryData.dial : "+00",
-        });
-      } else {
-        const first = countries[0];
-        setForm({
-          name: "",
-          phone: "",
-          address: "",
-          country: first.code,
-          countryCode: first.dial,
-        });
-      }
-    } catch (err) {
-      console.error("❌ Lỗi tải địa chỉ:", err);
+      const countryData = countries.find(
+        (c) => c.code === countryCode
+      );
+
+      setForm({
+        name: saved.name || "",
+        phone: saved.phone || "",
+        address: saved.address || "",
+        country: countryCode,
+        countryCode: countryData?.dial || "+84", // ❗ không bao giờ dùng +00 nữa
+      });
+    } else {
+      // Không có địa chỉ → set mặc định
+      const first = countries[0];
+      setForm({
+        name: "",
+        phone: "",
+        address: "",
+        country: first.code,
+        countryCode: first.dial,
+      });
     }
-  };
+  } catch (err) {
+    console.error("❌ Lỗi tải địa chỉ:", err);
+  }
+};
 
   /**
    * ================================
