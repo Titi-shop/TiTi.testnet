@@ -62,6 +62,17 @@ export default function ProfilePage() {
 
     fetchProfile();
   }, [authLoading, user]);
+  // 🟢 Load avatar riêng từ API getAvatar
+useEffect(() => {
+  if (!profile?.username) return;
+
+  fetch(`/api/getAvatar?username=${profile.username}`)
+    .then((res) => res.json())
+    .then((data) => {
+      if (data?.avatar) setAvatar(data.avatar);
+    })
+    .catch((err) => console.warn("Không tải avatar:", err));
+}, [profile]);
 
   // 📸 Upload avatar
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
