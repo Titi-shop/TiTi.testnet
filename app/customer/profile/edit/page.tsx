@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import { countries } from "@/data/countries";
 import { provincesByCountry } from "@/data/provinces";
 
 export default function EditProfilePage() {
   const router = useRouter();
+  const { user, loading, piReady } = useAuth();
+
   const [info, setInfo] = useState({
     pi_uid: "",
     displayName: "",
@@ -17,48 +20,42 @@ export default function EditProfilePage() {
     province: "",
     country: "VN",
   });
+
   const [avatar, setAvatar] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
-  // ✅ Lấy thông tin user từ localStorage / API
+  // ✅ Khi user đăng nhập hoặc context sẵn sàng → tải thông tin hồ sơ
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("pi_user");
-      const logged = localStorage.getItem("titi_is_logged_in");
-
-      if (stored && logged === "true") {
-        const parsed = JSON.parse(stored);
-        const user = parsed.user || {};
-        setInfo((prev) => ({
-          ...prev,
-          pi_uid: user.uid || user.id || "",
-          displayName: user.username || "",
-        }));
-        setIsLoggedIn(true);
-
-        // ✅ Lấy thông tin hồ sơ
-        if (user.uid || user.id) {
-          fetch(`/api/profile?pi_uid=${user.uid || user.id}`)
-            .then((res) => res.json())
-            .then((data) => {
-              if (data) {
-                setInfo((prev) => ({ ...prev, ...data }));
-                if (data.avatar) setAvatar(data.avatar);
-              }
-            })
-            .catch(() => console.log("⚠️ Không thể tải hồ sơ"));
-        }
-      } else {
-        alert("⚠️ Vui lòng đăng nhập bằng Pi Network trước!");
-        router.replace("/pilogin");
-      }
-    } catch (err) {
-      console.error("❌ Lỗi đọc thông tin đăng nhập:", err);
+    if (loading) return; // chờ context load xong
+    if (!user) {
+      alert("⚠️ Vui lòng đăng nhập bằng Pi Network trước!");
+      router.replace("/pilogin");
+      return;
     }
-  }, [router]);
+
+    // ✅ Gán thông tin user từ context
+    setInfo((prev) => ({
+      ...prev,
+      pi_uid: user.uid || "",
+      displayName: user.username || "",
+    }));
+
+    // ✅ Lấy thông tin hồ sơ từ backend
+    const uid = user.uid || user.username;
+    if (uid) {
+      fetch(`/api/profile?pi_uid=${uid}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data) {
+            setInfo((prev) => ({ ...prev, ...data }));
+            if (data.avatar) setAvatar(data.avatar);
+          }
+        })
+        .catch(() => console.log("⚠️ Không thể tải hồ sơ"));
+    }
+  }, [user, loading, router]);
 
   // ✅ Upload avatar
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,20 +72,23 @@ export default function EditProfilePage() {
       return;
     }
 
-    const username = info.displayName || info.pi_uid;
-    setLoading(true);
+    if (!user) {
+      alert("⚠️ Bạn cần đăng nhập trước khi tải ảnh!");
+      return;
+    }
 
+    setUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", selectedFile);
-      formData.append("username", username);
+      formData.append("username", user.username);
 
       const res = await fetch("/api/uploadAvatar", {
         method: "POST",
         body: formData,
       });
-      const data = await res.json();
 
+      const data = await res.json();
       if (res.ok) {
         setAvatar(data.url);
         alert("✅ Ảnh đại diện đã được cập nhật!");
@@ -98,13 +98,13 @@ export default function EditProfilePage() {
     } catch (err: any) {
       alert("❌ Không thể tải ảnh lên: " + err.message);
     } finally {
-      setLoading(false);
+      setUploading(false);
     }
   };
 
   // ✅ Lưu hồ sơ
   const handleSave = async () => {
-    if (!isLoggedIn || !info.pi_uid) {
+    if (!user || !user.accessToken) {
       alert("❌ Không thể lưu — chưa đăng nhập Pi Network.");
       return;
     }
@@ -117,8 +117,7 @@ export default function EditProfilePage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-uid": info.pi_uid,
-          "x-username": info.displayName,
+          Authorization: `Bearer ${user.accessToken}`, // 🔐 gửi token để xác minh
         },
         body: JSON.stringify(body),
       });
@@ -129,7 +128,6 @@ export default function EditProfilePage() {
         router.push("/customer/profile");
       } else {
         alert("❌ Lưu thất bại!");
-        console.error(data.error);
       }
     } catch (err) {
       console.error("❌ Lỗi khi lưu hồ sơ:", err);
@@ -141,9 +139,26 @@ export default function EditProfilePage() {
 
   const provinceList = provincesByCountry[info.country] || [];
 
+  // 🕒 Hiển thị trong khi chờ context load hoặc SDK chưa sẵn sàng
+  if (loading || !piReady) {
+    return (
+      <main className="min-h-screen flex items-center justify-center text-gray-500">
+        ⏳ Đang tải thông tin đăng nhập...
+      </main>
+    );
+  }
+
+  // 🔒 Nếu chưa đăng nhập
+  if (!user) {
+    return (
+      <main className="min-h-screen flex items-center justify-center text-center text-red-500">
+        ⚠️ Bạn cần đăng nhập bằng Pi Network để chỉnh sửa hồ sơ.
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-gray-100 pb-32 relative">
-      {/* 🔙 Nút quay lại */}
       <button
         onClick={() => router.back()}
         className="absolute top-3 left-3 text-orange-600 text-lg font-bold"
@@ -152,7 +167,7 @@ export default function EditProfilePage() {
       </button>
 
       <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg mt-12 p-6">
-        {/* 🧍 Ảnh đại diện */}
+        {/* 🧍 Avatar */}
         <div className="relative w-24 h-24 mx-auto mb-4">
           <img
             src={
@@ -178,7 +193,7 @@ export default function EditProfilePage() {
           {info.displayName || "Người dùng"}
         </h1>
 
-        {/* 🧾 Form thông tin */}
+        {/* 🧾 Form */}
         <div className="space-y-4">
           <div>
             <label className="block text-sm text-gray-700 mb-1">Tên người dùng</label>
@@ -252,9 +267,7 @@ export default function EditProfilePage() {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-700 mb-1">
-              Tỉnh / Thành phố
-            </label>
+            <label className="block text-sm text-gray-700 mb-1">Tỉnh / Thành phố</label>
             <select
               className="w-full border px-3 py-2 rounded"
               value={info.province}
@@ -282,10 +295,10 @@ export default function EditProfilePage() {
 
           <button
             onClick={handleUploadAvatar}
-            disabled={loading}
+            disabled={uploading}
             className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded"
           >
-            {loading ? "Đang tải..." : "📤 Cập nhật ảnh đại diện"}
+            {uploading ? "Đang tải..." : "📤 Cập nhật ảnh đại diện"}
           </button>
         </div>
       </div>
