@@ -14,23 +14,27 @@ export default function CustomerDashboard() {
   const [profile, setProfile] = useState<any>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
 
+  // Nếu chưa login → chuyển sang PiLogin
   useEffect(() => {
     if (piReady && !user) {
       router.replace("/pilogin");
     }
   }, [piReady, user, router]);
 
-  // 🟢 Lấy thông tin hồ sơ để hiển thị avatar + tên
+  // 🟢 Lấy hồ sơ từ API
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const username = user?.username;
         if (!username) return;
-        const res = await fetch(`/api/profile?username=${encodeURIComponent(username)}`);
+
+        const res = await fetch(
+          `/api/profile?username=${encodeURIComponent(username)}`
+        );
+
         if (res.ok) {
           const data = await res.json();
           setProfile(data);
-          setAvatar(data.avatar || null);
         }
       } catch (err) {
         console.error("⚠️ Lỗi tải hồ sơ:", err);
@@ -39,6 +43,18 @@ export default function CustomerDashboard() {
 
     if (user) fetchProfile();
   }, [user]);
+
+  // 🟢 Load avatar đúng cách bằng API
+  useEffect(() => {
+    if (!profile?.username) return;
+
+    fetch(`/api/getAvatar?username=${profile.username}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.avatar) setAvatar(data.avatar);
+      })
+      .catch(() => {});
+  }, [profile]);
 
   if (!piReady || !user)
     return (
@@ -51,27 +67,23 @@ export default function CustomerDashboard() {
     <div className="min-h-screen bg-gray-100 pb-10">
       {/* Header */}
       <div className="bg-orange-500 text-white p-6 text-center shadow">
-        {/* 🧍 Avatar người dùng */}
+        {/* Avatar */}
         <div
           onClick={() => router.push("/customer/profile")}
           className="w-20 h-20 bg-white rounded-full mx-auto mb-3 overflow-hidden cursor-pointer hover:opacity-90 transition"
         >
           {avatar ? (
-            <img
-              src={avatar}
-              alt="Avatar"
-              className="w-full h-full object-cover"
-            />
+            <img src={avatar} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-orange-500 font-bold text-2xl">
-              {user.username.charAt(0).toUpperCase()}
+              {profile?.displayName?.charAt(0)?.toUpperCase() || "U"}
             </div>
           )}
         </div>
 
-        {/* 🏷️ Hiển thị tên người dùng trong app (displayName) */}
+        {/* ✔  Chỉ hiển thị tên App, không hiển thị username Pi */}
         <h1 className="text-xl font-semibold">
-          {profile?.displayName || user.username}
+          {profile?.displayName || "Người dùng"}
         </h1>
       </div>
 
@@ -81,6 +93,7 @@ export default function CustomerDashboard() {
           <h2 className="font-semibold text-gray-800 text-lg">
             {translate("my_orders") || "Đơn hàng của tôi"}
           </h2>
+
           <button
             onClick={() => router.push("/customer/orders")}
             className="text-blue-600 text-sm hover:underline"
@@ -89,6 +102,7 @@ export default function CustomerDashboard() {
           </button>
         </div>
 
+        {/* 5 nút trạng thái đơn */}
         <div className="grid grid-cols-5 text-center py-4">
           <button
             onClick={() => router.push("/customer/pending")}
@@ -130,7 +144,6 @@ export default function CustomerDashboard() {
             </span>
           </button>
 
-          {/* 🔄 Nút trả hàng */}
           <button
             onClick={() => router.push("/customer/returns")}
             className="flex flex-col items-center text-gray-700 hover:text-orange-500"
@@ -143,7 +156,7 @@ export default function CustomerDashboard() {
         </div>
       </div>
 
-      {/* Ví người dùng */}
+      {/* Ví */}
       <div className="bg-white mx-3 mt-4 p-4 rounded-lg shadow text-center">
         <p className="text-gray-700">
           💰 {translate("wallet_label") || "Ví Pi"}:{" "}
