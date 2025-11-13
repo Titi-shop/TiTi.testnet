@@ -176,11 +176,11 @@ export default function CustomerAddressPage() {
     <main className="min-h-screen bg-gray-100 pb-20 relative">
 
       <button
-        onClick={() => router.back()}
-        className="absolute top-3 left-3 z-50 bg-orange-500 text-white px-3 py-1 rounded-full shadow font-bold text-lg"
-      >
-        ←
-      </button>
+  onClick={() => router.back()}
+  className="absolute top-3 left-3 text-orange-600 text-lg font-bold"
+>
+  ←
+</button>
 
       <div className="max-w-md mx-auto p-6 bg-white rounded-xl shadow mt-14">
         <h1 className="text-2xl font-bold text-center text-orange-600 mb-4">
