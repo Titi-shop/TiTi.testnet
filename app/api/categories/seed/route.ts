@@ -8,7 +8,7 @@ export async function GET() {
     { id: 3, name: "Thời trang Nữ", icon: "/banners/thoitrangnu.jpg" },
     { id: 4, name: "Giày dép", icon: "/banners/Screenshot_2025-11-14-19-32-23-378_com.vuahanghieu.jpg" },
     { id: 5, name: "Làm đẹp", icon: "/banners/lamdep.jpg" },
-    { id: 6, name: "Nhà cửa & Đời sống", icon: "https://placekitten.com/205/200" },
+    { id: 20, name: "Nội thất", icon: "/banners/noithat.jpg" },
     { id: 7, name: "Mẹ & Bé", icon: "/banners/mevabe.jpg" },
     { id: 8, name: "Thiết bị điện tử", icon: "/banners/dienthoai.jpg" },
     { id: 9, name: "Đồ gia dụng", icon: "/banners/dogiadung.jpg" },
@@ -19,10 +19,8 @@ export async function GET() {
     { id: 14, name: "Điện máy", icon: "/banners/dienmay.jpg" },
     { id: 15, name: "Sách", icon: "/banners/sach.jpg" },
     { id: 16, name: "Đồng hồ", icon: "/banners/dongho.jpg" },
-    { id: 17, name: "Phụ kiện thời trang", icon: "https://placekitten.com/216/200" },
-    { id: 18, name: "Máy ảnh & Flycam", icon: "/banners/flycam.jpg" },
     { id: 19, name: "Đồ chơi", icon: "/banners/dochoi.jpg" },
-    { id: 20, name: "Nội thất", icon: "/banners/noithat.jpg" },
+    { id: 18, name: "Máy ảnh & Flycam", icon: "/banners/flycam.jpg" },
   ];
 
   await kv.set("categories", categories);
