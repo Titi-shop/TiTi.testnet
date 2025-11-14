@@ -31,7 +31,7 @@ export default function ShopPage() {
     loadProducts();
   }, []);
 
-  const top3 = products.slice(0, 3);
+  const top3 = products.slice(0, 2);
   const remaining = products.slice(3);
 
   return (
