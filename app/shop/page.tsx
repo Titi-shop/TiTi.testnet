@@ -41,10 +41,10 @@ export default function ShopPage() {
     fetchProducts();
   }, []);
 
-  // 🎯 Lọc ra 3 sản phẩm đầu tiên
+  // 🎯 Lấy 3 sản phẩm đầu
   const top3 = products.slice(0, 3);
 
-  // 🎯 Các sản phẩm còn lại (grid sẽ hiển thị sau slider)
+  // 🎯 Các sản phẩm còn lại
   const remainingProducts = products.slice(3);
 
   return (
@@ -61,7 +61,7 @@ export default function ShopPage() {
 
       <div className="px-4 mt-2">
 
-        {/* 🟠 DANH MỤC TRƯỢT NGANG */}
+        {/* 🟠 CATEGORY HÀNG NGANG */}
         <h2 className="text-xl font-semibold text-gray-700 mb-2">
           Category
         </h2>
@@ -94,7 +94,7 @@ export default function ShopPage() {
           🛍️ Danh mục sản phẩm
         </h2>
 
-        {/* 1️⃣ HIỂN THỊ 3 SẢN PHẨM ĐẦU TIÊN */}
+        {/* 1️⃣ — HIỂN THỊ 3 SẢN PHẨM ĐẦU */}
         <div className="grid grid-cols-2 gap-3">
           {top3.map((p) => (
             <Link
@@ -115,7 +115,7 @@ export default function ShopPage() {
           ))}
         </div>
 
-        {/* ⭐ 2️⃣ THANH SẢN PHẨM TRƯỢT NGANG — HÀNG THỨ 3 ⭐ */}
+        {/* ⭐ 2️⃣ — THANH NGANG SỐ 1 */}
         <h3 className="text-lg font-semibold mt-4 mb-2 text-gray-700">
           🔥 Gợi ý hôm nay
         </h3>
@@ -131,17 +131,35 @@ export default function ShopPage() {
                 src={p.images?.[0] || "/placeholder.png"}
                 className="w-full h-24 object-cover rounded-md"
               />
-              <h4 className="text-sm font-medium mt-1 line-clamp-2">
-                {p.name}
-              </h4>
-              <p className="text-orange-600 font-bold text-sm">
-                {p.price} Pi
-              </p>
+              <h4 className="text-sm font-medium mt-1 line-clamp-2">{p.name}</h4>
+              <p className="text-orange-600 font-bold text-sm">{p.price} Pi</p>
             </Link>
           ))}
         </div>
 
-        {/* 3️⃣ HIỂN THỊ PHẦN SẢN PHẨM CÒN LẠI (GRID) */}
+        {/* ⭐ 3️⃣ — THANH NGANG SỐ 2 */}
+        <h3 className="text-lg font-semibold mt-4 mb-2 text-gray-700">
+          🌟 Sản phẩm nổi bật
+        </h3>
+
+        <div className="flex overflow-x-auto space-x-4 pb-3 scrollbar-hide">
+          {products.map((p) => (
+            <Link
+              key={p.id}
+              href={`/product/${p.id}`}
+              className="min-w-[150px] bg-white rounded-xl border shadow p-2"
+            >
+              <img
+                src={p.images?.[0] || "/placeholder.png"}
+                className="w-full h-24 object-cover rounded-md"
+              />
+              <h4 className="text-sm font-medium mt-1 line-clamp-2">{p.name}</h4>
+              <p className="text-orange-600 font-bold text-sm">{p.price} Pi</p>
+            </Link>
+          ))}
+        </div>
+
+        {/* 4️⃣ — GRID SẢN PHẨM CÒN LẠI */}
         <h3 className="text-xl font-bold text-orange-600 mt-4 mb-2">
           📦 Tất cả sản phẩm
         </h3>
