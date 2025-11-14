@@ -4,9 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 export default function ShopPage() {
-  const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
 
   // 🟢 Load danh mục
@@ -20,24 +18,10 @@ export default function ShopPage() {
     loadCategories();
   }, []);
 
-  // 🟢 Load sản phẩm
-  useEffect(() => {
-    const loadProducts = async () => {
-      const res = await fetch("/api/products");
-      const data = await res.json();
-      setProducts(data);
-      setLoadingProducts(false);
-    };
-    loadProducts();
-  }, []);
-
-  const top3 = products.slice(0, 2);
-  const remaining = products.slice(3);
-
   return (
     <main className="pb-20 bg-white min-h-screen">
 
-      {/* BANNER */}
+      {/* ⭐ BANNER */}
       <img
         src="/banners/Messenger_creation_9F1CAD64-6ACE-4FF9-9EFF-E68A79A745AD.jpeg"
         alt="banner"
@@ -46,122 +30,28 @@ export default function ShopPage() {
 
       <div className="mt-3">
 
-        {/* CATEGORY */}
+        {/* ⭐ DANH MỤC */}
         <h2 className="text-xl font-semibold text-gray-800 mb-2">Danh mục</h2>
 
-        <div className="flex overflow-x-auto space-x-6 pb-3 scrollbar-hide">
-          {categories.map((c) => (
-            <Link
-              key={c.id}
-              href={`/category/${c.id}`}
-              className="flex flex-col items-center min-w-[70px]"
-            >
-              <img
-                src={c.icon}
-                className="w-14 h-14 rounded-full object-cover border"
-              />
-              <span className="text-sm mt-1 text-center">{c.name}</span>
-            </Link>
-          ))}
-        </div>
-
-        {/* TIÊU ĐỀ */}
-        <h2 className="text-xl font-bold text-orange-600 mt-4 mb-2">
-          🛍 Danh mục sản phẩm
-        </h2>
-
-        {/* TOP 3 */}
-        <div className="grid grid-cols-2 gap-4">
-          {top3.map((p) => (
-            <Link
-              key={p.id}
-              href={`/product/${p.id}`}
-              className="rounded-xl overflow-hidden bg-white"
-            >
-              <img
-                src={p.images?.[0]}
-                className="w-full h-36 object-cover"
-              />
-              <div className="p-2">
-                <h3 className="text-sm font-medium line-clamp-2">{p.name}</h3>
-                <p className="text-orange-600 font-semibold">{p.price} Pi</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        {/* ⭐ 1️⃣ THANH NGANG GỢI Ý */}
-        <h3 className="text-lg font-semibold mt-5 mb-2">🔥 Gợi ý hôm nay</h3>
-
-        <div className="flex overflow-x-auto space-x-4 pb-3 scrollbar-hide">
-          {products.map((p) => (
-            <Link
-              key={p.id}
-              href={`/product/${p.id}`}
-              className="min-w-[160px] rounded-xl overflow-hidden bg-white"
-            >
-              <img
-                src={p.images?.[0]}
-                className="w-full h-32 object-cover"
-              />
-              <div className="p-2">
-                <h4 className="text-sm font-medium line-clamp-2">{p.name}</h4>
-                <p className="text-orange-600 font-bold">{p.price} Pi</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        {/* ⭐ 2️⃣ THANH NGANG SẢN PHẨM SALE */}
-        <h3 className="text-lg font-semibold mt-5 mb-2">⚡ Sale Giá Sốc</h3>
-
-        <div className="flex overflow-x-auto space-x-4 pb-3 scrollbar-hide">
-          {products.map((p) => (
-            <Link
-              key={p.id}
-              href={`/product/${p.id}`}
-              className="min-w-[160px] rounded-xl overflow-hidden bg-white relative"
-            >
-              {/* Gắn nhãn giảm giá */}
-              <span className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded">
-                {Math.floor(Math.random() * 50) + 10}% OFF
-              </span>
-
-              <img
-                src={p.images?.[0]}
-                className="w-full h-32 object-cover"
-              />
-              <div className="p-2">
-                <h4 className="text-sm font-medium line-clamp-2">{p.name}</h4>
-                <p className="text-orange-600 font-bold">{p.price} Pi</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        {/* TẤT CẢ SẢN PHẨM */}
-        <h3 className="text-xl font-bold text-orange-600 mt-6 mb-2">
-          📦 Tất cả sản phẩm
-        </h3>
-
-        <div className="grid grid-cols-2 gap-4">
-          {remaining.map((p) => (
-            <Link
-              key={p.id}
-              href={`/product/${p.id}`}
-              className="rounded-xl overflow-hidden bg-white"
-            >
-              <img
-                src={p.images?.[0]}
-                className="w-full h-36 object-cover"
-              />
-              <div className="p-2">
-                <h3 className="text-sm font-medium line-clamp-2">{p.name}</h3>
-                <p className="text-orange-600 font-bold">{p.price} Pi</p>
-              </div>
-            </Link>
-          ))}
-        </div>
+        {loadingCategories ? (
+          <p className="text-gray-500">Đang tải...</p>
+        ) : (
+          <div className="flex overflow-x-auto space-x-6 pb-3 scrollbar-hide">
+            {categories.map((c) => (
+              <Link
+                key={c.id}
+                href={`/category/${c.id}`}
+                className="flex flex-col items-center min-w-[70px]"
+              >
+                <img
+                  src={c.icon}
+                  className="w-14 h-14 rounded-full object-cover border"
+                />
+                <span className="text-sm mt-1 text-center">{c.name}</span>
+              </Link>
+            ))}
+          </div>
+        )}
 
       </div>
     </main>
