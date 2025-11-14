@@ -7,7 +7,7 @@ export async function GET() {
     { id: 2, name: "Thời trang Nam", icon: "https://placekitten.com/201/200" },
     { id: 3, name: "Thời trang Nữ", icon: "/banners/Screenshot_2025-11-14-19-30-34-208_com.shopee.vn.jpg" },
     { id: 4, name: "Giày dép", icon: "/banners/Screenshot_2025-11-14-19-32-23-378_com.vuahanghieu.jpg" },
-    { id: 5, name: "Làm đẹp", icon: "public/banners/Screenshot_2025-11-14-19-34-37-576_com.shopee.vn.jpg" },
+    { id: 5, name: "Làm đẹp", icon: "/banners/Screenshot_2025-11-14-19-34-37-576_com.shopee.vn.jpg" },
     { id: 6, name: "Nhà cửa & Đời sống", icon: "https://placekitten.com/205/200" },
     { id: 7, name: "Mẹ & Bé", icon: "https://placekitten.com/206/200" },
     { id: 8, name: "Thiết bị điện tử", icon: "https://placekitten.com/207/200" },
