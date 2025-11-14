@@ -54,7 +54,7 @@ export default function ShopPage() {
           </div>
         )}
 
-        {/* ⭐⭐⭐ CÁC THANH NGANG SẢN PHẨM ⭐⭐⭐ */}
+        {/* ⭐⭐⭐ 6 THANH NGANG SẢN PHẨM ⭐⭐⭐ */}
 
         {/* 1️⃣ Giá cao nhất */}
         <HorizontalProductSlider title="💎 Giá cao nhất" type="highest" />
