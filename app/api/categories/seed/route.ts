@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   const categories = [
-    { id: 1, name: "Điện thoại & Laptop", icon: "https://wpb76tasns4mpocc.public.blob.vercel-storage.com/category-1763061815745.png" },
+    { id: 1, name: "Điện thoại & Laptop", icon: "Screenshot_2025-11-10-12-25-21-079_com.shopee.vn.jpg" },
     { id: 2, name: "Thời trang Nam", icon: "https://placekitten.com/201/200" },
     { id: 3, name: "Thời trang Nữ", icon: "https://placekitten.com/202/200" },
     { id: 4, name: "Giày dép", icon: "https://placekitten.com/203/200" },
