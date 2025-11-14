@@ -31,7 +31,6 @@ export default function ShopPage() {
     loadProducts();
   }, []);
 
-  // Lấy 3 sản phẩm đầu tiên
   const top3 = products.slice(0, 3);
   const remaining = products.slice(3);
 
@@ -71,7 +70,7 @@ export default function ShopPage() {
           🛍 Danh mục sản phẩm
         </h2>
 
-        {/* TOP 3 SẢN PHẨM */}
+        {/* TOP 3 */}
         <div className="grid grid-cols-2 gap-4">
           {top3.map((p) => (
             <Link
@@ -84,26 +83,53 @@ export default function ShopPage() {
                 className="w-full h-36 object-cover"
               />
               <div className="p-2">
-                <h3 className="text-sm font-medium">{p.name}</h3>
+                <h3 className="text-sm font-medium line-clamp-2">{p.name}</h3>
                 <p className="text-orange-600 font-semibold">{p.price} Pi</p>
               </div>
             </Link>
           ))}
         </div>
 
-        {/* THANH NGANG 1 */}
-        <h3 className="text-lg font-semibold mt-4 mb-2">🔥 Gợi ý hôm nay</h3>
+        {/* ⭐ 1️⃣ THANH NGANG GỢI Ý */}
+        <h3 className="text-lg font-semibold mt-5 mb-2">🔥 Gợi ý hôm nay</h3>
 
         <div className="flex overflow-x-auto space-x-4 pb-3 scrollbar-hide">
           {products.map((p) => (
             <Link
               key={p.id}
               href={`/product/${p.id}`}
-              className="min-w-[150px] rounded-xl overflow-hidden bg-white"
+              className="min-w-[160px] rounded-xl overflow-hidden bg-white"
             >
               <img
                 src={p.images?.[0]}
-                className="w-full h-28 object-cover"
+                className="w-full h-32 object-cover"
+              />
+              <div className="p-2">
+                <h4 className="text-sm font-medium line-clamp-2">{p.name}</h4>
+                <p className="text-orange-600 font-bold">{p.price} Pi</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        {/* ⭐ 2️⃣ THANH NGANG SẢN PHẨM SALE */}
+        <h3 className="text-lg font-semibold mt-5 mb-2">⚡ Sale Giá Sốc</h3>
+
+        <div className="flex overflow-x-auto space-x-4 pb-3 scrollbar-hide">
+          {products.map((p) => (
+            <Link
+              key={p.id}
+              href={`/product/${p.id}`}
+              className="min-w-[160px] rounded-xl overflow-hidden bg-white relative"
+            >
+              {/* Gắn nhãn giảm giá */}
+              <span className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded">
+                {Math.floor(Math.random() * 50) + 10}% OFF
+              </span>
+
+              <img
+                src={p.images?.[0]}
+                className="w-full h-32 object-cover"
               />
               <div className="p-2">
                 <h4 className="text-sm font-medium line-clamp-2">{p.name}</h4>
@@ -114,7 +140,9 @@ export default function ShopPage() {
         </div>
 
         {/* TẤT CẢ SẢN PHẨM */}
-        <h3 className="text-xl font-bold text-orange-600 mt-4 mb-2">📦 Tất cả sản phẩm</h3>
+        <h3 className="text-xl font-bold text-orange-600 mt-6 mb-2">
+          📦 Tất cả sản phẩm
+        </h3>
 
         <div className="grid grid-cols-2 gap-4">
           {remaining.map((p) => (
@@ -128,12 +156,13 @@ export default function ShopPage() {
                 className="w-full h-36 object-cover"
               />
               <div className="p-2">
-                <h3 className="text-sm font-medium">{p.name}</h3>
+                <h3 className="text-sm font-medium line-clamp-2">{p.name}</h3>
                 <p className="text-orange-600 font-bold">{p.price} Pi</p>
               </div>
             </Link>
           ))}
         </div>
+
       </div>
     </main>
   );
