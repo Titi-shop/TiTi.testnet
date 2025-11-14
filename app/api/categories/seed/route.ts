@@ -6,7 +6,7 @@ export async function GET() {
     { id: 1, name: "Điện thoại & Laptop", icon: "https://muasam.titi.onl/banners/dienthoai.jpg" },
     { id: 2, name: "Thời trang Nam", icon: "https://placekitten.com/201/200" },
     { id: 3, name: "Thời trang Nữ", icon: "https://placekitten.com/202/200" },
-    { id: 4, name: "Giày dép", icon: "https://placekitten.com/203/200" },
+    { id: 4, name: "Giày dép", icon: "/banners/Screenshot_2025-11-14-19-32-23-378_com.vuahanghieu.jpg" },
     { id: 5, name: "Làm đẹp", icon: "https://placekitten.com/204/200" },
     { id: 6, name: "Nhà cửa & Đời sống", icon: "https://placekitten.com/205/200" },
     { id: 7, name: "Mẹ & Bé", icon: "https://placekitten.com/206/200" },
