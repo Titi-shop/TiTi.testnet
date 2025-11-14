@@ -1,61 +1,80 @@
 "use client";
 
-import { useLanguage } from "../context/LanguageContext";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import HorizontalProductSlider from "@/app/components/HorizontalProductSlider";
 
 export default function ShopPage() {
-  const { translate } = useLanguage(); // ✅ Dùng đa ngôn ngữ
-  const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
 
+  // 🟢 Load danh mục
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const res = await fetch("/api/products");
-        const data = await res.json();
-        setProducts(data);
-      } catch (err) {
-        console.error("❌ Lỗi khi tải sản phẩm:", err);
-      } finally {
-        setLoading(false);
-      }
+    const loadCategories = async () => {
+      const res = await fetch("/api/categories");
+      const data = await res.json();
+      setCategories(data);
+      setLoadingCategories(false);
     };
-    fetchProducts();
+    loadCategories();
   }, []);
 
   return (
-    <main className="p-4 max-w-6xl mx-auto">
-      {/* 🏷 Tiêu đề */}
-      <h1 className="text-2xl font-bold mb-4 text-orange-500">
-        🛍️ {translate("shop_title")}
-      </h1>
+    <main className="pb-20 bg-white min-h-screen">
 
-      {loading ? (
-        <p className="text-gray-600">⏳ {translate("loading") || "Đang tải sản phẩm..."}</p>
-      ) : products.length === 0 ? (
-        <p className="text-gray-500">{translate("no_products") || "Chưa có sản phẩm nào."}</p>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {products.map((p) => (
-            <Link
-              key={p.id}
-              href={`/product/${p.id}`}
-              className="border rounded-xl shadow hover:shadow-lg transition p-3 flex flex-col bg-white"
-            >
-              <img
-                src={p.images?.[0] || "/placeholder.png"}
-                alt={p.name}
-                className="rounded-md w-full h-40 object-cover"
-              />
-              <h3 className="font-semibold mt-2 text-gray-800 line-clamp-2">{p.name}</h3>
-              <p className="text-orange-500 font-medium mt-1">
-               {p.price} π
-              </p>
-            </Link>
-          ))}
-        </div>
-      )}
+      {/* ⭐ BANNER */}
+      <img
+        src="/banners/Messenger_creation_9F1CAD64-6ACE-4FF9-9EFF-E68A79A745AD.jpeg"
+        alt="banner"
+        className="w-full h-40 object-cover"
+      />
+
+      <div className="mt-3">
+
+        {/* ⭐ DANH MỤC */}
+        <h2 className="text-xl font-semibold text-gray-800 mb-2">Danh mục</h2>
+
+        {loadingCategories ? (
+          <p className="text-gray-500">Đang tải...</p>
+        ) : (
+          <div className="flex overflow-x-auto space-x-6 pb-3 scrollbar-hide">
+            {categories.map((c) => (
+              <Link
+                key={c.id}
+                href={`/category/${c.id}`}
+                className="flex flex-col items-center min-w-[70px]"
+              >
+                <img
+                  src={c.icon}
+                  className="w-14 h-14 rounded-full object-cover border"
+                />
+                <span className="text-sm mt-1 text-center">{c.name}</span>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {/* ⭐⭐⭐ 6 THANH NGANG SẢN PHẨM ⭐⭐⭐ */}
+
+        {/* 1️⃣ Giá cao nhất */}
+        <HorizontalProductSlider title="💎 Giá cao nhất" type="highest" />
+
+        {/* 2️⃣ Mới nhất */}
+        <HorizontalProductSlider title="🆕 Sản phẩm mới nhất" type="newest" />
+
+        {/* 3️⃣ Sale */}
+        <HorizontalProductSlider title="⚡ Đang giảm giá" type="sale" />
+
+        {/* 4️⃣ Thời trang */}
+        <HorizontalProductSlider title="👕 Thời trang" type="fashion" />
+
+        {/* 5️⃣ Điện thoại */}
+        <HorizontalProductSlider title="📱 Điện thoại & Laptop" type="phone" />
+
+        {/* 6️⃣ Thiết bị điện tử */}
+        <HorizontalProductSlider title="🔌 Thiết bị điện tử" type="electronic" />
+
+      </div>
     </main>
   );
 }
