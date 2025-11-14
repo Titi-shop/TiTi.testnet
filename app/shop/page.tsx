@@ -97,28 +97,25 @@ export default function ShopPage() {
         </h2>
 
         <div className="grid grid-cols-2 gap-3">
-          {top3.map((p) => (
-            <Link
-              key={p.id}
-              href={`/product/${p.id}`}
-              className="bg-white rounded-xl shadow border overflow-hidden"
-            >
-              <img
-                src={p.images?.[0] || "/placeholder.png"}
-                alt={p.name}
-                className="w-full h-36 object-cover"
-              />
+  {top3.map((p) => (
+    <Link
+      key={p.id}
+      href={`/product/${p.id}`}
+      className="bg-white rounded-xl overflow-hidden"
+    >
+      <img
+        src={p.images?.[0] || "/placeholder.png"}
+        alt={p.name}
+        className="w-full h-36 object-cover"
+      />
 
-              {/* INFO */}
-              <div className="p-2">
-                <h3 className="font-medium text-sm">{p.name}</h3>
-                <p className="text-orange-600 font-bold text-sm">
-                  {p.price} Pi
-                </p>
-              </div>
-            </Link>
-          ))}
-        </div>
+      <div className="p-2">
+        <h3 className="font-medium text-sm">{p.name}</h3>
+        <p className="text-orange-600 font-bold text-sm">{p.price} Pi</p>
+      </div>
+    </Link>
+  ))}
+</div>
 
         {/* ========================= */}
         {/* ⭐ 2️⃣ – THANH NGANG 1     */}
