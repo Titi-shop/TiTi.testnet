@@ -128,26 +128,24 @@ export default function ShopPage() {
         </h3>
 
         <div className="flex overflow-x-auto space-x-4 pb-3">
-          {products.map((p) => (
-            <Link
-              key={p.id}
-              href={`/product/${p.id}`}
-              className="min-w-[160px] bg-white rounded-xl border shadow overflow-hidden"
-            >
-              <img
-                src={p.images?.[0] || "/placeholder.png"}
-                className="w-full h-28 object-cover"
-              />
-              <div className="p-2">
-                <h4 className="text-sm font-medium line-clamp-2">
-                  {p.name}
-                </h4>
-                <p className="text-orange-600 font-bold text-sm">
-                  {p.price} Pi
-                </p>
-              </div>
-            </Link>
-          ))}
+  {products.map((p) => (
+    <Link
+      key={p.id}
+      href={`/product/${p.id}`}
+      className="min-w-[160px] bg-white rounded-xl overflow-hidden"
+    >
+      <img
+        src={p.images?.[0] || "/placeholder.png"}
+        className="w-full h-28 object-cover"
+      />
+      <div className="p-2">
+        <h4 className="text-sm font-medium line-clamp-2">{p.name}</h4>
+        <p className="text-orange-600 font-bold text-sm">{p.price} Pi</p>
+      </div>
+    </Link>
+  ))}
+</div>
+              
         </div>
 
         {/* ========================= */}
@@ -158,23 +156,23 @@ export default function ShopPage() {
         </h3>
 
         <div className="flex overflow-x-auto space-x-4 pb-3">
-          {products.map((p) => (
-            <Link
-              key={p.id}
-              href={`/product/${p.id}`}
-              className="min-w-[160px] bg-white rounded-xl border shadow overflow-hidden"
-            >
-              <img
-                src={p.images?.[0] || "/placeholder.png"}
-                className="w-full h-28 object-cover"
-              />
-              <div className="p-2">
-                <h4 className="text-sm font-medium line-clamp-2">{p.name}</h4>
-                <p className="text-orange-600 font-bold text-sm">{p.price} Pi</p>
-              </div>
-            </Link>
-          ))}
-        </div>
+  {products.map((p) => (
+    <Link
+      key={p.id}
+      href={`/product/${p.id}`}
+      className="min-w-[160px] bg-white rounded-xl overflow-hidden"
+    >
+      <img
+        src={p.images?.[0] || "/placeholder.png"}
+        className="w-full h-28 object-cover"
+      />
+      <div className="p-2">
+        <h4 className="text-sm font-medium line-clamp-2">{p.name}</h4>
+        <p className="text-orange-600 font-bold text-sm">{p.price} Pi</p>
+      </div>
+    </Link>
+  ))}
+</div>
 
         {/* ===================== */}
         {/* 4️⃣ — GRID CÒN LẠI */}
