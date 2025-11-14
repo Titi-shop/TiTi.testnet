@@ -44,7 +44,7 @@ export default function ShopPage() {
         className="w-full h-40 object-cover"
       />
 
-      <div className="px-4 mt-3">
+      <div className="mt-3">
 
         {/* CATEGORY */}
         <h2 className="text-xl font-semibold text-gray-800 mb-2">Danh mục</h2>
