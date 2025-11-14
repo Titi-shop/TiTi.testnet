@@ -12,15 +12,16 @@ export default function PiLayoutClient({ children }: { children: React.ReactNode
     <LanguageProvider>
       <AuthProvider>
         <CartProvider>
-          {/* ✅ Khởi tạo Pi SDK */}
           <PiProvider />
 
-          {/* ✅ Giao diện chính */}
           <Navbar />
-          <main className="pt-20 min-h-screen bg-gray-50 flex justify-center">
+
+          {/* ⭐ FULL WIDTH – KHÔNG flex justify-center – NỀN TRẮNG */}
+          <main className="pt-20 min-h-screen w-full bg-white">
             <PiStatus />
             {children}
           </main>
+
           <BottomNav />
         </CartProvider>
       </AuthProvider>
