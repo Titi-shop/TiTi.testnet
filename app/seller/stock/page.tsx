@@ -164,20 +164,20 @@ export default function SellerStockPage() {
               key={product.id}
               className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300"
             >
-              <div className="relative w-full h-44">
-                {product.images?.[0] ? (
-                  <Image
-                    src={product.images[0]}
-                    alt={product.name}
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400">
-                    Không có ảnh
-                  </div>
-                )}
-              </div>
+            <div className="relative w-full h-44 pointer-events-none">
+  {product.images?.[0] ? (
+    <Image
+      src={product.images[0]}
+      alt={product.name}
+      fill
+      className="object-cover"
+    />
+  ) : (
+    <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400">
+      Không có ảnh
+    </div>
+  )}
+</div>
 
               <div className="p-3 text-center">
                 <h3 className="font-semibold text-gray-800 truncate">
@@ -187,7 +187,7 @@ export default function SellerStockPage() {
                   {product.price} π
                 </p>
 
-                <div className="flex justify-center gap-6 mt-3 text-gray-700 text-xl relative z-50">
+                <div className="flex justify-center gap-6 mt-3 text-gray-700 text-xl relative z-50 pointer-events-auto">
                   <button
                     onClick={() => router.push(`/product/${product.id}`)}
                     title="Xem"
