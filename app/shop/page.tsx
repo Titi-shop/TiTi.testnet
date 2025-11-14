@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import HorizontalProductSlider from "@/app/components/HorizontalProductSlider";
 
 export default function ShopPage() {
   const [categories, setCategories] = useState<any[]>([]);
@@ -52,6 +53,26 @@ export default function ShopPage() {
             ))}
           </div>
         )}
+
+        {/* ⭐⭐⭐ CÁC THANH NGANG SẢN PHẨM ⭐⭐⭐ */}
+
+        {/* 1️⃣ Giá cao nhất */}
+        <HorizontalProductSlider title="💎 Giá cao nhất" type="highest" />
+
+        {/* 2️⃣ Mới nhất */}
+        <HorizontalProductSlider title="🆕 Sản phẩm mới nhất" type="newest" />
+
+        {/* 3️⃣ Sale */}
+        <HorizontalProductSlider title="⚡ Đang giảm giá" type="sale" />
+
+        {/* 4️⃣ Thời trang */}
+        <HorizontalProductSlider title="👕 Thời trang" type="fashion" />
+
+        {/* 5️⃣ Điện thoại */}
+        <HorizontalProductSlider title="📱 Điện thoại & Laptop" type="phone" />
+
+        {/* 6️⃣ Thiết bị điện tử */}
+        <HorizontalProductSlider title="🔌 Thiết bị điện tử" type="electronic" />
 
       </div>
     </main>
