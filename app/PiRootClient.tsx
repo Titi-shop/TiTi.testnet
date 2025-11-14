@@ -1,4 +1,5 @@
 "use client";
+
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/app/context/CartContext";
@@ -15,11 +16,15 @@ export default function PiRootClient({ children }: { children: React.ReactNode }
         <CartProvider>
           <PiProvider />
           <Toaster position="top-center" reverseOrder={false} />
+
           <Navbar />
-          <main className="pt-20 px-3">
+
+          {/* ⭐ FULL WIDTH - KHÔNG PADDING - NỀN TRẮNG */}
+          <main className="pt-20 w-full bg-white">
             <PiStatus />
             {children}
           </main>
+
           <BottomNav />
         </CartProvider>
       </AuthProvider>
