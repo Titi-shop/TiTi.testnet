@@ -39,7 +39,7 @@ export default function ShopPage() {
 
       {/* BANNER */}
       <img
-        src="/banner.jpg"
+        src="/banners/Messenger_creation_9F1CAD64-6ACE-4FF9-9EFF-E68A79A745AD.jpeg"
         alt="banner"
         className="w-full h-40 object-cover"
       />
