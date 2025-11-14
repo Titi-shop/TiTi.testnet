@@ -133,7 +133,7 @@ export default function SellerPostPage() {
     return <main className="text-center py-10">⏳ Đang tải...</main>;
 
   return (
-    <main className="p-5 max-w-lg mx-auto">
+    <main className="p-5 max-w-lg mx-auto pb-32">
       <h1 className="text-xl font-bold mb-3">🛒 Đăng sản phẩm mới</h1>
       <p className="text-gray-500 text-center mb-3">👤 Người bán: <b>{user.username}</b></p>
 
