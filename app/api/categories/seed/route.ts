@@ -12,7 +12,7 @@ export async function GET() {
     { id: 7, name: "Mẹ & Bé", icon: "/banners/mevabe.jpg" },
     { id: 8, name: "Thiết bị điện tử", icon: "/banners/dienthoai.jpg" },
     { id: 9, name: "Đồ gia dụng", icon: "/banners/dogiadung.jpg" },
-    { id: 10, name: "Sức khỏe", icon: "https://placekitten.com/209/200" },
+    { id: 10, name: "Sức khỏe", icon: "/banners/suckhoe.jpg" },
     { id: 11, name: "Thể thao & Du lịch", icon: "/banners/thethao.jpg" },
     { id: 12, name: "Ô tô & Xe máy", icon: "/banners/oto.jpg" },
     { id: 13, name: "Thú cưng", icon: "/banners/thucung.jpg" },
