@@ -16,12 +16,12 @@ export async function GET() {
     { id: 11, name: "Thể thao & Du lịch", icon: "/banners/thethao.jpg" },
     { id: 12, name: "Ô tô & Xe máy", icon: "/banners/oto.jpg" },
     { id: 13, name: "Thú cưng", icon: "/banners/thucung.jpg" },
-    { id: 14, name: "Tạp hóa", icon: "https://placekitten.com/213/200" },
-    { id: 15, name: "Sách", icon: "https://placekitten.com/214/200" },
+    { id: 14, name: "Điện máy", icon: "/banners/dienmay.jpg" },
+    { id: 15, name: "Sách", icon: "/banners/sach.jpg" },
     { id: 16, name: "Đồng hồ", icon: "/banners/dongho.jpg" },
     { id: 17, name: "Phụ kiện thời trang", icon: "https://placekitten.com/216/200" },
     { id: 18, name: "Máy ảnh & Flycam", icon: "/banners/flycam.jpg" },
-    { id: 19, name: "Đồ chơi", icon: "https://placekitten.com/218/200" },
+    { id: 19, name: "Đồ chơi", icon: "/banners/dochoi.jpg" },
     { id: 20, name: "Nội thất", icon: "/banners/noithat.jpg" },
   ];
 
