@@ -41,14 +41,14 @@ export default function ShopPage() {
     fetchProducts();
   }, []);
 
-  // 🎯 Lấy 3 sản phẩm đầu
+  // Lấy 3 sản phẩm đầu
   const top3 = products.slice(0, 3);
 
-  // 🎯 Các sản phẩm còn lại
+  // Sản phẩm còn lại
   const remainingProducts = products.slice(3);
 
   return (
-    <main className="pb-20 bg-gray-100 min-h-screen">
+    <main className="pb-20 bg-gray-50 min-h-screen">
 
       {/* BANNER */}
       <div className="w-full">
@@ -61,16 +61,16 @@ export default function ShopPage() {
 
       <div className="px-4 mt-2">
 
-        {/* 🟠 CATEGORY HÀNG NGANG */}
-        <h2 className="text-xl font-semibold text-gray-700 mb-2">
-          Category
+        {/* 🟠 CATEGORY */}
+        <h2 className="text-lg font-semibold text-gray-800 mb-2">
+          Danh mục
         </h2>
 
         <div className="flex overflow-x-auto space-x-5 pb-3">
           {loadingCategories ? (
             <p className="text-gray-500">Đang tải...</p>
           ) : categories.length === 0 ? (
-            <p className="text-gray-500">Không có danh mục nào.</p>
+            <p className="text-gray-500">Không có danh mục.</p>
           ) : (
             categories.map((c) => (
               <Link
@@ -81,85 +81,104 @@ export default function ShopPage() {
                 <img
                   src={c.icon || "/placeholder.png"}
                   alt={c.name}
-                  className="w-14 h-14 rounded-full border object-cover"
+                  className="w-14 h-14 rounded-full object-cover border"
                 />
-                <span className="text-sm mt-1 text-center">{c.name}</span>
+                <span className="text-sm mt-1">{c.name}</span>
               </Link>
             ))
           )}
         </div>
 
-        {/* 🟣 TIÊU ĐỀ */}
+        {/* ===================== */}
+        {/* 1️⃣ — 3 SẢN PHẨM ĐẦU */}
+        {/* ===================== */}
         <h2 className="text-xl font-bold text-orange-600 mt-4 mb-2">
           🛍️ Danh mục sản phẩm
         </h2>
 
-        {/* 1️⃣ — HIỂN THỊ 3 SẢN PHẨM ĐẦU */}
         <div className="grid grid-cols-2 gap-3">
           {top3.map((p) => (
             <Link
               key={p.id}
               href={`/product/${p.id}`}
-              className="bg-white p-3 rounded-xl shadow border"
+              className="bg-white rounded-xl shadow border overflow-hidden"
             >
               <img
                 src={p.images?.[0] || "/placeholder.png"}
                 alt={p.name}
-                className="w-full h-32 object-cover rounded-md"
+                className="w-full h-36 object-cover"
               />
-              <h3 className="font-medium mt-2">{p.name}</h3>
-              <p className="text-orange-600 font-semibold">
-                Giá (Pi): {p.price} Pi
-              </p>
+
+              {/* INFO */}
+              <div className="p-2">
+                <h3 className="font-medium text-sm">{p.name}</h3>
+                <p className="text-orange-600 font-bold text-sm">
+                  {p.price} Pi
+                </p>
+              </div>
             </Link>
           ))}
         </div>
 
-        {/* ⭐ 2️⃣ — THANH NGANG SỐ 1 */}
-        <h3 className="text-lg font-semibold mt-4 mb-2 text-gray-700">
+        {/* ========================= */}
+        {/* ⭐ 2️⃣ – THANH NGANG 1     */}
+        {/* ========================= */}
+        <h3 className="text-lg font-semibold mt-4 mb-2 text-gray-800">
           🔥 Gợi ý hôm nay
         </h3>
 
-        <div className="flex overflow-x-auto space-x-4 pb-3 scrollbar-hide">
+        <div className="flex overflow-x-auto space-x-4 pb-3">
           {products.map((p) => (
             <Link
               key={p.id}
               href={`/product/${p.id}`}
-              className="min-w-[150px] bg-white rounded-xl border shadow p-2"
+              className="min-w-[160px] bg-white rounded-xl border shadow overflow-hidden"
             >
               <img
                 src={p.images?.[0] || "/placeholder.png"}
-                className="w-full h-24 object-cover rounded-md"
+                className="w-full h-28 object-cover"
               />
-              <h4 className="text-sm font-medium mt-1 line-clamp-2">{p.name}</h4>
-              <p className="text-orange-600 font-bold text-sm">{p.price} Pi</p>
+              <div className="p-2">
+                <h4 className="text-sm font-medium line-clamp-2">
+                  {p.name}
+                </h4>
+                <p className="text-orange-600 font-bold text-sm">
+                  {p.price} Pi
+                </p>
+              </div>
             </Link>
           ))}
         </div>
 
-        {/* ⭐ 3️⃣ — THANH NGANG SỐ 2 */}
-        <h3 className="text-lg font-semibold mt-4 mb-2 text-gray-700">
+        {/* ========================= */}
+        {/* ⭐ 3️⃣ – THANH NGANG 2     */}
+        {/* ========================= */}
+        <h3 className="text-lg font-semibold mt-4 mb-2 text-gray-800">
           🌟 Sản phẩm nổi bật
         </h3>
 
-        <div className="flex overflow-x-auto space-x-4 pb-3 scrollbar-hide">
+        <div className="flex overflow-x-auto space-x-4 pb-3">
           {products.map((p) => (
             <Link
               key={p.id}
               href={`/product/${p.id}`}
-              className="min-w-[150px] bg-white rounded-xl border shadow p-2"
+              className="min-w-[160px] bg-white rounded-xl border shadow overflow-hidden"
             >
               <img
                 src={p.images?.[0] || "/placeholder.png"}
-                className="w-full h-24 object-cover rounded-md"
+                className="w-full h-28 object-cover"
               />
-              <h4 className="text-sm font-medium mt-1 line-clamp-2">{p.name}</h4>
-              <p className="text-orange-600 font-bold text-sm">{p.price} Pi</p>
+              <div className="p-2">
+                <h4 className="text-sm font-medium line-clamp-2">{p.name}</h4>
+                <p className="text-orange-600 font-bold text-sm">{p.price} Pi</p>
+              </div>
             </Link>
           ))}
         </div>
 
-        {/* 4️⃣ — GRID SẢN PHẨM CÒN LẠI */}
+        {/* ===================== */}
+        {/* 4️⃣ — GRID CÒN LẠI */}
+        {/* ===================== */}
         <h3 className="text-xl font-bold text-orange-600 mt-4 mb-2">
           📦 Tất cả sản phẩm
         </h3>
@@ -169,17 +188,20 @@ export default function ShopPage() {
             <Link
               key={p.id}
               href={`/product/${p.id}`}
-              className="bg-white p-3 rounded-xl shadow border"
+              className="bg-white rounded-xl shadow border overflow-hidden"
             >
               <img
                 src={p.images?.[0] || "/placeholder.png"}
                 alt={p.name}
-                className="w-full h-32 object-cover rounded-md"
+                className="w-full h-36 object-cover"
               />
-              <h3 className="font-medium mt-2">{p.name}</h3>
-              <p className="text-orange-600 font-semibold">
-                Giá (Pi): {p.price} Pi
-              </p>
+
+              <div className="p-2">
+                <h3 className="font-medium text-sm">{p.name}</h3>
+                <p className="text-orange-600 font-bold text-sm">
+                  {p.price} Pi
+                </p>
+              </div>
             </Link>
           ))}
         </div>
