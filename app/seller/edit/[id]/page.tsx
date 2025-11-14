@@ -23,11 +23,14 @@ export default function EditProductPage() {
   const [previews, setPreviews] = useState<string[]>([]);
   const [selectedPreview, setSelectedPreview] = useState<string | null>(null);
 
-  // ✅ Xác thực người dùng Pi
+  // ============================
+  // 📌 XÁC THỰC USER PI
+  // ============================
   useEffect(() => {
     try {
       const stored = localStorage.getItem("pi_user");
       const logged = localStorage.getItem("titi_is_logged_in");
+
       if (stored && logged === "true") {
         const parsed = JSON.parse(stored);
         const username = (parsed?.user?.username || parsed?.username || "")
@@ -37,15 +40,17 @@ export default function EditProductPage() {
       } else {
         router.push("/pilogin");
       }
-    } catch (err) {
-      console.error("❌ Lỗi đọc Pi user:", err);
+    } catch {
       router.push("/pilogin");
     }
   }, [router]);
 
-  // ✅ Lấy sản phẩm
+  // ============================
+  // 📌 LẤY THÔNG TIN SẢN PHẨM
+  // ============================
   useEffect(() => {
     if (!id) return;
+
     fetch("/api/products", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
@@ -56,14 +61,15 @@ export default function EditProductPage() {
         }
         setLoading(false);
       })
-      .catch((err) => {
-        console.error("❌ Lỗi tải sản phẩm:", err);
+      .catch(() => {
         setMessage({ text: "Không thể tải thông tin sản phẩm.", type: "error" });
         setLoading(false);
       });
   }, [id]);
 
-  // ✅ Upload ảnh
+  // ============================
+  // 📌 UPLOAD ẢNH
+  // ============================
   async function handleFileUpload(file: File): Promise<string | null> {
     try {
       const arrayBuffer = await file.arrayBuffer();
@@ -75,6 +81,7 @@ export default function EditProductPage() {
         },
         body: arrayBuffer,
       });
+
       const data = await res.json();
       return data.url || null;
     } catch {
@@ -83,15 +90,22 @@ export default function EditProductPage() {
     }
   }
 
-  // ✅ Chọn thêm ảnh
+  // ============================
+  // 📌 CHỌN ẢNH
+  // ============================
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
+
     const files = Array.from(e.target.files);
     setImages((prev) => [...prev, ...files]);
+
     const urls = files.map((f) => URL.createObjectURL(f));
     setPreviews((prev) => [...prev, ...urls]);
   };
 
+  // ============================
+  // 📌 XOÁ ẢNH
+  // ============================
   const removeImage = (index: number) => {
     setImages((prev) => prev.filter((_, i) => i !== index));
     setPreviews((prev) => prev.filter((_, i) => i !== index));
@@ -101,18 +115,24 @@ export default function EditProductPage() {
     }));
   };
 
-  // ✅ Lưu chỉnh sửa
+  // ============================
+  // 📌 LƯU SẢN PHẨM
+  // ============================
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
-    setMessage({ text: "", type: "" });
 
     const form = e.currentTarget;
-    let rawPrice = (form.price as any).value;
-    rawPrice = rawPrice.replace(",", ".");
-    const price = parseFloat(rawPrice);
+
     const name = (form.name as any).value.trim();
-    const description = (form.description as any).value.trim();
+    const rawPrice = (form.price as any).value;
+    const price = parseFloat(rawPrice.replace(",", "."));
+
+    const salePrice = parseFloat((form.salePrice as any).value || "0");
+    const saleStart = (form.saleStart as any).value || "";
+    const saleEnd = (form.saleEnd as any).value || "";
+
+    const description = (form.description as any).value;
 
     if (isNaN(price) || price <= 0) {
       setMessage({ text: "⚠️ Giá không hợp lệ.", type: "error" });
@@ -120,12 +140,14 @@ export default function EditProductPage() {
       return;
     }
 
+    // Upload ảnh mới
     const newUrls: string[] = [];
     for (const img of images) {
       const url = await handleFileUpload(img);
       if (url) newUrls.push(url);
     }
 
+    // Hợp nhất ảnh
     const allImages = [...(product.images || []), ...newUrls];
 
     const res = await fetch("/api/products", {
@@ -135,6 +157,9 @@ export default function EditProductPage() {
         id: product.id,
         name,
         price,
+        salePrice: salePrice > 0 ? salePrice : null,
+        saleStart,
+        saleEnd,
         description,
         images: allImages,
         seller: sellerUser,
@@ -142,17 +167,22 @@ export default function EditProductPage() {
     });
 
     const result = await res.json();
+
     if (result.success) {
       setMessage({ text: "✅ Cập nhật thành công!", type: "success" });
-      setTimeout(() => router.push("/seller/stock"), 1200);
+      setTimeout(() => router.push("/seller/stock"), 1000);
     } else {
       setMessage({ text: result.message || "❌ Không thể lưu.", type: "error" });
     }
+
     setSaving(false);
   }
 
-  if (loading) return <p className="text-center mt-10 text-gray-600">⏳ Đang tải dữ liệu...</p>;
-  if (!product) return <p className="text-center mt-10 text-red-500">Không tìm thấy sản phẩm!</p>;
+  if (loading)
+    return <p className="text-center mt-10 text-gray-600">⏳ Đang tải dữ liệu...</p>;
+
+  if (!product)
+    return <p className="text-center mt-10 text-red-500">Không tìm thấy sản phẩm!</p>;
 
   return (
     <main className="max-w-lg mx-auto p-6 bg-white rounded-xl shadow mt-10 pb-32">
@@ -166,7 +196,7 @@ export default function EditProductPage() {
 
       {message.text && (
         <p
-          className={`text-center font-medium mb-2 ${
+          className={`text-center mb-2 font-medium ${
             message.type === "success" ? "text-green-600" : "text-red-500"
           }`}
         >
@@ -175,6 +205,8 @@ export default function EditProductPage() {
       )}
 
       <form onSubmit={handleSave} className="space-y-4">
+
+        {/* TÊN */}
         <div>
           <label className="block font-medium mb-1">Tên sản phẩm</label>
           <input
@@ -185,21 +217,55 @@ export default function EditProductPage() {
           />
         </div>
 
+        {/* GIÁ */}
         <div>
           <label className="block font-medium mb-1">Giá (Pi)</label>
           <input
             name="price"
             type="number"
+            defaultValue={product.price}
             step="any"
             min="0.000001"
-            defaultValue={product.price}
-            required
             className="w-full border rounded-md p-2"
           />
         </div>
 
+        {/* 🎉 SALE */}
+        <div className="p-4 border rounded-md bg-orange-50">
+          <h2 className="font-semibold text-orange-600 mb-2">
+            🔥 Thiết lập giá SALE (không bắt buộc)
+          </h2>
+
+          <label className="block text-sm mb-1">Giá sale</label>
+          <input
+            name="salePrice"
+            type="number"
+            step="any"
+            min="0"
+            defaultValue={product.salePrice || ""}
+            className="w-full border rounded-md p-2 mb-3"
+          />
+
+          <label className="block text-sm mb-1">Ngày bắt đầu</label>
+          <input
+            name="saleStart"
+            type="date"
+            defaultValue={product.saleStart || ""}
+            className="w-full border rounded-md p-2 mb-3"
+          />
+
+          <label className="block text-sm mb-1">Ngày kết thúc</label>
+          <input
+            name="saleEnd"
+            type="date"
+            defaultValue={product.saleEnd || ""}
+            className="w-full border rounded-md p-2"
+          />
+        </div>
+
+        {/* MÔ TẢ */}
         <div>
-          <label className="block font-medium mb-1">Mô tả sản phẩm</label>
+          <label className="block font-medium mb-1">Mô tả</label>
           <textarea
             name="description"
             defaultValue={product.description}
@@ -208,7 +274,7 @@ export default function EditProductPage() {
           ></textarea>
         </div>
 
-        {/* Ảnh sản phẩm */}
+        {/* ẢNH */}
         <div>
           <label className="block font-medium mb-2">Ảnh sản phẩm</label>
           <input
@@ -224,54 +290,36 @@ export default function EditProductPage() {
             {previews.map((url, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-md p-2"
+                className="flex items-center justify-between bg-gray-50 p-2 border rounded-md"
               >
-                <div
-                  onClick={() => setSelectedPreview(url)}
-                  className="flex items-center gap-3 cursor-pointer"
-                >
+                <div className="flex items-center gap-2 cursor-pointer"
+                     onClick={() => setSelectedPreview(url)}>
                   <img
                     src={url}
-                    alt={`preview-${idx}`}
-                    className="w-[70px] h-[70px] object-cover rounded-md border border-gray-300"
+                    className="w-16 h-16 object-cover rounded-md border"
                   />
-                  <span className="text-gray-700 text-sm truncate max-w-[180px]">
-                    {url.split("/").pop()}
-                  </span>
                 </div>
+
                 <button
                   type="button"
                   onClick={() => removeImage(idx)}
-                  className="text-purple-600 text-lg font-bold px-2"
+                  className="text-red-500 text-lg font-bold px-2"
                 >
                   ✕
                 </button>
               </div>
             ))}
-
-            {previews.length > 0 && (
-              <label className="text-[#ff6600] cursor-pointer block mt-1 font-medium">
-                + Thêm ảnh khác
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-              </label>
-            )}
           </div>
         </div>
 
+        {/* FULL IMAGE VIEW */}
         {selectedPreview && (
           <div
-            className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center"
             onClick={() => setSelectedPreview(null)}
           >
             <img
               src={selectedPreview}
-              alt="preview-large"
               className="max-w-[90%] max-h-[80%] rounded-lg shadow-lg"
             />
           </div>
@@ -280,9 +328,9 @@ export default function EditProductPage() {
         <button
           type="submit"
           disabled={saving}
-          className="w-full bg-[#ff6600] hover:bg-[#e65500] text-white p-3 rounded-lg font-semibold"
+          className="w-full bg-[#ff6600] hover:bg-[#e65600] text-white p-3 rounded-lg font-semibold"
         >
-          {saving ? "💾 Đang lưu..." : "✅ Lưu thay đổi"}
+          {saving ? "💾 Đang lưu..." : "💾 Lưu thay đổi"}
         </button>
       </form>
     </main>
