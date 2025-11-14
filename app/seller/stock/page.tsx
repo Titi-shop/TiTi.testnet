@@ -187,7 +187,7 @@ export default function SellerStockPage() {
                   {product.price} π
                 </p>
 
-                <div className="flex justify-center gap-4 mt-2 text-gray-600 text-lg">
+                <div className="flex justify-center gap-6 mt-3 text-gray-700 text-xl relative z-50">
                   <button
                     onClick={() => router.push(`/product/${product.id}`)}
                     title="Xem"
