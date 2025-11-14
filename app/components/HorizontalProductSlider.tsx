@@ -1,67 +1,96 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 
-export default function HorizontalProductSlider({
-  title,
-  api
-}: {
-  title: string;
-  api: string;
-}) {
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function HorizontalProductSlider({ title, type }) {
+  const [products, setProducts] = useState([]);
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const res = await fetch(api);
-        const data = await res.json();
-        setItems(data);
-      } catch (err) {
-        console.log("❌ Lỗi tải slider:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, [api]);
+    fetch("/api/products", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        let filtered = [...data];
+
+        switch (type) {
+          case "highest": // Giá cao nhất
+            filtered = filtered.sort((a, b) => b.price - a.price).slice(0, 20);
+            break;
+
+          case "newest": // Mới nhất
+            filtered = filtered
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+              .slice(0, 20);
+            break;
+
+          case "sale": // Sản phẩm đang sale
+            filtered = filtered.filter(
+              (p) =>
+                p.salePrice &&
+                p.saleStart &&
+                p.saleEnd &&
+                new Date() >= new Date(p.saleStart) &&
+                new Date() <= new Date(p.saleEnd)
+            );
+            break;
+
+          case "fashion": // Category thời trang
+            filtered = filtered.filter(
+              (p) => Number(p.categoryId) === 2 || Number(p.categoryId) === 3 // nam + nữ
+            );
+            break;
+
+          case "phone": // Category điện thoại
+            filtered = filtered.filter((p) => Number(p.categoryId) === 1);
+            break;
+
+          case "electronic": // Category điện tử
+            filtered = filtered.filter((p) => Number(p.categoryId) === 8);
+            break;
+
+          default:
+            break;
+        }
+
+        setProducts(filtered);
+      });
+  }, [type]);
 
   return (
-    <div className="mt-5">
-      {/* TITLE */}
-      <h3 className="text-lg font-semibold mb-2 text-gray-800">
-        {title}
-      </h3>
+    <div className="p-4">
+      <h2 className="text-lg font-bold mb-3">{title}</h2>
 
-      {/* SCROLL WRAPPER */}
-      <div className="flex overflow-x-auto space-x-4 pb-3 scrollbar-hide">
+      <div className="flex overflow-x-auto space-x-4 scrollbar-hide">
+        {products.map((item) => (
+          <div
+            key={item.id}
+            className="min-w-[150px] bg-white rounded-lg shadow p-2 border"
+          >
+            <img
+              src={item.images?.[0] || "/placeholder.png"}
+              alt={item.name}
+              className="w-full h-24 object-cover rounded"
+            />
 
-        {loading ? (
-          <p className="text-gray-500">Đang tải...</p>
-        ) : items.length === 0 ? (
-          <p className="text-gray-500">Không có sản phẩm nào.</p>
-        ) : (
-          items.map((p) => (
-            <Link
-              key={p.id}
-              href={`/product/${p.id}`}
-              className="min-w-[150px] bg-white rounded-xl border shadow p-2"
-            >
-              <img
-                src={p.images?.[0] || "/placeholder.png"}
-                className="w-full h-24 object-cover rounded-md"
-              />
-              <h4 className="text-sm font-medium mt-1 line-clamp-2">
-                {p.name}
-              </h4>
-              <p className="text-orange-600 font-bold text-sm">
-                {p.price} Pi
+            <h3 className="mt-2 text-sm font-semibold truncate">
+              {item.name}
+            </h3>
+
+            {item.salePrice ? (
+              <div className="mt-1">
+                <p className="text-red-600 font-bold">
+                  {item.salePrice} π
+                </p>
+                <p className="text-xs line-through text-gray-400">
+                  {item.price} π
+                </p>
+              </div>
+            ) : (
+              <p className="text-orange-600 font-bold mt-1">
+                {item.price} π
               </p>
-            </Link>
-          ))
-        )}
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
