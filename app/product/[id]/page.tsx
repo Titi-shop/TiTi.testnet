@@ -41,6 +41,26 @@ export default function ProductDetail() {
     if (id) fetchProduct();
   }, [id]);
 
+
+  // ⭐⭐⭐ TĂNG LƯỢT XEM (VIEW) — đặt ngay tại đây ⭐⭐⭐
+  useEffect(() => {
+    if (!id) return;
+
+    // Giới hạn tăng view mỗi 6 giờ
+    const key = `viewed_${id}`;
+    const last = localStorage.getItem(key);
+    const now = Date.now();
+
+    if (!last || now - Number(last) > 6 * 60 * 60 * 1000) {
+      localStorage.setItem(key, now.toString());
+
+      fetch("/api/products/view", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+    }
+  }, [id]);
   if (loading)
     return <p className="text-center mt-6">⏳ {translate("loading")}</p>;
   if (!product)
