@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { del, put, list } from "@vercel/blob";
 import { headers } from "next/headers";
+import { normalizeSaleDates, toISO } from "@/lib/formatDate";
 
 const FILE_NAME = "products.json";
 
@@ -122,8 +123,8 @@ export async function POST(req: Request) {
       categoryId: Number(categoryId) || null,
       createdAt: new Date().toISOString(),
       salePrice: salePrice || null,
-      saleStart: saleStart || null,
-      saleEnd: saleEnd || null,
+saleStart: toISO(saleStart),
+saleEnd: toISO(saleEnd),
     };
 
     list.unshift(newProduct);
