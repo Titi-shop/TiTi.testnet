@@ -66,7 +66,7 @@ export default function ShopPage() {
 
         {/* ⭐⭐⭐ CÁC THANH NGANG SẢN PHẨM ⭐⭐⭐ */}
 
-        <HorizontalProductSlider title="💎 Giá cao nhất" type="highest" />
+        <HorizontalProductSlider title="💎 Hot " type="highest" />
 
         <HorizontalProductSlider title="🆕 Sản phẩm mới nhất" type="newest" />
 
