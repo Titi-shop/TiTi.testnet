@@ -162,7 +162,7 @@ export default function ProductDetail() {
 
       {/* 👁 Thông tin thêm */}
       <div className="bg-white px-4 pb-3 flex items-center gap-4 text-gray-500 text-sm border-b">
-        <span>👁 {product.views ?? 11}</span>
+        <span>👁 {product.views ?? 0}</span>
         <span>🛒 {product.sold ?? 0} đã bán</span>
         <span>⭐ 5.0</span>
       </div>
