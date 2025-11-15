@@ -7,36 +7,50 @@ export default function HorizontalProductSlider({ title, type }) {
   const [products, setProducts] = useState([]);
 
   useEffect(() => {
-    async function load() {
-      const res = await fetch("/api/products", { cache: "no-store" });
-      const allProducts = await res.json();
+    fetch("/api/products", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        let filtered = [...data];
 
-      let filtered = [...allProducts];
+        switch (type) {
+          case "highest": 
+            filtered = filtered.sort((a, b) => b.price - a.price).slice(0, 20);
+            break;
 
-      if (type === "highest") {
-        filtered = filtered.sort((a, b) => b.price - a.price).slice(0, 20);
-      }
+          case "newest":
+            filtered = filtered
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+              .slice(0, 20);
+            break;
 
-      if (type === "newest") {
-        filtered = filtered
-          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-          .slice(0, 20);
-      }
+          case "sale":
+            filtered = filtered.filter(
+              (p) =>
+                p.salePrice &&
+                p.saleStart &&
+                p.saleEnd &&
+                new Date() >= new Date(p.saleStart) &&
+                new Date() <= new Date(p.saleEnd)
+            );
+            break;
 
-      if (type === "sale") {
-        const saleRes = await fetch("/api/sale");
-        const sale = await saleRes.json();
+          case "fashion":
+            filtered = filtered.filter(
+              (p) => Number(p.categoryId) === 2 || Number(p.categoryId) === 3
+            );
+            break;
 
-        filtered = filtered.filter((p) => {
-          const s = sale.find((x) => x.productId === p.id);
-          return !!s;
-        });
-      }
+          case "phone":
+            filtered = filtered.filter((p) => Number(p.categoryId) === 1);
+            break;
 
-      setProducts(filtered);
-    }
+          case "electronic":
+            filtered = filtered.filter((p) => Number(p.categoryId) === 8);
+            break;
+        }
 
-    load();
+        setProducts(filtered);
+      });
   }, [type]);
 
   return (
@@ -52,6 +66,7 @@ export default function HorizontalProductSlider({ title, type }) {
           >
             <img
               src={item.images?.[0] || "/placeholder.png"}
+              alt={item.name}
               className="w-full h-24 object-cover rounded"
             />
 
@@ -59,7 +74,14 @@ export default function HorizontalProductSlider({ title, type }) {
               {item.name}
             </h3>
 
-            <p className="text-orange-600 font-bold mt-1">{item.price}π</p>
+            {item.salePrice ? (
+              <div className="mt-1">
+                <p className="text-red-600 font-bold">{item.salePrice} π</p>
+                <p className="text-xs line-through text-gray-400">{item.price} π</p>
+              </div>
+            ) : (
+              <p className="text-orange-600 font-bold mt-1">{item.price} π</p>
+            )}
           </Link>
         ))}
       </div>
