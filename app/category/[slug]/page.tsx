@@ -1,6 +1,6 @@
 // app/category/[slug]/page.tsx
-
 import Image from "next/image";
+import Link from "next/link";
 
 // 🧩 Kiểu dữ liệu sản phẩm
 interface Product {
@@ -33,12 +33,11 @@ async function getProducts(slug: string) {
     const res = await fetch(
       `https://api.titimall.vn/products?category=${slug}`,
       {
-        next: { revalidate: 60 }, // 🕒 Cache 1 phút
+        next: { revalidate: 60 }
       }
     );
 
     if (!res.ok) return [];
-
     return (await res.json()) as Product[];
   } catch (err) {
     console.error("❌ Lỗi fetch API:", err);
@@ -55,20 +54,20 @@ export default async function CategoryPage({ params }: Props) {
 
   return (
     <div className="px-6 py-8">
-      <button
-        onClick={() => history.back()}
-        className="text-orange-600 font-semibold mb-4"
-      >
+
+      {/* BACK WITHOUT onClick */}
+      <Link href="/categories" className="text-orange-600 font-semibold mb-4 inline-block">
         ← Quay lại
-      </button>
+      </Link>
 
       <h1 className="text-2xl font-semibold capitalize mb-6">
         {categoryName}
       </h1>
 
-      {/* Nếu rỗng */}
       {products.length === 0 ? (
-        <p className="text-gray-500">Hiện chưa có sản phẩm trong danh mục này.</p>
+        <p className="text-gray-500">
+          Hiện chưa có sản phẩm trong danh mục này.
+        </p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
           {products.map((item) => (
@@ -84,7 +83,9 @@ export default async function CategoryPage({ params }: Props) {
                 className="w-full h-auto rounded-lg object-cover"
               />
 
-              <h2 className="mt-2 text-sm font-medium line-clamp-2">{item.name}</h2>
+              <h2 className="mt-2 text-sm font-medium line-clamp-2">
+                {item.name}
+              </h2>
 
               <p className="text-red-600 font-semibold mt-1">
                 {item.price.toLocaleString("vi-VN")} ₫
