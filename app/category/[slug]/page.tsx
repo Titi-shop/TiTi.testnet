@@ -1,4 +1,4 @@
-         "use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -57,12 +57,12 @@ export default function CategoryDetailPage({ params }: any) {
   return (
     <main className="p-4 max-w-6xl mx-auto">
 
-      {/* 🔙 */}
+      {/* 🔙 QUAY LẠI */}
       <Link
         href="/categories"
         className="text-orange-600 font-bold text-lg inline-block mb-4"
       >
-        ← Quay lại
+        ← 
       </Link>
 
       {/* ⭐ TÊN DANH MỤC */}
@@ -114,4 +114,4 @@ export default function CategoryDetailPage({ params }: any) {
       )}
     </main>
   );
-}     
+}
