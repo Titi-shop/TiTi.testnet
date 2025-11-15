@@ -1,75 +1,92 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
-interface Product {
-  id: number;
-  name: string;
-  finalPrice: number;
-  images: string[];
-}
+export default function CategoryDetailPage({ params }: any) {
+  const { slug } = params; // slug = categoryId
+  const categoryId = Number(slug);
 
-interface Props {
-  params: {
-    slug: string;
-  };
-}
+  const [products, setProducts] = useState<any[]>([]);
+  const [category, setCategory] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-export async function generateMetadata({ params }: Props) {
-  const categoryName = params.slug.replace(/-/g, " ");
-  return {
-    title: `${categoryName} | TiTi Mall`,
-    description: `Khám phá các sản phẩm trong danh mục ${categoryName}.`,
-  };
-}
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // ⭐ Lấy toàn bộ sản phẩm
+        const resProducts = await fetch("/api/products", { cache: "no-store" });
+        const allProducts = await resProducts.json();
 
-async function getProductsByCategory(categoryId: string) {
-  try {
-    const res = await fetch(
-      `https://api.titimall.vn/api/products?category=${categoryId}`,
-      { next: { revalidate: 60 } }
-    );
+        // ⭐ Lọc theo categoryId
+        const filtered = allProducts.filter(
+          (p: any) => p.categoryId === categoryId
+        );
+        setProducts(filtered);
 
-    if (!res.ok) return [];
-    return await res.json();
-  } catch {
-    return [];
-  }
-}
+        // ⭐ Lấy thông tin danh mục
+        const resCate = await fetch("/api/categories");
+        const categories = await resCate.json();
+        const findCate = categories.find((c: any) => c.id === categoryId);
+        setCategory(findCate || null);
 
-export default async function CategoryPage({ params }: Props) {
-  const { slug } = params;
+      } catch (err) {
+        console.error("❌ Lỗi tải danh mục:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const products = await getProductsByCategory(slug);
+    loadData();
+  }, [categoryId]);
 
   return (
-    <div className="px-6 py-8">
-      <Link href="/categories" className="text-orange-600 font-semibold mb-4 inline-block">
+    <main className="p-4 max-w-6xl mx-auto">
+
+      {/* Back */}
+      <Link href="/categories" className="text-orange-600 font-bold text-lg">
         ← Quay lại
       </Link>
 
-      <h1 className="text-2xl font-semibold capitalize mb-6">
-        Danh mục: {slug}
+      {/* Tên danh mục */}
+      <h1 className="text-2xl font-bold my-4 text-orange-600">
+        {category ? category.name : `Danh mục ${slug}`}
       </h1>
 
-      {products.length === 0 ? (
+      {/* Loading */}
+      {loading ? (
+        <p>Đang tải...</p>
+      ) : products.length === 0 ? (
         <p className="text-gray-500">Hiện chưa có sản phẩm trong danh mục này.</p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-          {products.map((item: Product) => (
-            <div key={item.id} className="border rounded-xl p-3 bg-white shadow-sm">
-              <Image
-                src={item.images?.[0] || "/placeholder.png"}
-                alt={item.name}
-                width={300}
-                height={300}
-                className="w-full h-auto rounded-lg object-cover"
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {products.map((p) => (
+            <Link
+              key={p.id}
+              href={`/product/${p.id}`}
+              className="border p-2 rounded-md shadow-sm"
+            >
+              <img
+                src={p.images?.[0] || "/placeholder.png"}
+                alt={p.name}
+                className="w-full h-32 object-cover rounded"
               />
-              <h2 className="mt-2 text-sm font-medium line-clamp-2">{item.name}</h2>
-              <p className="text-red-600 font-semibold">{item.finalPrice.toLocaleString()} ₫</p>
-            </div>
+
+              <h3 className="font-bold text-sm mt-2">{p.name}</h3>
+
+              <p className="text-orange-600 font-semibold text-sm">
+                {p.finalPrice?.toLocaleString()} Pi
+              </p>
+
+              {p.isSale && (
+                <p className="text-xs line-through text-gray-400">
+                  {p.price?.toLocaleString()} Pi
+                </p>
+              )}
+            </Link>
           ))}
         </div>
       )}
-    </div>
+    </main>
   );
 }
