@@ -1,72 +1,37 @@
 import { NextResponse } from "next/server";
-import { list, put, del } from "@vercel/blob";
+import { list } from "@vercel/blob";
 
-// 📌 Đọc sale.json
-async function readSale() {
+/** Đọc danh sách sản phẩm */
+async function readProducts() {
   try {
     const { blobs } = await list();
-    const file = blobs.find((b) => b.pathname === "sale.json");
+    const file = blobs.find((b) => b.pathname === "products.json");
     if (!file) return [];
     const res = await fetch(file.url, { cache: "no-store" });
     return await res.json();
   } catch (err) {
-    console.error("Lỗi đọc sale.json:", err);
+    console.error("❌ Lỗi đọc products:", err);
     return [];
   }
 }
 
-// 📌 Ghi sale.json
-async function writeSale(items: any[]) {
-  try {
-    const json = JSON.stringify(items, null, 2);
-
-    const { blobs } = await list();
-    const old = blobs.find((b) => b.pathname === "sale.json");
-    if (old) await del("sale.json");
-
-    await put("sale.json", json, {
-      access: "public",
-      addRandomSuffix: false,
-    });
-  } catch (err) {
-    console.error("Lỗi ghi sale.json:", err);
-  }
-}
-
-// ============================
-// 📌 GET — Lấy danh sách sale
-// ============================
+/** GET – Lấy danh sách sản phẩm đang sale */
 export async function GET() {
-  const items = await readSale();
-  return NextResponse.json(items);
-}
+  const now = new Date();
+  const products = await readProducts();
 
-// ============================
-// 📌 POST — Thêm sản phẩm sale
-// ============================
-export async function POST(req: Request) {
-  const body = await req.json();
-  const { productId, salePrice, from, to } = body;
+  const saleItems = products.filter((p: any) => {
+    const start = p.saleStart ? new Date(p.saleStart) : null;
+    const end = p.saleEnd ? new Date(p.saleEnd) : null;
 
-  if (!productId || !salePrice) {
-    return NextResponse.json(
-      { error: "Thiếu productId hoặc salePrice" },
-      { status: 400 }
+    return (
+      p.salePrice &&
+      start &&
+      end &&
+      now >= start &&
+      now <= end
     );
-  }
+  });
 
-  const items = await readSale();
-
-  const newSale = {
-    id: Date.now(),
-    productId,
-    salePrice,
-    from: from || null,
-    to: to || null,
-  };
-
-  items.unshift(newSale);
-  await writeSale(items);
-
-  return NextResponse.json(newSale);
+  return NextResponse.json(saleItems);
 }
