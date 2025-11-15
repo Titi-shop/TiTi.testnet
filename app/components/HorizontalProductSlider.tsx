@@ -13,17 +13,19 @@ export default function HorizontalProductSlider({ title, type }) {
         let filtered = [...data];
 
         switch (type) {
-          case "highest": 
-            filtered = filtered.sort((a, b) => b.price - a.price).slice(0, 20);
+          case "highest": // 10 giá cao nhất
+            filtered = filtered
+              .sort((a, b) => Number(b.price) - Number(a.price))
+              .slice(0, 10);
             break;
 
-          case "newest":
+          case "newest": // 10 sản phẩm mới
             filtered = filtered
               .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-              .slice(0, 20);
+              .slice(0, 10);
             break;
 
-          case "sale":
+          case "sale": // SP sale, tự lọc theo ngày
             filtered = filtered.filter(
               (p) =>
                 p.salePrice &&
@@ -32,6 +34,12 @@ export default function HorizontalProductSlider({ title, type }) {
                 new Date() >= new Date(p.saleStart) &&
                 new Date() <= new Date(p.saleEnd)
             );
+            break;
+
+          case "mostViewed": // Nhiều người xem nhất
+            filtered = filtered
+              .sort((a, b) => Number(b.views || 0) - Number(a.views || 0))
+              .slice(0, 10);
             break;
 
           case "fashion":
@@ -44,8 +52,15 @@ export default function HorizontalProductSlider({ title, type }) {
             filtered = filtered.filter((p) => Number(p.categoryId) === 1);
             break;
 
+          case "laptop":
+            filtered = filtered.filter((p) => Number(p.categoryId) === 7);
+            break;
+
           case "electronic":
             filtered = filtered.filter((p) => Number(p.categoryId) === 8);
+            break;
+
+          default:
             break;
         }
 
@@ -58,32 +73,52 @@ export default function HorizontalProductSlider({ title, type }) {
       <h2 className="text-lg font-bold mb-3">{title}</h2>
 
       <div className="flex overflow-x-auto space-x-4 scrollbar-hide">
-        {products.map((item) => (
-          <Link
-            key={item.id}
-            href={`/product/${item.id}`}
-            className="min-w-[150px] bg-white rounded-lg shadow p-2 border cursor-pointer"
-          >
-            <img
-              src={item.images?.[0] || "/placeholder.png"}
-              alt={item.name}
-              className="w-full h-24 object-cover rounded"
-            />
+        {products.map((item) => {
+          const salePercent =
+            item.salePrice && item.price
+              ? Math.round(((item.price - item.salePrice) / item.price) * 100)
+              : 0;
 
-            <h3 className="mt-2 text-sm font-semibold truncate">
-              {item.name}
-            </h3>
+          return (
+            <Link
+              key={item.id}
+              href={`/product/${item.id}`}
+              className="relative min-w-[150px] bg-white rounded-lg shadow p-2 border cursor-pointer"
+            >
+              {/* Badge % SALE */}
+              {salePercent > 0 && (
+                <span className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full shadow">
+                  -{salePercent}%
+                </span>
+              )}
 
-            {item.salePrice ? (
-              <div className="mt-1">
-                <p className="text-red-600 font-bold">{item.salePrice} π</p>
-                <p className="text-xs line-through text-gray-400">{item.price} π</p>
-              </div>
-            ) : (
-              <p className="text-orange-600 font-bold mt-1">{item.price} π</p>
-            )}
-          </Link>
-        ))}
+              <img
+                src={item.images?.[0] || "/placeholder.png"}
+                alt={item.name}
+                className="w-full h-24 object-cover rounded"
+              />
+
+              <h3 className="mt-2 text-sm font-semibold truncate">
+                {item.name}
+              </h3>
+
+              {item.salePrice ? (
+                <div className="mt-1">
+                  <p className="text-red-600 font-bold">
+                    {item.salePrice} π
+                  </p>
+                  <p className="text-xs line-through text-gray-400">
+                    {item.price} π
+                  </p>
+                </div>
+              ) : (
+                <p className="text-orange-600 font-bold mt-1">
+                  {item.price} π
+                </p>
+              )}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
