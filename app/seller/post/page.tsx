@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 
 export default function SellerPostPage() {
   const { translate } = useLanguage();
-  const { user, piReady } = useAuth();
+  const { user, piReady, loading } = useAuth();
   const router = useRouter();
 
   const [saving, setSaving] = useState(false);
@@ -33,8 +33,10 @@ export default function SellerPostPage() {
   }, []);
 
   useEffect(() => {
-    if (piReady && !user) router.push("/pilogin");
-  }, [piReady, user, router]);
+  if (!loading && piReady && !user) {
+    router.push("/pilogin");
+  }
+}, [loading, piReady, user, router]);
 
   async function handleFileUpload(file: File): Promise<string | null> {
     try {
