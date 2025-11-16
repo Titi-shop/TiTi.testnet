@@ -95,52 +95,50 @@ export default function ShopPage() {
           <>
             <div className="grid grid-cols-2 gap-4 px-2">
               {products.slice(0, visibleCount).map((item) => {
-                const salePercent =
-                  item.salePrice && item.price
-                    ? Math.round(((item.price - item.salePrice) / item.price) * 100)
-                    : 0;
+  const salePercent =
+    item.isSale && item.salePrice && item.price
+      ? Math.round(((item.price - item.salePrice) / item.price) * 100)
+      : 0;
 
-                return (
-                  <Link
-                    key={item.id}
-                    href={`/product/${item.id}`}
-                    className="bg-white p-2 rounded-lg shadow border relative"
-                  >
-                    {/* Badge SALE */}
-                    {salePercent > 0 && (
-                      <span className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full">
-                        -{salePercent}%
-                      </span>
-                    )}
+  return (
+    <Link
+      key={item.id}
+      href={`/product/${item.id}`}
+      className="bg-white p-2 rounded-lg shadow border relative"
+    >
 
-                    <img
-                      src={item.images?.[0] || "/placeholder.png"}
-                      className="w-full h-28 object-cover rounded"
-                    />
+      {/* ⭐ Badge SALE đúng ngày */}
+      {item.isSale && salePercent > 0 && (
+        <span className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full">
+          -{salePercent}%
+        </span>
+      )}
 
-                    <h3 className="mt-2 text-sm font-semibold truncate">
-                      {item.name}
-                    </h3>
+      <img
+        src={item.images?.[0] || "/placeholder.png"}
+        className="w-full h-28 object-cover rounded"
+      />
 
-                    {item.salePrice ? (
-                      <div>
-                        <p className="text-red-600 font-bold">{item.salePrice} π</p>
-                        <p className="text-xs line-through text-gray-400">
-                          {item.price} π
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-orange-600 font-bold">
-                        {item.price} π
-                      </p>
-                    )}
+      <h3 className="mt-2 text-sm font-semibold truncate">
+        {item.name}
+      </h3>
 
-                    {/* lượt xem */}
-                    <p className="text-xs text-gray-500 mt-1">{item.views} lượt xem</p>
-                  </Link>
-                );
-              })}
-            </div>
+      {/* ⭐ Hiển thị giá đúng theo ngày sale */}
+      {item.isSale ? (
+        <div>
+          <p className="text-red-600 font-bold">{item.salePrice} π</p>
+          <p className="text-xs line-through text-gray-400">{item.price} π</p>
+        </div>
+      ) : (
+        <p className="text-orange-600 font-bold">
+          {item.price} π
+        </p>
+      )}
+
+      <p className="text-xs text-gray-500 mt-1">{item.views} lượt xem</p>
+    </Link>
+  );
+})}
 
             {/* ⭐ NÚT XEM THÊM ⭐ */}
             {visibleCount < products.length && (
