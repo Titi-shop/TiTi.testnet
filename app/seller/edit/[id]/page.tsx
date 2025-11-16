@@ -3,13 +3,13 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useLanguage } from "../../../context/LanguageContext";
-import { useAuth } from "@/context/AuthContext"; // ⭐ THÊM AUTH
+import { useAuth } from "@/context/AuthContext";
 
 export default function EditProductPage() {
   const { id } = useParams();
   const router = useRouter();
   const { translate } = useLanguage();
-  const { user, loading, piReady } = useAuth(); // ⭐ LẤY TỪ AUTHCONTEXT
+  const { user, loading, piReady } = useAuth();
 
   const [product, setProduct] = useState<any>(null);
   const [categories, setCategories] = useState<any[]>([]);
@@ -25,36 +25,35 @@ export default function EditProductPage() {
   const [images, setImages] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
 
-  /* ======================================================
-     🔐 1) KIỂM TRA ĐĂNG NHẬP TỪ AUTHCONTEXT
-  ====================================================== */
+  /* ======================
+      AUTH CHECK
+  ====================== */
   useEffect(() => {
     if (!loading && piReady) {
       if (!user) {
         router.push("/pilogin");
-        return;
       }
     }
-  }, [loading, piReady, user, router]);
+  }, [loading, piReady, user]);
 
-  /* ======================================================
-     📌 2) TẢI DANH MỤC
-  ====================================================== */
+  /* ======================
+      LOAD CATEGORIES
+  ====================== */
   useEffect(() => {
     fetch("/api/categories")
-      .then((res) => res.json())
-      .then((data) => setCategories(data));
+      .then(r => r.json())
+      .then(data => setCategories(data));
   }, []);
 
-  /* ======================================================
-     📌 3) TẢI SẢN PHẨM
-  ====================================================== */
+  /* ======================
+      LOAD PRODUCT
+  ====================== */
   useEffect(() => {
     if (!id || !user) return;
 
     fetch("/api/products", { cache: "no-store" })
-      .then((res) => res.json())
-      .then((data) => {
+      .then(r => r.json())
+      .then(data => {
         const found = data.find((p: any) => String(p.id) === String(id));
 
         if (!found) {
@@ -63,11 +62,8 @@ export default function EditProductPage() {
           return;
         }
 
-        // ⭐ KIỂM TRA ĐÚNG NGƯỜI BÁN
-        if (
-          found.seller?.trim().toLowerCase() !==
-          user.username.trim().toLowerCase()
-        ) {
+        // CHECK OWNER
+        if (found.seller?.trim().toLowerCase() !== user.username.trim().toLowerCase()) {
           setMessage({
             text: "🚫 Bạn không có quyền sửa sản phẩm này!",
             type: "error",
@@ -80,56 +76,52 @@ export default function EditProductPage() {
         setPreviews(found.images || []);
       })
       .finally(() => setLoadingPage(false));
-  }, [id, user, router]);
+  }, [id, user]);
 
-  /* ======================================================
-     📤 UPLOAD FILE
-  ====================================================== */
+  /* ======================
+      UPLOAD FILE
+  ====================== */
   async function handleFileUpload(file: File): Promise<string | null> {
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const res = await fetch("/api/upload", {
+      const upload = await fetch("/api/upload", {
         method: "POST",
         headers: {
           "x-filename": encodeURIComponent(file.name),
-          "Content-Type": file.type || "application/octet-stream",
+          "Content-Type": file.type,
         },
         body: arrayBuffer,
       });
-
-      const data = await res.json();
-      return data.url || null;
+      const data = await upload.json();
+      return data.url;
     } catch {
       return null;
     }
   }
 
-  /* ======================================================
-     📸 CHỌN ẢNH
-  ====================================================== */
+  /* ======================
+      IMAGE CHANGE
+  ====================== */
   const handleFileChange = (e: any) => {
     const files = Array.from(e.target.files);
-    setImages((prev) => [...prev, ...files]);
-    setPreviews((prev) => [...prev, ...files.map((f) => URL.createObjectURL(f))]);
+    setImages(prev => [...prev, ...files]);
+    setPreviews(prev => [...prev, ...files.map(f => URL.createObjectURL(f))]);
   };
 
   const removeImage = (i: number) => {
-    setImages((prev) => prev.filter((_, idx) => idx !== i));
-    setPreviews((prev) => prev.filter((_, idx) => idx !== i));
+    setPreviews(p => p.filter((_, idx) => idx !== i));
 
-    setProduct((prev: any) => ({
+    setProduct(prev => ({
       ...prev,
-      images: prev.images?.filter((_: any, idx: number) => idx !== i),
+      images: prev?.images?.filter((_: any, idx: number) => idx !== i) || [],
     }));
   };
 
-  /* ======================================================
-     💾 LƯU SẢN PHẨM
-  ====================================================== */
+  /* ======================
+      SAVE PRODUCT
+  ====================== */
   async function handleSave(e: any) {
     e.preventDefault();
-    if (!product) return;
-
     setSaving(true);
 
     const form = e.target;
@@ -165,7 +157,7 @@ export default function EditProductPage() {
         saleStart,
         saleEnd,
         images: allImages,
-        seller: user.username, // ⭐ BẮT BUỘC ĐÚNG NGƯỜI BÁN
+        seller: user.username,
       }),
     });
 
@@ -175,27 +167,21 @@ export default function EditProductPage() {
       setMessage({ text: "✅ Lưu thành công!", type: "success" });
       setTimeout(() => router.push("/seller/stock"), 1000);
     } else {
-      setMessage({ text: result.message || "❌ Lỗi lưu sản phẩm!", type: "error" });
+      setMessage({ text: "❌ Lỗi lưu sản phẩm!", type: "error" });
     }
 
     setSaving(false);
   }
 
-  /* ======================================================
-     LOADING
-  ====================================================== */
-  if (loading || !piReady || loadingPage)
+  /* ======================
+      UI
+  ====================== */
+  if (loadingPage || loading || !piReady)
     return <p className="text-center mt-10">⏳ Đang tải...</p>;
 
-  if (!user)
-    return <p className="text-center mt-10 text-red-500">Bạn chưa đăng nhập!</p>;
-
   if (!product)
-    return <p className="text-center mt-10 text-red-500">Không tìm thấy sản phẩm!</p>;
+    return <p className="text-center mt-10 text-red-500">❌ Không tìm thấy sản phẩm!</p>;
 
-  /* ======================================================
-     UI
-  ====================================================== */
   return (
     <main className="max-w-lg mx-auto p-6 bg-white rounded-xl shadow mt-10 pb-32">
       <h1 className="text-2xl font-bold text-center text-[#ff6600] mb-3">
@@ -207,57 +193,64 @@ export default function EditProductPage() {
       </p>
 
       {message.text && (
-        <p
-          className={`text-center mb-2 ${
-            message.type === "success" ? "text-green-600" : "text-red-500"
-          }`}
-        >
+        <p className={`text-center mb-2 ${message.type === "success" ? "text-green-600" : "text-red-500"}`}>
           {message.text}
         </p>
       )}
 
       <form onSubmit={handleSave} className="space-y-4">
-
         <div>
           <label>Tên sản phẩm</label>
-          <input
-            name="name"
-            defaultValue={product.name}
-            className="w-full border p-2 rounded"
-          />
+          <input name="name" defaultValue={product.name} className="w-full border p-2 rounded" />
         </div>
 
         <div>
           <label>Giá (Pi)</label>
-          <input
-            name="price"
-            type="number"
-            defaultValue={product.price}
-            className="w-full border p-2 rounded"
-          />
+          <input name="price" type="number" defaultValue={product.price} className="w-full border p-2 rounded" />
         </div>
 
         <div>
           <label>Danh mục</label>
-          <select
-            name="categoryId"
-            defaultValue={product.categoryId || ""}
-            className="w-full border p-2 rounded"
-          >
+          <select name="categoryId" defaultValue={product.categoryId || ""} className="w-full border p-2 rounded">
             <option value="">— Chọn danh mục —</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
         </div>
 
-        <div>
-          <label>Mô tả</label>
-          <textarea
-            name="description"
-            defaultValue={product.description}
+        {/* 🔥 SALE */}
+        <div className="p-3 bg-orange-50 border rounded">
+          <h3 className="font-bold text-orange-600 mb-2">🔥 Giảm giá</h3>
+
+          <label>Giá sale</label>
+          <input
+            name="salePrice"
+            type="number"
+            defaultValue={product.salePrice || ""}
+            className="w-full border p-2 rounded mb-2"
+          />
+
+          <label>Ngày bắt đầu</label>
+          <input
+            name="saleStart"
+            type="date"
+            defaultValue={product.saleStart || ""}
+            className="w-full border p-2 rounded mb-2"
+          />
+
+          <label>Ngày kết thúc</label>
+          <input
+            name="saleEnd"
+            type="date"
+            defaultValue={product.saleEnd || ""}
             className="w-full border p-2 rounded"
           />
+        </div>
+
+        <div>
+          <label>Mô tả</label>
+          <textarea name="description" defaultValue={product.description} className="w-full border p-2 rounded" />
         </div>
 
         <div>
@@ -266,10 +259,7 @@ export default function EditProductPage() {
 
           <div className="mt-3 space-y-2">
             {previews.map((url, idx) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between bg-gray-50 p-2 border rounded"
-              >
+              <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 border rounded">
                 <img src={url} className="w-16 h-16 object-cover rounded" />
                 <button type="button" onClick={() => removeImage(idx)} className="text-red-600 font-bold">✕</button>
               </div>
@@ -278,9 +268,8 @@ export default function EditProductPage() {
         </div>
 
         <button
-          type="submit"
           disabled={saving}
-          className="w-full bg-[#ff6600] text-white p-3 rounded-lg"
+          className="w-full bg-[#ff6600] text-white p-3 rounded-lg mt-3"
         >
           {saving ? "Đang lưu..." : "💾 Lưu thay đổi"}
         </button>
