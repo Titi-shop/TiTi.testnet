@@ -3,12 +3,14 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useLanguage } from "../../../context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";   // ⭐ THÊM AUTH
 
 export default function EditProductPage() {
   const { id } = useParams();
   const router = useRouter();
   const { translate } = useLanguage();
 
+  const { user, loading: authLoading, piReady } = useAuth();  // ⭐ THÊM
   const [product, setProduct] = useState<any>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,7 +19,6 @@ export default function EditProductPage() {
     text: "",
     type: "",
   });
-  const [sellerUser, setSellerUser] = useState<string>("");
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [images, setImages] = useState<File[]>([]);
@@ -25,24 +26,13 @@ export default function EditProductPage() {
   const [selectedPreview, setSelectedPreview] = useState<string | null>(null);
 
   /* ============================
-     📌 XÁC THỰC NGƯỜI BÁN
+     📌 KIỂM TRA ĐĂNG NHẬP
   ============================ */
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("pi_user");
-      const logged = localStorage.getItem("titi_is_logged_in");
-
-      if (stored && logged === "true") {
-        const parsed = JSON.parse(stored);
-        const username = (parsed?.user?.username || parsed?.username || "")
-          .trim()
-          .toLowerCase();
-        setSellerUser(username);
-      } else router.push("/pilogin");
-    } catch {
+    if (!authLoading && piReady && !user) {
       router.push("/pilogin");
     }
-  }, [router]);
+  }, [authLoading, piReady, user, router]);
 
   /* ============================
      📌 TẢI DANH MỤC
@@ -74,6 +64,22 @@ export default function EditProductPage() {
         setLoading(false);
       });
   }, [id]);
+
+  /* ================================
+     ⭐ SAU KHI LOAD DATA → KIỂM TRA SELLER
+  ================================= */
+  if (!authLoading && user && product) {
+    const productSeller = String(product.seller || "").toLowerCase();
+    const currentUser = String(user.username || "").toLowerCase();
+
+    if (productSeller !== currentUser) {
+      return (
+        <main className="text-center mt-10 text-red-600">
+          ❌ Bạn không có quyền chỉnh sửa sản phẩm này!
+        </main>
+      );
+    }
+  }
 
   /* ============================
      📌 UPLOAD ẢNH
@@ -138,7 +144,7 @@ export default function EditProductPage() {
     const saleEnd = form.saleEnd.value;
 
     const description = form.description.value;
-    const categoryId = Number(form.categoryId.value); // ⭐ LẤY CATEGORY ⭐
+    const categoryId = Number(form.categoryId.value);
 
     if (price <= 0) {
       setMessage({ text: "⚠️ Giá không hợp lệ.", type: "error" });
@@ -168,7 +174,7 @@ export default function EditProductPage() {
         description,
         categoryId,
         images: allImages,
-        seller: sellerUser,
+        seller: user.username,     // ⭐ GIỮ SELLER TỪ AUTH
       }),
     });
 
@@ -187,7 +193,8 @@ export default function EditProductPage() {
   /* ============================
      📌 GIAO DIỆN
   ============================ */
-  if (loading)
+
+  if (loading || authLoading)
     return <p className="text-center mt-10">⏳ Đang tải...</p>;
 
   if (!product)
@@ -200,7 +207,7 @@ export default function EditProductPage() {
       </h1>
 
       <p className="text-center text-gray-500 mb-3">
-        👤 Người bán: <b>{sellerUser}</b>
+        👤 Người bán: <b>{user.username}</b>
       </p>
 
       {message.text && (
@@ -215,25 +222,16 @@ export default function EditProductPage() {
 
       <form onSubmit={handleSave} className="space-y-4">
 
-        {/* TÊN */}
+        {/* Tên */}
         <div>
           <label className="font-medium">Tên sản phẩm</label>
-          <input
-            name="name"
-            defaultValue={product.name}
-            className="w-full border p-2 rounded"
-          />
+          <input name="name" defaultValue={product.name} className="w-full border p-2 rounded" />
         </div>
 
-        {/* GIÁ */}
+        {/* Giá */}
         <div>
           <label className="font-medium">Giá (Pi)</label>
-          <input
-            name="price"
-            type="number"
-            defaultValue={product.price}
-            className="w-full border p-2 rounded"
-          />
+          <input name="price" type="number" defaultValue={product.price} className="w-full border p-2 rounded" />
         </div>
 
         {/* ⭐ DANH MỤC ⭐ */}
@@ -246,9 +244,7 @@ export default function EditProductPage() {
           >
             <option value="">— Chọn danh mục —</option>
             {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
           </select>
         </div>
@@ -258,72 +254,37 @@ export default function EditProductPage() {
           <h3 className="font-semibold text-orange-600 mb-2">🔥 SALE</h3>
 
           <label>Giá sale</label>
-          <input
-            name="salePrice"
-            type="number"
-            defaultValue={product.salePrice || ""}
-            className="w-full border p-2 rounded mb-2"
-          />
+          <input name="salePrice" type="number" defaultValue={product.salePrice || ""} className="w-full border p-2 rounded mb-2" />
 
           <label>Ngày bắt đầu</label>
-          <input
-            name="saleStart"
-            type="date"
-            defaultValue={product.saleStart || ""}
-            className="w-full border p-2 rounded mb-2"
-          />
+          <input name="saleStart" type="date" defaultValue={product.saleStart || ""} className="w-full border p-2 rounded mb-2" />
 
           <label>Ngày kết thúc</label>
-          <input
-            name="saleEnd"
-            type="date"
-            defaultValue={product.saleEnd || ""}
-            className="w-full border p-2 rounded"
-          />
+          <input name="saleEnd" type="date" defaultValue={product.saleEnd || ""} className="w-full border p-2 rounded" />
         </div>
 
-        {/* MÔ TẢ */}
+        {/* Mô tả */}
         <div>
           <label className="font-medium">Mô tả</label>
-          <textarea
-            name="description"
-            defaultValue={product.description}
-            className="w-full border p-2 rounded"
-          ></textarea>
+          <textarea name="description" defaultValue={product.description} className="w-full border p-2 rounded"></textarea>
         </div>
 
-        {/* ẢNH */}
+        {/* Ảnh */}
         <div>
           <label className="font-medium">Ảnh sản phẩm</label>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            onChange={handleFileChange}
-            className="w-full"
-          />
+          <input ref={fileInputRef} type="file" multiple onChange={handleFileChange} className="w-full" />
 
           <div className="mt-3 space-y-2">
             {previews.map((url, idx) => (
               <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 border rounded">
                 <img src={url} className="w-16 h-16 object-cover rounded" />
-                <button
-                  type="button"
-                  onClick={() => removeImage(idx)}
-                  className="text-red-600 font-bold"
-                >
-                  ✕
-                </button>
+                <button type="button" onClick={() => removeImage(idx)} className="text-red-600 font-bold">✕</button>
               </div>
             ))}
           </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={saving}
-          className="w-full bg-[#ff6600] text-white p-3 rounded-lg mt-3"
-        >
+        <button type="submit" disabled={saving} className="w-full bg-[#ff6600] text-white p-3 rounded-lg mt-3">
           {saving ? "Đang lưu..." : "💾 Lưu thay đổi"}
         </button>
       </form>
