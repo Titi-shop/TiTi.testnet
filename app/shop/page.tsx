@@ -77,7 +77,9 @@ export default function ShopPage() {
             ))}
           </div>
         )}
-
+      )}
+      </div>
+      )}
         {/* ⭐⭐⭐ 6 SLIDER SẢN PHẨM ⭐⭐⭐ */}
         <HorizontalProductSlider title="💎 Giá cao nhất" type="highest" />
         <HorizontalProductSlider title="🆕 Sản phẩm mới nhất" type="newest" />
