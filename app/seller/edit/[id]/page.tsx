@@ -5,6 +5,21 @@ import { useRouter, useParams } from "next/navigation";
 import { useLanguage } from "../../../context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 
+/* ======================
+    Format Date -> yyyy-MM-dd
+====================== */
+function formatDateToInput(dateString: string | null) {
+  if (!dateString) return "";
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return "";
+
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 export default function EditProductPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -30,9 +45,7 @@ export default function EditProductPage() {
   ====================== */
   useEffect(() => {
     if (!loading && piReady) {
-      if (!user) {
-        router.push("/pilogin");
-      }
+      if (!user) router.push("/pilogin");
     }
   }, [loading, piReady, user]);
 
@@ -42,7 +55,7 @@ export default function EditProductPage() {
   useEffect(() => {
     fetch("/api/categories")
       .then(r => r.json())
-      .then(data => setCategories(data));
+      .then(data => setCategories(data || []));
   }, []);
 
   /* ======================
@@ -62,8 +75,10 @@ export default function EditProductPage() {
           return;
         }
 
-        // CHECK OWNER
-        if (found.seller?.trim().toLowerCase() !== user.username.trim().toLowerCase()) {
+        if (
+          found.seller?.trim().toLowerCase() !==
+          user.username.trim().toLowerCase()
+        ) {
           setMessage({
             text: "🚫 Bạn không có quyền sửa sản phẩm này!",
             type: "error",
@@ -109,8 +124,7 @@ export default function EditProductPage() {
   };
 
   const removeImage = (i: number) => {
-    setPreviews(p => p.filter((_, idx) => idx !== i));
-
+    setPreviews(prev => prev.filter((_, idx) => idx !== i));
     setProduct(prev => ({
       ...prev,
       images: prev?.images?.filter((_: any, idx: number) => idx !== i) || [],
@@ -126,39 +140,30 @@ export default function EditProductPage() {
 
     const form = e.target;
 
-    const name = form.name.value.trim();
-    const price = Number(form.price.value);
-    const description = form.description.value;
-    const categoryId = Number(form.categoryId.value);
+    const payload = {
+      id: product.id,
+      name: form.name.value.trim(),
+      price: Number(form.price.value),
+      description: form.description.value,
+      categoryId: Number(form.categoryId.value),
+      salePrice: Number(form.salePrice.value) || null,
+      saleStart: form.saleStart.value || null,
+      saleEnd: form.saleEnd.value || null,
+      seller: user.username,
+    };
 
-    const salePrice = Number(form.salePrice.value) || null;
-    const saleStart = form.saleStart.value || null;
-    const saleEnd = form.saleEnd.value || null;
-
-    // Upload ảnh mới
     const newUrls: string[] = [];
     for (const f of images) {
       const url = await handleFileUpload(f);
       if (url) newUrls.push(url);
     }
 
-    const allImages = [...(product.images || []), ...newUrls];
+    payload["images"] = [...(product.images || []), ...newUrls];
 
     const res = await fetch("/api/products", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: product.id,
-        name,
-        price,
-        description,
-        categoryId,
-        salePrice,
-        saleStart,
-        saleEnd,
-        images: allImages,
-        seller: user.username,
-      }),
+      body: JSON.stringify(payload),
     });
 
     const result = await res.json();
@@ -167,7 +172,7 @@ export default function EditProductPage() {
       setMessage({ text: "✅ Lưu thành công!", type: "success" });
       setTimeout(() => router.push("/seller/stock"), 1000);
     } else {
-      setMessage({ text: "❌ Lỗi lưu sản phẩm!", type: "error" });
+      setMessage({ text: result.message || "❌ Lỗi lưu sản phẩm!", type: "error" });
     }
 
     setSaving(false);
@@ -184,6 +189,15 @@ export default function EditProductPage() {
 
   return (
     <main className="max-w-lg mx-auto p-6 bg-white rounded-xl shadow mt-10 pb-32">
+      
+      {/* 🔙 Nút quay về */}
+      <button
+        className="mb-3 text-orange-600 font-bold text-lg"
+        onClick={() => router.back()}
+      >
+        ← Quay lại
+      </button>
+
       <h1 className="text-2xl font-bold text-center text-[#ff6600] mb-3">
         ✏️ Chỉnh sửa sản phẩm
       </h1>
@@ -193,7 +207,11 @@ export default function EditProductPage() {
       </p>
 
       {message.text && (
-        <p className={`text-center mb-2 ${message.type === "success" ? "text-green-600" : "text-red-500"}`}>
+        <p
+          className={`text-center mb-2 ${
+            message.type === "success" ? "text-green-600" : "text-red-500"
+          }`}
+        >
           {message.text}
         </p>
       )}
@@ -201,20 +219,35 @@ export default function EditProductPage() {
       <form onSubmit={handleSave} className="space-y-4">
         <div>
           <label>Tên sản phẩm</label>
-          <input name="name" defaultValue={product.name} className="w-full border p-2 rounded" />
+          <input
+            name="name"
+            defaultValue={product.name}
+            className="w-full border p-2 rounded"
+          />
         </div>
 
         <div>
           <label>Giá (Pi)</label>
-          <input name="price" type="number" defaultValue={product.price} className="w-full border p-2 rounded" />
+          <input
+            name="price"
+            type="number"
+            defaultValue={product.price}
+            className="w-full border p-2 rounded"
+          />
         </div>
 
         <div>
           <label>Danh mục</label>
-          <select name="categoryId" defaultValue={product.categoryId || ""} className="w-full border p-2 rounded">
+          <select
+            name="categoryId"
+            defaultValue={product.categoryId || ""}
+            className="w-full border p-2 rounded"
+          >
             <option value="">— Chọn danh mục —</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+            {categories.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
             ))}
           </select>
         </div>
@@ -235,7 +268,7 @@ export default function EditProductPage() {
           <input
             name="saleStart"
             type="date"
-            defaultValue={product.saleStart || ""}
+            defaultValue={formatDateToInput(product.saleStart)}
             className="w-full border p-2 rounded mb-2"
           />
 
@@ -243,14 +276,18 @@ export default function EditProductPage() {
           <input
             name="saleEnd"
             type="date"
-            defaultValue={product.saleEnd || ""}
+            defaultValue={formatDateToInput(product.saleEnd)}
             className="w-full border p-2 rounded"
           />
         </div>
 
         <div>
           <label>Mô tả</label>
-          <textarea name="description" defaultValue={product.description} className="w-full border p-2 rounded" />
+          <textarea
+            name="description"
+            defaultValue={product.description}
+            className="w-full border p-2 rounded"
+          />
         </div>
 
         <div>
@@ -259,9 +296,18 @@ export default function EditProductPage() {
 
           <div className="mt-3 space-y-2">
             {previews.map((url, idx) => (
-              <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 border rounded">
+              <div
+                key={idx}
+                className="flex items-center justify-between bg-gray-50 p-2 border rounded"
+              >
                 <img src={url} className="w-16 h-16 object-cover rounded" />
-                <button type="button" onClick={() => removeImage(idx)} className="text-red-600 font-bold">✕</button>
+                <button
+                  type="button"
+                  onClick={() => removeImage(idx)}
+                  className="text-red-600 font-bold"
+                >
+                  ✕
+                </button>
               </div>
             ))}
           </div>
