@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import HorizontalProductSlider from "@/app/components/HorizontalProductSlider";
 
 export default function ShopPage() {
   const [categories, setCategories] = useState<any[]>([]);
@@ -12,39 +11,125 @@ export default function ShopPage() {
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(true);
 
-  // 🟢 Load danh mục
+  /* ============================
+     🟢 LOAD DANH MỤC
+  ============================ */
   useEffect(() => {
     fetch("/api/categories")
       .then((res) => res.json())
       .then((data) => {
-        setCategories(data);
+        setCategories(data || []);
         setLoadingCategories(false);
       });
   }, []);
 
-  // 🟢 Load tất cả sản phẩm
+  /* ============================
+     🟢 LOAD TẤT CẢ SẢN PHẨM
+  ============================ */
   useEffect(() => {
     fetch("/api/products", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
-        // Nếu sản phẩm chưa có views → gán views = 0
-        const withViews = data.map((p: any) => ({
+        const normalized = data.map((p: any) => ({
           ...p,
           views: p.views || 0,
+          sold: p.sold || 0,
+          finalPrice: p.finalPrice ?? p.salePrice ?? p.price,
         }));
 
-        // Sắp xếp theo lượt xem nhiều → ít
-        const sorted = withViews.sort((a, b) => b.views - a.views);
-
-        setProducts(sorted);
+        setProducts(normalized);
         setLoadingProducts(false);
       });
   }, []);
 
-  const loadMore = () => {
-    setVisibleCount((prev) => prev + 20);
-  };
+  const loadMore = () => setVisibleCount((prev) => prev + 20);
 
+  /* ============================
+     🟠 SLIDER 1 - GIÁ CAO NHẤT
+  ============================ */
+  const highestPrice = [...products]
+    .sort((a, b) => b.price - a.price)
+    .slice(0, 10);
+
+  /* ============================
+     🟣 SLIDER 2 - SẢN PHẨM MỚI
+  ============================ */
+  const newest = [...products]
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+    .slice(0, 10);
+
+  /* ============================
+     🔥 SLIDER 3 - ĐANG GIẢM GIÁ
+  ============================ */
+  const now = new Date();
+  const saleList = products.filter((p) => {
+    if (!p.salePrice || !p.saleStart || !p.saleEnd) return false;
+    const start = new Date(p.saleStart);
+    const end = new Date(p.saleEnd);
+    return now >= start && now <= end;
+  });
+
+  /* ============================
+     🟦 COMPONENT SLIDER
+  ============================ */
+  const Slider = ({ title, items }: any) => (
+    <div className="p-4">
+      <h2 className="text-lg font-bold mb-3">{title}</h2>
+      <div className="flex overflow-x-auto space-x-4 scrollbar-hide">
+        {items.length === 0 ? (
+          <p className="text-gray-500 text-sm">Không có dữ liệu</p>
+        ) : (
+          items.map((p: any) => {
+            const salePercent =
+              p.salePrice && p.price
+                ? Math.round(((p.price - p.salePrice) / p.price) * 100)
+                : 0;
+
+            const final = p.finalPrice ?? p.salePrice ?? p.price;
+
+            return (
+              <Link
+                key={p.id}
+                href={`/product/${p.id}`}
+                className="relative min-w-[150px] bg-white rounded-lg shadow p-2 border cursor-pointer"
+              >
+                {salePercent > 0 && (
+                  <span className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full">
+                    -{salePercent}%
+                  </span>
+                )}
+
+                <img
+                  src={p.images?.[0] || "/placeholder.png"}
+                  alt={p.name}
+                  className="w-full h-24 object-cover rounded"
+                />
+
+                <h3 className="mt-2 text-sm font-semibold truncate text-gray-800">
+                  {p.name}
+                </h3>
+
+                <p className="text-orange-600 font-bold text-sm">{final} π</p>
+
+                {p.salePrice && (
+                  <p className="text-gray-400 text-xs line-through">
+                    {p.price} π
+                  </p>
+                )}
+              </Link>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+
+  /* ============================
+     ⭐⭐ UI CHÍNH ⭐⭐
+  ============================ */
   return (
     <main className="pb-20 bg-white min-h-screen">
       {/* ⭐ BANNER */}
@@ -69,7 +154,7 @@ export default function ShopPage() {
                 className="flex flex-col items-center min-w-[70px]"
               >
                 <img
-                  src={c.icon}
+                  src={c.icon || "/placeholder.png"}
                   className="w-14 h-14 rounded-full object-cover border"
                 />
                 <span className="text-sm mt-1 text-center">{c.name}</span>
@@ -78,27 +163,26 @@ export default function ShopPage() {
           </div>
         )}
 
-        {/* ⭐⭐⭐ 6 SLIDER SẢN PHẨM ⭐⭐⭐ */}
-        <HorizontalProductSlider title="💎 Giá cao nhất" type="highest" />
-        <HorizontalProductSlider title="🆕 Sản phẩm mới nhất" type="newest" />
-        <HorizontalProductSlider title="⚡ Đang giảm giá" type="sale" />
-        <HorizontalProductSlider title="👕 Thời trang" type="fashion" />
-        <HorizontalProductSlider title="📱 Điện thoại" type="phone" />
-        <HorizontalProductSlider title="🔌 Thiết bị điện tử" type="electronic" />
+        {/* ⭐⭐⭐ 3 SLIDER SẢN PHẨM ⭐⭐⭐ */}
+        <Slider title="💎 Giá cao nhất" items={highestPrice} />
+        <Slider title="🆕 Sản phẩm mới nhất" items={newest} />
+        <Slider title="⚡ Đang giảm giá" items={saleList} />
 
         {/* ⭐⭐⭐ TẤT CẢ SẢN PHẨM ⭐⭐⭐ */}
-        <h2 className="text-xl font-bold mt-6 mb-3">🛍️ Tất cả sản phẩm</h2>
+        <h2 className="text-xl font-bold mt-6 mb-3 px-3">🛍️ Tất cả sản phẩm</h2>
 
         {loadingProducts ? (
           <p className="text-gray-500">Đang tải sản phẩm...</p>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-4 px-2">
+            <div className="grid grid-cols-2 gap-4 px-3">
               {products.slice(0, visibleCount).map((item: any) => {
                 const salePercent =
-                  item.isSale && item.salePrice && item.price
+                  item.salePrice && item.price
                     ? Math.round(((item.price - item.salePrice) / item.price) * 100)
                     : 0;
+
+                const final = item.finalPrice ?? item.salePrice ?? item.price;
 
                 return (
                   <Link
@@ -106,8 +190,7 @@ export default function ShopPage() {
                     href={`/product/${item.id}`}
                     className="bg-white p-2 rounded-lg shadow border relative"
                   >
-                    {/* ⭐ Badge SALE đúng ngày */}
-                    {item.isSale && salePercent > 0 && (
+                    {salePercent > 0 && (
                       <span className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full">
                         -{salePercent}%
                       </span>
@@ -118,20 +201,17 @@ export default function ShopPage() {
                       className="w-full h-28 object-cover rounded"
                     />
 
-                    <h3 className="mt-2 text-sm font-semibold truncate">
+                    <h3 className="mt-2 text-sm font-semibold truncate text-gray-800">
                       {item.name}
                     </h3>
 
-                    {/* ⭐ Hiển thị giá đúng theo ngày sale */}
-                    {item.isSale ? (
-                      <div>
-                        <p className="text-red-600 font-bold">{item.salePrice} π</p>
-                        <p className="text-xs line-through text-gray-400">
-                          {item.price} π
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-orange-600 font-bold">{item.price} π</p>
+                    {/* ⭐ Giá đúng logic */}
+                    <p className="text-orange-600 font-bold">{final} π</p>
+
+                    {item.salePrice && (
+                      <p className="text-xs line-through text-gray-400">
+                        {item.price} π
+                      </p>
                     )}
 
                     <p className="text-xs text-gray-500 mt-1">
