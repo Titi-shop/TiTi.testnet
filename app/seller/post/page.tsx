@@ -37,6 +37,20 @@ export default function SellerPostPage() {
     router.push("/pilogin");
   }
 }, [loading, piReady, user, router]);
+  // ⭐ KIỂM TRA QUYỀN SELLER
+useEffect(() => {
+  if (user) {
+    fetch(`/api/users/role?username=${user.username}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.role !== "seller") {
+          router.push("/no-access"); // hoặc /customer
+        } else {
+          setRole("seller");
+        }
+      });
+  }
+}, [user]);
 
   async function handleFileUpload(file: File): Promise<string | null> {
     try {
