@@ -19,32 +19,29 @@ export default function HorizontalProductSlider({ title, type }) {
               .slice(0, 10);
             break;
 
-          case "newest": // 10 sản phẩm mới
+          case "newest": // 10 sản phẩm mới nhất
             filtered = filtered
-              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+              .sort(
+                (a, b) =>
+                  new Date(b.createdAt).getTime() -
+                  new Date(a.createdAt).getTime()
+              )
               .slice(0, 10);
             break;
 
-          case "sale": // SP sale, tự lọc theo ngày
-            filtered = filtered.filter(
-              (p) =>
-                p.salePrice &&
-                p.saleStart &&
-                p.saleEnd &&
-                new Date() >= new Date(p.saleStart) &&
-                new Date() <= new Date(p.saleEnd)
-            );
+          case "sale": // Sản phẩm SALE đúng ngày
+            filtered = filtered.filter((p) => p.isSale === true);
             break;
 
-          case "mostViewed": // Nhiều người xem nhất
+          case "mostViewed":
             filtered = filtered
               .sort((a, b) => Number(b.views || 0) - Number(a.views || 0))
               .slice(0, 10);
             break;
 
           case "fashion":
-            filtered = filtered.filter(
-              (p) => Number(p.categoryId) === 2 || Number(p.categoryId) === 3
+            filtered = filtered.filter((p) =>
+              [2, 3].includes(Number(p.categoryId))
             );
             break;
 
@@ -75,7 +72,7 @@ export default function HorizontalProductSlider({ title, type }) {
       <div className="flex overflow-x-auto space-x-4 scrollbar-hide">
         {products.map((item) => {
           const salePercent =
-            item.salePrice && item.price
+            item.isSale && item.salePrice && item.price
               ? Math.round(((item.price - item.salePrice) / item.price) * 100)
               : 0;
 
@@ -85,8 +82,8 @@ export default function HorizontalProductSlider({ title, type }) {
               href={`/product/${item.id}`}
               className="relative min-w-[150px] bg-white rounded-lg shadow p-2 border cursor-pointer"
             >
-              {/* Badge % SALE */}
-              {salePercent > 0 && (
+              {/* Badge SALE đúng ngày */}
+              {item.isSale && salePercent > 0 && (
                 <span className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full shadow">
                   -{salePercent}%
                 </span>
@@ -102,7 +99,8 @@ export default function HorizontalProductSlider({ title, type }) {
                 {item.name}
               </h3>
 
-              {item.salePrice ? (
+              {/* Hiển thị giá theo trạng thái SALE */}
+              {item.isSale ? (
                 <div className="mt-1">
                   <p className="text-red-600 font-bold">
                     {item.salePrice} π
