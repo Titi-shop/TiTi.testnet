@@ -72,15 +72,20 @@ export default function SellerPostPage() {
     }
   }
 
+  /* =======================================
+     CHỌN NHIỀU ẢNH
+  ======================================= */
   const handleFileChange = (e: any) => {
     const files = Array.from(e.target.files);
     setImages((prev) => [...prev, ...files]);
+
+    // Hiển thị trước ảnh
     setPreviews((prev) => [...prev, ...files.map((f) => URL.createObjectURL(f))]);
   };
 
   const removeImage = (i: number) => {
-    setImages((p) => p.filter((_, x) => x !== i));
-    setPreviews((p) => p.filter((_, x) => x !== i));
+    setImages((prev) => prev.filter((_, x) => x !== i));
+    setPreviews((prev) => prev.filter((_, x) => x !== i));
   };
 
   /* =======================================
@@ -107,6 +112,7 @@ export default function SellerPostPage() {
       return;
     }
 
+    // Upload tất cả ảnh
     const urls: string[] = [];
     for (const img of images) {
       const url = await handleFileUpload(img);
@@ -125,7 +131,7 @@ export default function SellerPostPage() {
         saleStart,
         saleEnd,
         images: urls,
-        seller: user.username, // ⭐ QUAN TRỌNG
+        seller: user.username,
       }),
     });
 
@@ -142,11 +148,21 @@ export default function SellerPostPage() {
   }
 
   /* =======================================
-     RETURN JSX (FULL)
+     JSX GIAO DIỆN
   ======================================= */
   return (
     <main className="p-5 max-w-lg mx-auto pb-32">
+
+      {/* 🔙 NÚT QUAY VỀ */}
+      <button
+        onClick={() => router.back()}
+        className="mb-4 text-orange-600 font-bold flex items-center gap-1"
+      >
+        ← Quay lại
+      </button>
+
       <h1 className="text-xl font-bold mb-3">🛒 Đăng sản phẩm mới</h1>
+
       <p className="text-gray-500 text-center mb-3">
         👤 Người bán: <b>{user.username}</b>
       </p>
@@ -209,9 +225,12 @@ export default function SellerPostPage() {
         {/* Ảnh sản phẩm */}
         <div>
           <label>Ảnh sản phẩm</label>
+
+          {/* ⭐ CHO PHÉP CHỌN NHIỀU ẢNH ⭐ */}
           <input
             ref={fileInputRef}
             type="file"
+            accept="image/*"
             multiple
             onChange={handleFileChange}
           />
@@ -221,9 +240,13 @@ export default function SellerPostPage() {
               <div key={i} className="flex gap-3 items-center">
                 <img
                   src={url}
-                  className="w-20 h-20 object-cover rounded"
+                  className="w-20 h-20 object-cover rounded border"
                 />
-                <button type="button" onClick={() => removeImage(i)}>
+                <button
+                  type="button"
+                  onClick={() => removeImage(i)}
+                  className="text-red-600"
+                >
                   ✕
                 </button>
               </div>
