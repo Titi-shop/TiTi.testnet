@@ -8,25 +8,40 @@ import { useAuth } from "@/context/AuthContext";
 export default function SellerPostPage() {
   const router = useRouter();
   const { translate } = useLanguage();
-  const { user, loading, piReady, role } = useAuth();
+  const { user, loading, piReady } = useAuth();
 
-  const [saving, setSaving] = useState(false);
+  const [role, setRole] = useState<string>("");
   const [categories, setCategories] = useState<any[]>([]);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [images, setImages] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
 
-  /* ========== BẢO VỆ SELLER ========== */
+  /* =======================================
+     🔐 KIỂM TRA ĐĂNG NHẬP & ROLE SELLER
+  ======================================= */
   useEffect(() => {
     if (!loading && piReady) {
-      if (!user) router.push("/pilogin");
-      else if (role !== "seller") router.push("/no-access");
-    }
-  }, [loading, piReady, user, role, router]);
+      if (!user) {
+        router.push("/pilogin");
+        return;
+      }
 
-  /* ========== LOAD CATEGORY ========== */
+      // Fetch role
+      fetch(`/api/users/role?username=${user.username}`)
+        .then((r) => r.json())
+        .then((d) => {
+          setRole(d.role);
+          if (d.role !== "seller") router.push("/no-access");
+        });
+    }
+  }, [loading, piReady, user, router]);
+
+  /* =======================================
+     TẢI DANH MỤC
+  ======================================= */
   useEffect(() => {
     fetch("/api/categories")
       .then((r) => r.json())
@@ -36,7 +51,9 @@ export default function SellerPostPage() {
   if (loading || !piReady || !user || role !== "seller")
     return <main className="text-center py-10">⏳ Đang tải...</main>;
 
-  /* ========== UPLOAD FILE ========== */
+  /* =======================================
+     UPLOAD FILE
+  ======================================= */
   async function handleFileUpload(file: File) {
     try {
       const arrayBuffer = await file.arrayBuffer();
@@ -56,11 +73,10 @@ export default function SellerPostPage() {
     }
   }
 
-  /* ========== HANDLE CHANGE FILES ========== */
   const handleFileChange = (e: any) => {
     const files = Array.from(e.target.files);
-    setImages((p) => [...p, ...files]);
-    setPreviews((p) => [...p, ...files.map((f) => URL.createObjectURL(f))]);
+    setImages((prev) => [...prev, ...files]);
+    setPreviews((prev) => [...prev, ...files.map((f) => URL.createObjectURL(f))]);
   };
 
   const removeImage = (i: number) => {
@@ -68,7 +84,9 @@ export default function SellerPostPage() {
     setPreviews((p) => p.filter((_, x) => x !== i));
   };
 
-  /* ========== HANDLE SUBMIT PRODUCT ========== */
+  /* =======================================
+     SUBMIT SẢN PHẨM
+  ======================================= */
   async function handleSubmit(e: any) {
     e.preventDefault();
     setSaving(true);
@@ -124,76 +142,19 @@ export default function SellerPostPage() {
     setSaving(false);
   }
 
-  /* ========== RENDER FORM ========== */
   return (
     <main className="p-5 max-w-lg mx-auto pb-32">
       <h1 className="text-xl font-bold mb-3">🛒 Đăng sản phẩm mới</h1>
-      <p className="text-gray-500 text-center mb-3">👤 Người bán: <b>{user.username}</b></p>
+      <p className="text-gray-500 text-center mb-3">
+        👤 Người bán: <b>{user.username}</b>
+      </p>
 
       {message.text && (
-        <p className={`text-center mb-2 ${message.type === "success" ? "text-green-600" : "text-red-500"}`}>
+        <p
+          className={`text-center mb-2 ${
+            message.type === "success" ? "text-green-600" : "text-red-500"
+          }`}
+        >
           {message.text}
         </p>
       )}
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label>Tên sản phẩm</label>
-          <input name="name" className="w-full border p-2 rounded" required />
-        </div>
-
-        <div>
-          <label>Danh mục</label>
-          <select name="category" className="w-full border p-2 rounded" required>
-            <option value="">-- Chọn danh mục --</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label>Giá</label>
-          <input name="price" type="number" step="any" className="w-full border p-2 rounded" />
-        </div>
-
-        <div>
-          <label>Giá Sale</label>
-          <input name="salePrice" type="number" className="w-full border p-2 rounded" />
-        </div>
-
-        <div>
-          <label>Ngày bắt đầu</label>
-          <input name="saleStart" type="date" className="w-full border p-2 rounded" />
-        </div>
-
-        <div>
-          <label>Ngày kết thúc</label>
-          <input name="saleEnd" type="date" className="w-full border p-2 rounded" />
-        </div>
-
-        <div>
-          <label>Ảnh sản phẩm</label>
-          <input ref={fileInputRef} type="file" multiple onChange={handleFileChange} />
-          <div className="mt-3 space-y-2">
-            {previews.map((url, i) => (
-              <div key={i} className="flex gap-3 items-center">
-                <img src={url} className="w-20 h-20 object-cover rounded" />
-                <button type="button" onClick={() => removeImage(i)}>✕</button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label>Mô tả</label>
-          <textarea name="description" className="w-full border rounded p-2"></textarea>
-        </div>
-
-        <button className="w-full bg-orange-600 text-white p-3 rounded" disabled={saving}>
-          {saving ? "Đang đăng..." : "Đăng sản phẩm"}
-        </button>
-      </form>
-    </main>
-  );
-}
