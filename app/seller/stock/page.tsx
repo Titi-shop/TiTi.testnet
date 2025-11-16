@@ -32,11 +32,11 @@ export default function SellerStockPage() {
       const username = user.username.trim().toLowerCase();
       setSellerUser(username);
 
-      // Fetch role
       fetch(`/api/users/role?username=${username}`)
         .then((r) => r.json())
         .then((d) => {
           setRole(d.role);
+
           if (d.role !== "seller") {
             router.push("/no-access");
           } else {
@@ -61,7 +61,6 @@ export default function SellerStockPage() {
 
       setProducts(filtered);
     } catch (err) {
-      console.error("❌ Lỗi tải sản phẩm:", err);
       setMessage({ text: "Không thể tải sản phẩm!", type: "error" });
     } finally {
       setPageLoading(false);
@@ -104,6 +103,9 @@ export default function SellerStockPage() {
     return <main className="text-center p-8">⏳ Đang tải...</main>;
   }
 
+  /* ============================================
+     🎨 UI STOCK
+  ============================================ */
   return (
     <main className="p-4 max-w-2xl mx-auto pb-28">
       {/* Nút quay lại */}
@@ -143,8 +145,11 @@ export default function SellerStockPage() {
               key={product.id}
               className="flex gap-3 p-3 bg-white rounded-lg shadow border"
             >
-              {/* Ảnh */}
-              <div className="w-24 h-24 relative rounded overflow-hidden">
+              {/* CLICK ẢNH → TRANG SẢN PHẨM */}
+              <div
+                className="w-24 h-24 relative rounded overflow-hidden cursor-pointer"
+                onClick={() => router.push(`/product/${product.id}`)}
+              >
                 {product.images?.[0] ? (
                   <Image
                     src={product.images[0]}
@@ -159,7 +164,7 @@ export default function SellerStockPage() {
                 )}
               </div>
 
-              {/* Thông tin */}
+              {/* Thông tin sản phẩm */}
               <div className="flex-1">
                 <h3 className="font-semibold truncate">{product.name}</h3>
                 <p className="text-[#ff6600] font-bold">{product.price} π</p>
