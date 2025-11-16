@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "./context/AuthContext";
-import { countries } from "./data/countries";
+import { useAuth } from "@/context/AuthContext";
+import { countries } from "@/data/countries";
 import { provincesByCountry } from "@/data/provinces";
 
 export default function EditProfilePage() {
