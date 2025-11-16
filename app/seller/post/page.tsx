@@ -29,7 +29,6 @@ export default function SellerPostPage() {
         return;
       }
 
-      // Fetch role
       fetch(`/api/users/role?username=${user.username}`)
         .then((r) => r.json())
         .then((d) => {
@@ -142,6 +141,9 @@ export default function SellerPostPage() {
     setSaving(false);
   }
 
+  /* =======================================
+     RETURN JSX (FULL)
+  ======================================= */
   return (
     <main className="p-5 max-w-lg mx-auto pb-32">
       <h1 className="text-xl font-bold mb-3">🛒 Đăng sản phẩm mới</h1>
@@ -158,3 +160,92 @@ export default function SellerPostPage() {
           {message.text}
         </p>
       )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+
+        {/* Tên sản phẩm */}
+        <div>
+          <label>Tên sản phẩm</label>
+          <input name="name" className="w-full border p-2 rounded" required />
+        </div>
+
+        {/* Danh mục */}
+        <div>
+          <label>Danh mục</label>
+          <select name="category" className="w-full border p-2 rounded" required>
+            <option value="">-- Chọn danh mục --</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Giá */}
+        <div>
+          <label>Giá</label>
+          <input name="price" type="number" step="any" className="w-full border p-2 rounded" required />
+        </div>
+
+        {/* Giá Sale */}
+        <div>
+          <label>Giá Sale</label>
+          <input name="salePrice" type="number" className="w-full border p-2 rounded" />
+        </div>
+
+        {/* Ngày bắt đầu */}
+        <div>
+          <label>Ngày bắt đầu</label>
+          <input name="saleStart" type="date" className="w-full border p-2 rounded" />
+        </div>
+
+        {/* Ngày kết thúc */}
+        <div>
+          <label>Ngày kết thúc</label>
+          <input name="saleEnd" type="date" className="w-full border p-2 rounded" />
+        </div>
+
+        {/* Ảnh sản phẩm */}
+        <div>
+          <label>Ảnh sản phẩm</label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            onChange={handleFileChange}
+          />
+
+          <div className="mt-3 space-y-2">
+            {previews.map((url, i) => (
+              <div key={i} className="flex gap-3 items-center">
+                <img
+                  src={url}
+                  className="w-20 h-20 object-cover rounded"
+                />
+                <button type="button" onClick={() => removeImage(i)}>
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Mô tả */}
+        <div>
+          <label>Mô tả</label>
+          <textarea name="description" className="w-full border p-2 rounded"></textarea>
+        </div>
+
+        {/* Button submit */}
+        <button
+          type="submit"
+          disabled={saving}
+          className="w-full bg-orange-600 hover:bg-orange-700 text-white p-3 rounded"
+        >
+          {saving ? "Đang đăng..." : "Đăng sản phẩm"}
+        </button>
+      </form>
+    </main>
+  );
+}
