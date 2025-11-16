@@ -19,7 +19,9 @@ export default function SellerStockPage() {
     type: "",
   });
 
-  /* ⚡ KIỂM TRA SELLER */
+  /* ============================================
+     🔐 KIỂM TRA SELLER
+  ============================================ */
   useEffect(() => {
     if (!loading && piReady) {
       if (!user) {
@@ -34,6 +36,7 @@ export default function SellerStockPage() {
         .then((r) => r.json())
         .then((d) => {
           setRole(d.role);
+
           if (d.role !== "seller") {
             router.push("/no-access");
           } else {
@@ -43,7 +46,9 @@ export default function SellerStockPage() {
     }
   }, [loading, piReady, user, router]);
 
-  /* 📦 LOAD SẢN PHẨM CỦA SELLER */
+  /* ============================================
+     📦 Lấy sản phẩm theo seller
+  ============================================ */
   async function loadProducts(username: string) {
     try {
       const res = await fetch("/api/products", { cache: "no-store" });
@@ -62,7 +67,9 @@ export default function SellerStockPage() {
     }
   }
 
-  /* ❌ DELETE */
+  /* ============================================
+     ❌ Xóa sản phẩm
+  ============================================ */
   const handleDelete = async (id: number) => {
     const product = products.find((p) => p.id === id);
     if (!product) return;
@@ -89,14 +96,19 @@ export default function SellerStockPage() {
     }
   };
 
-  /* 🕒 LOADING */
+  /* ============================================
+     ⏳ LOADING
+  ============================================ */
   if (loading || pageLoading || !piReady || !user || role !== "seller") {
     return <main className="text-center p-8">⏳ Đang tải...</main>;
   }
 
-  /* 🎨 UI */
+  /* ============================================
+     🎨 UI STOCK + HIỂN THỊ SALE
+  ============================================ */
   return (
     <main className="p-4 max-w-2xl mx-auto pb-28">
+      {/* Nút quay lại */}
       <button
         className="mb-4 text-blue-600 underline"
         onClick={() => router.push("/seller")}
@@ -125,87 +137,100 @@ export default function SellerStockPage() {
       )}
 
       {products.length === 0 ? (
-        <p className="text-center text-gray-400">
-          Bạn chưa đăng sản phẩm nào.
-        </p>
+        <p className="text-center text-gray-400">Bạn chưa đăng sản phẩm nào.</p>
       ) : (
         <div className="space-y-4">
           {products.map((product) => {
-  const now = new Date();
-  const start = product.saleStart ? new Date(product.saleStart) : null;
-  const end = product.saleEnd ? new Date(product.saleEnd) : null;
+            const now = new Date();
+            const start = product.saleStart
+              ? new Date(product.saleStart)
+              : null;
+            const end = product.saleEnd ? new Date(product.saleEnd) : null;
 
-  const isSale =
-    product.salePrice && start && end && now >= start && now <= end;
+            const isSale =
+              product.salePrice && start && end && now >= start && now <= end;
 
-  const salePercent =
-    isSale && product.price && product.salePrice
-      ? Math.round(((product.price - product.salePrice) / product.price) * 100)
-      : 0;
+            const salePercent =
+              isSale && product.price && product.salePrice
+                ? Math.round(
+                    ((product.price - product.salePrice) / product.price) * 100
+                  )
+                : 0;
 
-  return (
-    <div
-      key={product.id}
-      className="flex gap-3 p-3 bg-white rounded-lg shadow border relative"
-    >
-      {/* ⭐ BADGE SALE ĐÈ LÊN HÌNH  */}
-      {isSale && (
-        <span className="absolute top-2 left-2 z-10 bg-red-600 text-white text-xs px-2 py-0.5 rounded-full">
-          -{salePercent}%
-        </span>
-      )}
+            return (
+              <div
+                key={product.id}
+                className="flex gap-3 p-3 bg-white rounded-lg shadow border relative"
+              >
+                {/* ⭐ BADGE SALE TRÊN HÌNH */}
+                {isSale && (
+                  <span className="absolute top-2 left-2 z-10 bg-red-600 text-white text-xs px-2 py-0.5 rounded-full shadow">
+                    -{salePercent}%
+                  </span>
+                )}
 
-      {/* Ảnh sản phẩm */}
-      <div
-        className="w-24 h-24 relative rounded overflow-hidden cursor-pointer"
-        onClick={() => router.push(`/product/${product.id}`)}
-      >
-        {product.images?.[0] ? (
-          <Image
-            src={product.images[0]}
-            alt={product.name}
-            fill
-            className="object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500 text-sm">
-            No Img
-          </div>
-        )}
-      </div>
+                {/* Hình ảnh */}
+                <div
+                  className="w-24 h-24 relative rounded overflow-hidden cursor-pointer"
+                  onClick={() => router.push(`/product/${product.id}`)}
+                >
+                  {product.images?.[0] ? (
+                    <Image
+                      src={product.images[0]}
+                      alt={product.name}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500 text-sm">
+                      No Img
+                    </div>
+                  )}
+                </div>
 
-      {/* Thông tin sản phẩm */}
-      <div className="flex-1">
-        <h3 className="font-semibold truncate">{product.name}</h3>
+                {/* THÔNG TIN */}
+                <div className="flex-1">
+                  <h3 className="font-semibold truncate">{product.name}</h3>
 
-        {/* Giá SALE / Giá gốc */}
-        {isSale ? (
-          <>
-            <p className="text-red-600 font-bold">{product.salePrice} π</p>
-            <p className="text-xs text-gray-500 line-through">
-              {product.price} π
-            </p>
-          </>
-        ) : (
-          <p className="text-[#ff6600] font-bold">{product.price} π</p>
-        )}
+                  {/* Giá + Sale */}
+                  {isSale ? (
+                    <>
+                      <p className="text-red-600 font-bold">
+                        {product.salePrice} π
+                      </p>
+                      <p className="text-xs text-gray-500 line-through">
+                        {product.price} π
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-[#ff6600] font-bold">
+                      {product.price} π
+                    </p>
+                  )}
 
-        <div className="flex gap-4 mt-2">
-          <button
-            onClick={() => router.push(`/seller/edit/${product.id}`)}
-            className="text-green-600 underline"
-          >
-            Sửa
-          </button>
+                  <div className="flex gap-4 mt-2">
+                    <button
+                      onClick={() =>
+                        router.push(`/seller/edit/${product.id}`)
+                      }
+                      className="text-green-600 underline"
+                    >
+                      Sửa
+                    </button>
 
-          <button
-            onClick={() => handleDelete(product.id)}
-            className="text-red-600 underline"
-          >
-            Xóa
-          </button>
+                    <button
+                      onClick={() => handleDelete(product.id)}
+                      className="text-red-600 underline"
+                    >
+                      Xóa
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </div>
-    </div>
+      )}
+    </main>
   );
-})}
+}
