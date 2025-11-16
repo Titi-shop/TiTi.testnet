@@ -5,26 +5,25 @@ import { toISO } from "@/lib/formatDate";
 
 const FILE_NAME = "products.json";
 
-/* =====================================
-   📌 Đọc file sản phẩm từ Blob
-===================================== */
+/* ======================
+   Đọc sản phẩm
+====================== */
 async function readProducts() {
   try {
     const { blobs } = await list();
     const file = blobs.find((b) => b.pathname === FILE_NAME);
-
     if (!file) return [];
+
     const res = await fetch(file.url, { cache: "no-store" });
     return await res.json();
-  } catch (err) {
-    console.error("❌ Lỗi đọc file:", err);
+  } catch {
     return [];
   }
 }
 
-/* =====================================
-   📌 Ghi file sản phẩm
-===================================== */
+/* ======================
+   Ghi sản phẩm
+====================== */
 async function writeProducts(data: any[]) {
   try {
     const { blobs } = await list();
@@ -40,9 +39,9 @@ async function writeProducts(data: any[]) {
   }
 }
 
-/* =====================================
-   📌 Kiểm tra quyền seller
-===================================== */
+/* ======================
+   Kiểm tra quyền seller
+====================== */
 async function isSeller(username: string) {
   try {
     const host = headers().get("host");
@@ -50,18 +49,17 @@ async function isSeller(username: string) {
     const base = `${protocol}://${host}`;
 
     const res = await fetch(`${base}/api/users/role?username=${username}`);
-    if (!res.ok) return false;
-
     const data = await res.json();
+
     return data.role === "seller";
   } catch {
     return false;
   }
 }
 
-/* =====================================
-   🚀 GET – Lấy tất cả sản phẩm
-===================================== */
+/* ======================
+   GET – Lấy tất cả SP
+====================== */
 export async function GET() {
   const list = await readProducts();
   const now = new Date();
@@ -70,12 +68,16 @@ export async function GET() {
     const start = p.saleStart ? new Date(p.saleStart) : null;
     const end = p.saleEnd ? new Date(p.saleEnd) : null;
 
+    // Chuẩn hóa để không lệch múi giờ
+    if (start) start.setHours(0, 0, 0, 0);
+    if (end) end.setHours(23, 59, 59, 999);
+
     const isSale =
       p.salePrice &&
       start &&
       end &&
-      now >= start &&
-      now <= end;
+      now.getTime() >= start.getTime() &&
+      now.getTime() <= end.getTime();
 
     return {
       ...p,
@@ -87,9 +89,9 @@ export async function GET() {
   return NextResponse.json(updated);
 }
 
-/* =====================================
-   🚀 POST – Thêm sản phẩm mới
-===================================== */
+/* ======================
+   POST – Thêm SP
+====================== */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -106,12 +108,11 @@ export async function POST(req: Request) {
     } = body;
 
     if (!name || !price || !seller)
-      return NextResponse.json({ success: false, message: "Thiếu dữ liệu" });
+      return NextResponse.json({ success: false });
 
     const sellerLower = seller.toLowerCase();
-    const ok = await isSeller(sellerLower);
-    if (!ok)
-      return NextResponse.json({ success: false, message: "Không có quyền đăng" });
+    if (!(await isSeller(sellerLower)))
+      return NextResponse.json({ success: false });
 
     const list = await readProducts();
 
@@ -126,6 +127,8 @@ export async function POST(req: Request) {
       createdAt: new Date().toISOString(),
       views: 0,
       sold: 0,
+
+      // ⭐ Lưu đúng ISO
       salePrice: salePrice || null,
       saleStart: saleStart ? toISO(saleStart) : null,
       saleEnd: saleEnd ? toISO(saleEnd) : null,
@@ -135,15 +138,14 @@ export async function POST(req: Request) {
     await writeProducts(list);
 
     return NextResponse.json({ success: true, product: newProduct });
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json({ success: false, message: "Lỗi thêm sản phẩm" });
+  } catch {
+    return NextResponse.json({ success: false });
   }
 }
 
-/* =====================================
-   🚀 PUT – Sửa sản phẩm
-===================================== */
+/* ======================
+   PUT – Sửa SP
+====================== */
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
@@ -161,24 +163,20 @@ export async function PUT(req: Request) {
     } = body;
 
     if (!id || !seller)
-      return NextResponse.json({ success: false, message: "Thiếu dữ liệu" });
+      return NextResponse.json({ success: false });
 
     const sellerLower = seller.toLowerCase();
-    const ok = await isSeller(sellerLower);
-    if (!ok)
-      return NextResponse.json({ success: false, message: "Không có quyền sửa" });
+    if (!(await isSeller(sellerLower)))
+      return NextResponse.json({ success: false });
 
     const list = await readProducts();
     const index = list.findIndex((p) => p.id === id);
 
     if (index === -1)
-      return NextResponse.json({ success: false, message: "Không tìm thấy sản phẩm" });
+      return NextResponse.json({ success: false });
 
     if (list[index].seller !== sellerLower)
-      return NextResponse.json({
-        success: false,
-        message: "Không được sửa sản phẩm người khác",
-      });
+      return NextResponse.json({ success: false });
 
     list[index] = {
       ...list[index],
@@ -188,6 +186,7 @@ export async function PUT(req: Request) {
       images,
       categoryId: Number(categoryId) || list[index].categoryId,
       updatedAt: new Date().toISOString(),
+
       salePrice: salePrice || null,
       saleStart: saleStart ? toISO(saleStart) : null,
       saleEnd: saleEnd ? toISO(saleEnd) : null,
@@ -196,15 +195,14 @@ export async function PUT(req: Request) {
     await writeProducts(list);
 
     return NextResponse.json({ success: true, product: list[index] });
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json({ success: false, message: "Lỗi cập nhật" });
+  } catch {
+    return NextResponse.json({ success: false });
   }
 }
 
-/* =====================================
-   🚀 DELETE – Xoá sản phẩm
-===================================== */
+/* ======================
+   DELETE – Xoá SP
+====================== */
 export async function DELETE(req: Request) {
   try {
     const url = new URL(req.url);
@@ -212,31 +210,26 @@ export async function DELETE(req: Request) {
     const { seller } = await req.json();
 
     if (!id || !seller)
-      return NextResponse.json({ success: false, message: "Thiếu dữ liệu" });
+      return NextResponse.json({ success: false });
 
     const sellerLower = seller.toLowerCase();
-    const ok = await isSeller(sellerLower);
-    if (!ok)
-      return NextResponse.json({ success: false, message: "Không có quyền xoá" });
+    if (!(await isSeller(sellerLower)))
+      return NextResponse.json({ success: false });
 
     const list = await readProducts();
     const item = list.find((p) => p.id === id);
 
     if (!item)
-      return NextResponse.json({ success: false, message: "Không tìm thấy sản phẩm" });
+      return NextResponse.json({ success: false });
 
     if (item.seller !== sellerLower)
-      return NextResponse.json({
-        success: false,
-        message: "Không được xoá sản phẩm người khác",
-      });
+      return NextResponse.json({ success: false });
 
     const updated = list.filter((p) => p.id !== id);
     await writeProducts(updated);
 
     return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json({ success: false, message: "Lỗi xoá" });
+  } catch {
+    return NextResponse.json({ success: false });
   }
 }
