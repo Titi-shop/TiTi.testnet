@@ -147,7 +147,9 @@ useEffect(() => {
 
   if (!piReady || !user)
     return <main className="text-center py-10">⏳ Đang tải...</main>;
-
+if (loading || !piReady || !user || role !== "seller") {
+  return <main className="text-center py-10">⏳ Đang tải...</main>;
+}
   return (
     <main className="p-5 max-w-lg mx-auto pb-32">
       <h1 className="text-xl font-bold mb-3">🛒 Đăng sản phẩm mới</h1>
