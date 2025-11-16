@@ -131,92 +131,81 @@ export default function SellerStockPage() {
       ) : (
         <div className="space-y-4">
           {products.map((product) => {
-            const now = new Date();
-            const start = product.saleStart ? new Date(product.saleStart) : null;
-            const end = product.saleEnd ? new Date(product.saleEnd) : null;
-            const isSale =
-              product.salePrice && start && end && now >= start && now <= end;
+  const now = new Date();
+  const start = product.saleStart ? new Date(product.saleStart) : null;
+  const end = product.saleEnd ? new Date(product.saleEnd) : null;
 
-            const salePercent =
-              isSale && product.price && product.salePrice
-                ? Math.round(
-                    ((product.price - product.salePrice) / product.price) * 100
-                  )
-                : 0;
+  const isSale =
+    product.salePrice && start && end && now >= start && now <= end;
 
-            return (
-              <div
-                key={product.id}
-                className="flex gap-3 p-3 bg-white rounded-lg shadow border relative"
-              >
-                {/* BADGE SALE */}
-                {isSale && (
-                  <span className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full">
-                    -{salePercent}%
-                  </span>
-                )}
+  const salePercent =
+    isSale && product.price && product.salePrice
+      ? Math.round(((product.price - product.salePrice) / product.price) * 100)
+      : 0;
 
-                {/* Ảnh sản phẩm */}
-                <div
-                  className="w-24 h-24 relative rounded overflow-hidden cursor-pointer"
-                  onClick={() => router.push(`/product/${product.id}`)}
-                >
-                  {product.images?.[0] ? (
-                    <Image
-                      src={product.images[0]}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500 text-sm">
-                      No Img
-                    </div>
-                  )}
-                </div>
-
-                {/* Thông tin */}
-                <div className="flex-1">
-                  <h3 className="font-semibold truncate">{product.name}</h3>
-
-                  {/* Giá SALE / Giá thường */}
-                  {isSale ? (
-                    <>
-                      <p className="text-red-600 font-bold">
-                        {product.salePrice} π
-                      </p>
-                      <p className="text-xs text-gray-500 line-through">
-                        {product.price} π
-                      </p>
-                    </>
-                  ) : (
-                    <p className="text-[#ff6600] font-bold">
-                      {product.price} π
-                    </p>
-                  )}
-
-                  {/* Nút */}
-                  <div className="flex gap-4 mt-2">
-                    <button
-                      onClick={() => router.push(`/seller/edit/${product.id}`)}
-                      className="text-green-600 underline"
-                    >
-                      Sửa
-                    </button>
-
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      className="text-red-600 underline"
-                    >
-                      Xóa
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+  return (
+    <div
+      key={product.id}
+      className="flex gap-3 p-3 bg-white rounded-lg shadow border relative"
+    >
+      {/* ⭐ BADGE SALE ĐÈ LÊN HÌNH  */}
+      {isSale && (
+        <span className="absolute top-2 left-2 z-10 bg-red-600 text-white text-xs px-2 py-0.5 rounded-full">
+          -{salePercent}%
+        </span>
       )}
-    </main>
+
+      {/* Ảnh sản phẩm */}
+      <div
+        className="w-24 h-24 relative rounded overflow-hidden cursor-pointer"
+        onClick={() => router.push(`/product/${product.id}`)}
+      >
+        {product.images?.[0] ? (
+          <Image
+            src={product.images[0]}
+            alt={product.name}
+            fill
+            className="object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500 text-sm">
+            No Img
+          </div>
+        )}
+      </div>
+
+      {/* Thông tin sản phẩm */}
+      <div className="flex-1">
+        <h3 className="font-semibold truncate">{product.name}</h3>
+
+        {/* Giá SALE / Giá gốc */}
+        {isSale ? (
+          <>
+            <p className="text-red-600 font-bold">{product.salePrice} π</p>
+            <p className="text-xs text-gray-500 line-through">
+              {product.price} π
+            </p>
+          </>
+        ) : (
+          <p className="text-[#ff6600] font-bold">{product.price} π</p>
+        )}
+
+        <div className="flex gap-4 mt-2">
+          <button
+            onClick={() => router.push(`/seller/edit/${product.id}`)}
+            className="text-green-600 underline"
+          >
+            Sửa
+          </button>
+
+          <button
+            onClick={() => handleDelete(product.id)}
+            className="text-red-600 underline"
+          >
+            Xóa
+          </button>
+        </div>
+      </div>
+    </div>
   );
-}
+})}
