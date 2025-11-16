@@ -104,11 +104,10 @@ export default function SellerStockPage() {
   }
 
   /* ============================================
-     🎨 UI STOCK + HIỂN THỊ SALE
+     🎨 UI STOCK + THÊM GIÁ SALE
   ============================================ */
   return (
     <main className="p-4 max-w-2xl mx-auto pb-28">
-      {/* Nút quay lại */}
       <button
         className="mb-4 text-blue-600 underline"
         onClick={() => router.push("/seller")}
@@ -142,9 +141,7 @@ export default function SellerStockPage() {
         <div className="space-y-4">
           {products.map((product) => {
             const now = new Date();
-            const start = product.saleStart
-              ? new Date(product.saleStart)
-              : null;
+            const start = product.saleStart ? new Date(product.saleStart) : null;
             const end = product.saleEnd ? new Date(product.saleEnd) : null;
 
             const isSale =
@@ -162,14 +159,14 @@ export default function SellerStockPage() {
                 key={product.id}
                 className="flex gap-3 p-3 bg-white rounded-lg shadow border relative"
               >
-                {/* ⭐ BADGE SALE TRÊN HÌNH */}
+                {/* ⭐ BADGE SALE – đặt trên hình */}
                 {isSale && (
                   <span className="absolute top-2 left-2 z-10 bg-red-600 text-white text-xs px-2 py-0.5 rounded-full shadow">
                     -{salePercent}%
                   </span>
                 )}
 
-                {/* Hình ảnh */}
+                {/* Hình sản phẩm */}
                 <div
                   className="w-24 h-24 relative rounded overflow-hidden cursor-pointer"
                   onClick={() => router.push(`/product/${product.id}`)}
@@ -188,31 +185,25 @@ export default function SellerStockPage() {
                   )}
                 </div>
 
-                {/* THÔNG TIN */}
+                {/* Thông tin sản phẩm */}
                 <div className="flex-1">
                   <h3 className="font-semibold truncate">{product.name}</h3>
 
-                  {/* Giá + Sale */}
+                  {/* ⭐ HIỂN THỊ GIÁ SALE */}
                   {isSale ? (
                     <>
-                      <p className="text-red-600 font-bold">
-                        {product.salePrice} π
-                      </p>
+                      <p className="text-red-600 font-bold">{product.salePrice} π</p>
                       <p className="text-xs text-gray-500 line-through">
                         {product.price} π
                       </p>
                     </>
                   ) : (
-                    <p className="text-[#ff6600] font-bold">
-                      {product.price} π
-                    </p>
+                    <p className="text-[#ff6600] font-bold">{product.price} π</p>
                   )}
 
                   <div className="flex gap-4 mt-2">
                     <button
-                      onClick={() =>
-                        router.push(`/seller/edit/${product.id}`)
-                      }
+                      onClick={() => router.push(`/seller/edit/${product.id}`)}
                       className="text-green-600 underline"
                     >
                       Sửa
