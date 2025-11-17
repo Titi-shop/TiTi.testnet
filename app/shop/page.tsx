@@ -82,7 +82,7 @@ export default function ShopPage() {
             3 SLIDER SẢN PHẨM
         =============================== */}
 
-        {/* 1 — Giá cao nhất */}
+        {/* 1 — */}
         <ProductRow title="💎 Giá cao nhất" items={
           [...products].sort((a,b)=>b.price - a.price).slice(0,10)
         } />
