@@ -102,7 +102,7 @@ export default function ShopPage() {
         {/* ==============================
            TẤT CẢ SẢN PHẨM
         =============================== */}
-        <h2 className="text-xl font-bold mt-6 mb-3">🛍️ Tất cả sản phẩm</h2>
+        <h2 className="text-xl font-bold mt-6 mb-3"> Tất cả sản phẩm</h2>
 
         {loadingProducts ? (
           <p className="text-gray-500">Đang tải sản phẩm...</p>
