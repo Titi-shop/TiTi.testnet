@@ -42,7 +42,7 @@ export default function EditProfilePage() {
           setInfo((prev) => ({
             ...prev,
             pi_uid: data.pi_uid || "",
-            appName: data.appName || data.displayName || username!,
+            appName: data.appName || data.displayName || ""
             email: data.email || "",
             phone: data.phone || "",
             address: data.address || "",
