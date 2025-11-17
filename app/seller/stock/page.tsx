@@ -64,14 +64,6 @@ export default function SellerStockPage() {
   }
 }
 
-      setProducts(filtered);
-    } catch (err) {
-      setMessage({ text: "Không thể tải sản phẩm!", type: "error" });
-    } finally {
-      setPageLoading(false);
-    }
-  }
-
   /* ============================================
      ❌ Xóa sản phẩm
   ============================================ */
