@@ -9,7 +9,8 @@ import { toISO } from "@/lib/formatDate";
 async function isSeller(username: string) {
   try {
     const host = headers().get("host");
-    const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
+    const protocol =
+      process.env.NODE_ENV === "development" ? "http" : "https";
     const base = `${protocol}://${host}`;
 
     const res = await fetch(`${base}/api/users/role?username=${username}`);
@@ -22,43 +23,49 @@ async function isSeller(username: string) {
 }
 
 /* -------------------------------------------
-   GET ALL PRODUCTS
+   GET ALL PRODUCTS (Đã sửa lỗi lrange)
 ------------------------------------------- */
 export async function GET() {
-  const ids = await kv.get<string[]>("products:all");
-  if (!ids) return NextResponse.json([]);
+  try {
+    // LẤY DANH SÁCH ID TỪ LIST
+    const ids = await kv.lrange<string>("products:all", 0, -1);
 
-  const now = new Date();
+    if (!ids || ids.length === 0) return NextResponse.json([]);
 
-  const products = await Promise.all(
-    ids.map(async (id) => await kv.get(`product:${id}`))
-  );
+    const now = new Date();
 
-  // xử lý ngày sale
-  const updated = products.map((p: any) => {
-    if (!p) return null;
+    const products = await Promise.all(
+      ids.map(async (id) => await kv.get(`product:${id}`))
+    );
 
-    const start = p.saleStart ? new Date(p.saleStart) : null;
-    const end = p.saleEnd ? new Date(p.saleEnd) : null;
+    const updated = products
+      .filter(Boolean)
+      .map((p: any) => {
+        const start = p.saleStart ? new Date(p.saleStart) : null;
+        const end = p.saleEnd ? new Date(p.saleEnd) : null;
 
-    if (start) start.setHours(0, 0, 0, 0);
-    if (end) end.setHours(23, 59, 59, 999);
+        if (start) start.setHours(0, 0, 0, 0);
+        if (end) end.setHours(23, 59, 59, 999);
 
-    const isSale =
-      p.salePrice &&
-      start &&
-      end &&
-      now.getTime() >= start.getTime() &&
-      now.getTime() <= end.getTime();
+        const isSale =
+          p.salePrice &&
+          start &&
+          end &&
+          now.getTime() >= start.getTime() &&
+          now.getTime() <= end.getTime();
 
-    return {
-      ...p,
-      isSale,
-      finalPrice: isSale ? p.salePrice : p.price,
-    };
-  });
+        return {
+          ...p,
+          isSale,
+          finalPrice: isSale ? p.salePrice : p.price,
+        };
+      });
 
-  return NextResponse.json(updated.filter(Boolean));
+    return NextResponse.json(updated);
+  } catch (err) {
+    console.error("GET products error:", err);
+    return NextResponse.json([], { status: 500 });
+  }
 }
 
 /* -------------------------------------------
@@ -83,10 +90,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Thiếu dữ liệu" });
 
     const sellerLower = seller.toLowerCase();
-    if (!(await isSeller(sellerLower)))
-      return NextResponse.json({ success: false, message: "Không phải seller" });
 
-    // tạo ID
+    if (!(await isSeller(sellerLower)))
+      return NextResponse.json({
+        success: false,
+        message: "Không phải seller",
+      });
+
     const id = Date.now().toString();
 
     const newProduct = {
@@ -100,23 +110,24 @@ export async function POST(req: Request) {
       createdAt: new Date().toISOString(),
       views: 0,
       sold: 0,
+
       salePrice: salePrice || null,
       saleStart: saleStart ? toISO(saleStart) : null,
       saleEnd: saleEnd ? toISO(saleEnd) : null,
     };
 
-    // lưu sản phẩm
+    // LƯU SẢN PHẨM
     await kv.set(`product:${id}`, newProduct);
 
-    // thêm vào danh sách chung
+    // THÊM VÀO DANH SÁCH CHUNG (LIST)
     await kv.rpush("products:all", id);
 
-    // thêm vào danh sách của seller
+    // THÊM VÀO DANH SÁCH SELLER
     await kv.rpush(`products:seller:${sellerLower}`, id);
 
     return NextResponse.json({ success: true, product: newProduct });
   } catch (err) {
-    console.error(err);
+    console.error("POST error:", err);
     return NextResponse.json({ success: false, message: "Lỗi server" });
   }
 }
@@ -144,7 +155,6 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: false });
 
     const sellerLower = seller.toLowerCase();
-
     if (!(await isSeller(sellerLower)))
       return NextResponse.json({ success: false });
 
@@ -162,6 +172,7 @@ export async function PUT(req: Request) {
       images,
       categoryId: Number(categoryId) || product.categoryId,
       updatedAt: new Date().toISOString(),
+
       salePrice: salePrice || null,
       saleStart: saleStart ? toISO(saleStart) : null,
       saleEnd: saleEnd ? toISO(saleEnd) : null,
@@ -170,7 +181,8 @@ export async function PUT(req: Request) {
     await kv.set(`product:${id}`, updated);
 
     return NextResponse.json({ success: true, product: updated });
-  } catch {
+  } catch (err) {
+    console.error("PUT error:", err);
     return NextResponse.json({ success: false });
   }
 }
@@ -182,8 +194,8 @@ export async function DELETE(req: Request) {
   try {
     const url = new URL(req.url);
     const id = url.searchParams.get("id");
-    const { seller } = await req.json();
 
+    const { seller } = await req.json();
     if (!id || !seller)
       return NextResponse.json({ success: false });
 
@@ -198,17 +210,18 @@ export async function DELETE(req: Request) {
     if (product.seller !== sellerLower)
       return NextResponse.json({ success: false });
 
-    // xóa product
+    // XÓA PRODUCT
     await kv.del(`product:${id}`);
 
-    // xóa khỏi danh sách seller
+    // XÓA TRONG LIST CỦA SELLER
     await kv.lrem(`products:seller:${sellerLower}`, 0, id);
 
-    // xóa khỏi danh sách all
-    await kv.lrem(`products:all`, 0, id);
+    // XÓA TRONG LIST TẤT CẢ
+    await kv.lrem("products:all", 0, id);
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    console.error("DELETE error:", err);
     return NextResponse.json({ success: false });
   }
 }
