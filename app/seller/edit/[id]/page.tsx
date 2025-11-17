@@ -62,36 +62,22 @@ export default function EditProductPage() {
       LOAD PRODUCT
   ====================== */
   useEffect(() => {
-    if (!id || !user) return;
+  if (!id || !user) return;
 
-    fetch("/api/products", { cache: "no-store" })
-      .then(r => r.json())
-      .then(data => {
-        const found = data.find((p: any) => String(p.id) === String(id));
+  fetch(`/api/products?id=${id}`, { cache: "no-store" })
+    .then(r => r.json())
+    .then(p => {
+      if (!p || p.seller !== user.username.toLowerCase()) {
+        setMessage({ text: "🚫 Bạn không có quyền sửa sản phẩm!", type: "error" });
+        setTimeout(() => router.push("/seller/stock"), 2000);
+        return;
+      }
 
-        if (!found) {
-          setMessage({ text: "❌ Không tìm thấy sản phẩm!", type: "error" });
-          setLoadingPage(false);
-          return;
-        }
-
-        if (
-          found.seller?.trim().toLowerCase() !==
-          user.username.trim().toLowerCase()
-        ) {
-          setMessage({
-            text: "🚫 Bạn không có quyền sửa sản phẩm này!",
-            type: "error",
-          });
-          setTimeout(() => router.push("/seller/stock"), 2000);
-          return;
-        }
-
-        setProduct(found);
-        setPreviews(found.images || []);
-      })
-      .finally(() => setLoadingPage(false));
-  }, [id, user]);
+      setProduct(p);
+      setPreviews(p.images || []);
+    })
+    .finally(() => setLoadingPage(false));
+}, [id, user]);
 
   /* ======================
       UPLOAD FILE
