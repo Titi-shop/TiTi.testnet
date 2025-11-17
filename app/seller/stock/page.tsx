@@ -49,15 +49,20 @@ export default function SellerStockPage() {
   /* ============================================
      📦 Lấy sản phẩm theo seller
   ============================================ */
-  async function loadProducts(username: string) {
-    try {
-      const res = await fetch("/api/products", { cache: "no-store" });
-      const data = await res.json();
 
-      const filtered = data.filter(
-        (p: any) =>
-          p.seller?.trim().toLowerCase() === username.trim().toLowerCase()
-      );
+      async function loadProducts(username: string) {
+  try {
+    const res = await fetch(`/api/products?seller=${username}`, {
+      cache: "no-store",
+    });
+    const data = await res.json();
+    setProducts(data);
+  } catch {
+    setMessage({ text: "Không thể tải sản phẩm!", type: "error" });
+  } finally {
+    setPageLoading(false);
+  }
+}
 
       setProducts(filtered);
     } catch (err) {
