@@ -410,7 +410,7 @@ export default function HomePage() {
         <section className="mt-4">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-base font-bold text-gray-900">
-              🛍️ Tất cả sản phẩm
+             Tất cả sản phẩm
             </h2>
             <div className="flex items-center gap-2 text-xs">
               <span className="text-gray-500">Sắp xếp:</span>
