@@ -163,7 +163,16 @@ export default function ProductDetail() {
       {/* Tên / Giá */}
       <div className="bg-white p-4 mt-2 shadow-sm flex justify-between items-center">
         <h2 className="text-lg font-semibold text-gray-800">{product.name}</h2>
-        <p className="text-xl font-bold text-orange-600">π {product.price}</p>
+        <div className="flex items-center gap-2">
+  <p className="text-xl font-bold text-orange-600">
+    π {product.finalPrice}
+  </p>
+
+  {product.isSale && (
+    <p className="line-through text-gray-400 text-sm">
+      π {product.price}
+    </p>
+  )}
       </div>
 
       {/* Views */}
