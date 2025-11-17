@@ -81,47 +81,60 @@ export default function HomePage() {
     loadCategories();
   }, []);
 
-  /* ============================
-     🟢 LOAD SẢN PHẨM
-  ============================ */
-  useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        const res = await fetch("/api/products", { cache: "no-store" });
-        if (!res.ok) throw new Error("Không thể tải sản phẩm");
-        const data: Product[] = await res.json();
+/* ============================
+   🟢 LOAD SẢN PHẨM — FIX SALE ĐÚNG NGÀY
+============================ */
+useEffect(() => {
+  const loadProducts = async () => {
+    try {
+      const res = await fetch("/api/products", { cache: "no-store" });
+      if (!res.ok) throw new Error("Không thể tải sản phẩm");
 
-        const normalized = (Array.isArray(data) ? data : []).map((p) => ({
+      const data: Product[] = await res.json();
+      const now = new Date();
+
+      const normalized = (Array.isArray(data) ? data : []).map((p) => {
+        const start = p.saleStart ? new Date(p.saleStart) : null;
+        const end = p.saleEnd ? new Date(p.saleEnd) : null;
+
+        let isSale = false;
+
+        // ⭐ Fix lỗi ngày không đúng: xử lý giờ trong ngày
+        if (start && end && p.salePrice) {
+          start.setHours(0, 0, 0, 0);
+          end.setHours(23, 59, 59, 999);
+
+          if (now.getTime() >= start.getTime() && now.getTime() <= end.getTime()) {
+            isSale = true;
+          }
+        }
+
+        return {
           ...p,
           views: p.views ?? 0,
           sold: p.sold ?? 0,
-          isSale: Boolean(p.isSale),
-          finalPrice:
-            typeof p.finalPrice !== "undefined" && p.finalPrice !== null
-              ? p.finalPrice
-              : p.salePrice && p.isSale
-              ? p.salePrice
-              : p.price,
-        }));
+          isSale,
+          finalPrice: isSale ? p.salePrice : p.price,
+        };
+      });
 
-        // Mặc định sắp xếp theo "popular" = views nhiều nhất
-        const sorted = [...normalized].sort(
-          (a, b) => (b.views ?? 0) - (a.views ?? 0)
-        );
+      // ⭐ Mặc định sắp xếp theo độ hot = views + sold
+      const sorted = [...normalized].sort(
+        (a, b) => (b.views ?? 0) + (b.sold ?? 0) - ((a.views ?? 0) + (a.sold ?? 0))
+      );
 
-        setProducts(sorted);
-        setFilteredProducts(sorted);
-      } catch (e: any) {
-        console.error("❌ Lỗi tải sản phẩm:", e);
-        setError(e?.message || "Không thể tải sản phẩm");
-      } finally {
-        setLoadingProducts(false);
-      }
-    };
+      setProducts(sorted);
+      setFilteredProducts(sorted);
+    } catch (e: any) {
+      console.error("❌ Lỗi tải sản phẩm:", e);
+      setError(e?.message || "Không thể tải sản phẩm");
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
 
-    loadProducts();
-  }, []);
-
+  loadProducts();
+}, []);
   /* ============================
      🔍 LỌC + SẮP XẾP
   ============================ */
