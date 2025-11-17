@@ -14,7 +14,7 @@ export default function EditProfilePage() {
     pi_uid: "",
     appName: "",
     email: "",
-    phoneCode: "+00", // sẽ được tự đổi theo quốc gia
+    phoneCode: "+00",
     phone: "",
     address: "",
     province: "",
@@ -42,7 +42,7 @@ export default function EditProfilePage() {
           setInfo((prev) => ({
             ...prev,
             pi_uid: data.pi_uid || "",
-            appName: data.appName || data.displayName || ""
+            appName: data.appName || data.displayName || "", // ✅ CHỈ SỬA CHỖ NÀY
             email: data.email || "",
             phone: data.phone || "",
             address: data.address || "",
@@ -66,14 +66,13 @@ export default function EditProfilePage() {
     }
   };
 
-  // 💾 Lưu hồ sơ
+  // 💾 Save profile
   const handleSave = async () => {
     if (!user) {
       alert("❌ Bạn chưa đăng nhập.");
       return;
     }
 
-    // email basic validate
     const emailPattern =
       /^[a-zA-Z0-9._%+-]+@(?:gmail\.com|yahoo\.com|hotmail\.com|outlook\.com|icloud\.com|[\w.-]+\.\w{2,})$/;
 
@@ -83,11 +82,12 @@ export default function EditProfilePage() {
     }
 
     setSaving(true);
+
     try {
       const body = {
         ...info,
         username: user.username,
-        displayName: info.appName,
+        displayName: info.appName, // vẫn lưu nếu bạn muốn
         avatar,
       };
 
@@ -101,6 +101,7 @@ export default function EditProfilePage() {
       });
 
       const data = await res.json();
+
       if (data.success) {
         alert("✅ Hồ sơ đã lưu!");
         router.push("/customer/profile");
@@ -126,7 +127,6 @@ export default function EditProfilePage() {
 
   return (
     <main className="min-h-screen bg-gray-100 pb-32 relative">
-
       {/* 🔙 Back */}
       <button
         onClick={() => router.back()}
@@ -136,7 +136,6 @@ export default function EditProfilePage() {
       </button>
 
       <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg mt-12 p-6">
-
         {/* Avatar */}
         <div className="relative w-24 h-24 mx-auto mb-4">
           <img
@@ -145,7 +144,12 @@ export default function EditProfilePage() {
             className="w-24 h-24 rounded-full object-cover border-4 border-orange-500"
           />
           <label className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full cursor-pointer">
-            <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+            <input
+              type="file"
+              className="hidden"
+              accept="image/*"
+              onChange={handleFileChange}
+            />
             📸
           </label>
         </div>
@@ -155,10 +159,11 @@ export default function EditProfilePage() {
         </h1>
 
         <div className="space-y-4">
-
           {/* App Name */}
           <div>
-            <label className="block text-sm text-gray-700 mb-1">Tên hiển thị</label>
+            <label className="block text-sm text-gray-700 mb-1">
+              Tên hiển thị
+            </label>
             <input
               type="text"
               className="w-full border px-3 py-2 rounded"
@@ -178,11 +183,15 @@ export default function EditProfilePage() {
             />
           </div>
 
-          {/* Phone – tự đổi mã vùng theo quốc gia */}
+          {/* Phone */}
           <div>
-            <label className="block text-sm text-gray-700 mb-1">Số điện thoại</label>
+            <label className="block text-sm text-gray-700 mb-1">
+              Số điện thoại
+            </label>
             <div className="flex mb-1">
-              <span className="px-3 py-2 bg-gray-100 border rounded-l">{info.phoneCode}</span>
+              <span className="px-3 py-2 bg-gray-100 border rounded-l">
+                {info.phoneCode}
+              </span>
               <input
                 type="tel"
                 className="flex-1 border px-3 py-2 rounded-r"
@@ -231,7 +240,9 @@ export default function EditProfilePage() {
 
           {/* Province */}
           <div>
-            <label className="block text-sm text-gray-700 mb-1">Tỉnh / Thành phố</label>
+            <label className="block text-sm text-gray-700 mb-1">
+              Tỉnh / Thành phố
+            </label>
             <select
               className="w-full border px-3 py-2 rounded"
               value={info.province}
@@ -245,7 +256,6 @@ export default function EditProfilePage() {
               ))}
             </select>
           </div>
-
         </div>
 
         {/* SAVE */}
