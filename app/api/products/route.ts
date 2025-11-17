@@ -1,47 +1,11 @@
 import { NextResponse } from "next/server";
-import { del, put, list } from "@vercel/blob";
 import { headers } from "next/headers";
+import { kv } from "@vercel/kv";
 import { toISO } from "@/lib/formatDate";
 
-const FILE_NAME = "products.json";
-
-/* ======================
-   Đọc sản phẩm
-====================== */
-async function readProducts() {
-  try {
-    const { blobs } = await list();
-    const file = blobs.find((b) => b.pathname === FILE_NAME);
-    if (!file) return [];
-
-    const res = await fetch(file.url, { cache: "no-store" });
-    return await res.json();
-  } catch {
-    return [];
-  }
-}
-
-/* ======================
-   Ghi sản phẩm
-====================== */
-async function writeProducts(data: any[]) {
-  try {
-    const { blobs } = await list();
-    const old = blobs.find((b) => b.pathname === FILE_NAME);
-    if (old) await del(FILE_NAME);
-
-    await put(FILE_NAME, JSON.stringify(data, null, 2), {
-      access: "public",
-      addRandomSuffix: false,
-    });
-  } catch (err) {
-    console.error("❌ Lỗi ghi file:", err);
-  }
-}
-
-/* ======================
-   Kiểm tra quyền seller
-====================== */
+/* -------------------------------------------
+   CHECK SELLER
+------------------------------------------- */
 async function isSeller(username: string) {
   try {
     const host = headers().get("host");
@@ -57,18 +21,26 @@ async function isSeller(username: string) {
   }
 }
 
-/* ======================
-   GET – Lấy tất cả SP
-====================== */
+/* -------------------------------------------
+   GET ALL PRODUCTS
+------------------------------------------- */
 export async function GET() {
-  const list = await readProducts();
+  const ids = await kv.get<string[]>("products:all");
+  if (!ids) return NextResponse.json([]);
+
   const now = new Date();
 
-  const updated = list.map((p) => {
+  const products = await Promise.all(
+    ids.map(async (id) => await kv.get(`product:${id}`))
+  );
+
+  // xử lý ngày sale
+  const updated = products.map((p: any) => {
+    if (!p) return null;
+
     const start = p.saleStart ? new Date(p.saleStart) : null;
     const end = p.saleEnd ? new Date(p.saleEnd) : null;
 
-    // Chuẩn hóa để không lệch múi giờ
     if (start) start.setHours(0, 0, 0, 0);
     if (end) end.setHours(23, 59, 59, 999);
 
@@ -86,12 +58,12 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json(updated);
+  return NextResponse.json(updated.filter(Boolean));
 }
 
-/* ======================
-   POST – Thêm SP
-====================== */
+/* -------------------------------------------
+   CREATE PRODUCT
+------------------------------------------- */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -108,16 +80,17 @@ export async function POST(req: Request) {
     } = body;
 
     if (!name || !price || !seller)
-      return NextResponse.json({ success: false });
+      return NextResponse.json({ success: false, message: "Thiếu dữ liệu" });
 
     const sellerLower = seller.toLowerCase();
     if (!(await isSeller(sellerLower)))
-      return NextResponse.json({ success: false });
+      return NextResponse.json({ success: false, message: "Không phải seller" });
 
-    const list = await readProducts();
+    // tạo ID
+    const id = Date.now().toString();
 
     const newProduct = {
-      id: Date.now(),
+      id,
       name,
       price,
       description: description || "",
@@ -127,25 +100,30 @@ export async function POST(req: Request) {
       createdAt: new Date().toISOString(),
       views: 0,
       sold: 0,
-
-      // ⭐ Lưu đúng ISO
       salePrice: salePrice || null,
       saleStart: saleStart ? toISO(saleStart) : null,
       saleEnd: saleEnd ? toISO(saleEnd) : null,
     };
 
-    list.unshift(newProduct);
-    await writeProducts(list);
+    // lưu sản phẩm
+    await kv.set(`product:${id}`, newProduct);
+
+    // thêm vào danh sách chung
+    await kv.rpush("products:all", id);
+
+    // thêm vào danh sách của seller
+    await kv.rpush(`products:seller:${sellerLower}`, id);
 
     return NextResponse.json({ success: true, product: newProduct });
-  } catch {
-    return NextResponse.json({ success: false });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ success: false, message: "Lỗi server" });
   }
 }
 
-/* ======================
-   PUT – Sửa SP
-====================== */
+/* -------------------------------------------
+   UPDATE PRODUCT
+------------------------------------------- */
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
@@ -166,67 +144,68 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: false });
 
     const sellerLower = seller.toLowerCase();
+
     if (!(await isSeller(sellerLower)))
       return NextResponse.json({ success: false });
 
-    const list = await readProducts();
-    const index = list.findIndex((p) => p.id === id);
+    const product: any = await kv.get(`product:${id}`);
+    if (!product) return NextResponse.json({ success: false });
 
-    if (index === -1)
+    if (product.seller !== sellerLower)
       return NextResponse.json({ success: false });
 
-    if (list[index].seller !== sellerLower)
-      return NextResponse.json({ success: false });
-
-    list[index] = {
-      ...list[index],
+    const updated = {
+      ...product,
       name,
       price,
       description,
       images,
-      categoryId: Number(categoryId) || list[index].categoryId,
+      categoryId: Number(categoryId) || product.categoryId,
       updatedAt: new Date().toISOString(),
-
       salePrice: salePrice || null,
       saleStart: saleStart ? toISO(saleStart) : null,
       saleEnd: saleEnd ? toISO(saleEnd) : null,
     };
 
-    await writeProducts(list);
+    await kv.set(`product:${id}`, updated);
 
-    return NextResponse.json({ success: true, product: list[index] });
+    return NextResponse.json({ success: true, product: updated });
   } catch {
     return NextResponse.json({ success: false });
   }
 }
 
-/* ======================
-   DELETE – Xoá SP
-====================== */
+/* -------------------------------------------
+   DELETE PRODUCT
+------------------------------------------- */
 export async function DELETE(req: Request) {
   try {
     const url = new URL(req.url);
-    const id = Number(url.searchParams.get("id"));
+    const id = url.searchParams.get("id");
     const { seller } = await req.json();
 
     if (!id || !seller)
       return NextResponse.json({ success: false });
 
     const sellerLower = seller.toLowerCase();
+
     if (!(await isSeller(sellerLower)))
       return NextResponse.json({ success: false });
 
-    const list = await readProducts();
-    const item = list.find((p) => p.id === id);
+    const product: any = await kv.get(`product:${id}`);
+    if (!product) return NextResponse.json({ success: false });
 
-    if (!item)
+    if (product.seller !== sellerLower)
       return NextResponse.json({ success: false });
 
-    if (item.seller !== sellerLower)
-      return NextResponse.json({ success: false });
+    // xóa product
+    await kv.del(`product:${id}`);
 
-    const updated = list.filter((p) => p.id !== id);
-    await writeProducts(updated);
+    // xóa khỏi danh sách seller
+    await kv.lrem(`products:seller:${sellerLower}`, 0, id);
+
+    // xóa khỏi danh sách all
+    await kv.lrem(`products:all`, 0, id);
 
     return NextResponse.json({ success: true });
   } catch {
