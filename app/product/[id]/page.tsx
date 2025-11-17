@@ -17,7 +17,6 @@ export default function ProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const { addToCart, clearCart } = useCart();
   const { translate } = useLanguage();
-
   const [related, setRelated] = useState<any[]>([]);
 
   const handleSwipe = (direction: string) => {
@@ -32,12 +31,36 @@ export default function ProductDetail() {
         const res = await fetch("/api/products");
         const products = await res.json();
         const found = products.find((p: any) => p.id.toString() === id.toString());
-        if (found) setProduct(found);
 
-        // ⭐ Lấy sản phẩm nhiều lượt xem nhất
+        if (found) {
+          // =======================
+          // ⭐ TÍNH GIÁ SALE CHUẨN
+          // =======================
+          const now = new Date();
+          const start = found.saleStart ? new Date(found.saleStart) : null;
+          const end = found.saleEnd ? new Date(found.saleEnd) : null;
+
+          let isSale = false;
+
+          if (start && end && found.salePrice) {
+            start.setHours(0, 0, 0, 0);
+            end.setHours(23, 59, 59, 999);
+
+            if (now.getTime() >= start.getTime() && now.getTime() <= end.getTime()) {
+              isSale = true;
+            }
+          }
+
+          found.isSale = isSale;
+          found.finalPrice = isSale ? found.salePrice : found.price;
+
+          setProduct(found);
+        }
+
+        // ⭐ Danh sách sản phẩm nổi bật
         const top = [...products]
           .sort((a, b) => (b.views || 0) - (a.views || 0))
-          .filter((p) => p.id !== found.id)
+          .filter((p) => p.id !== found?.id)
           .slice(0, 10);
 
         setRelated(top);
@@ -47,9 +70,9 @@ export default function ProductDetail() {
         setLoading(false);
       }
     }
+
     if (id) fetchProduct();
   }, [id]);
-
 
   // ⭐⭐⭐ TĂNG LƯỢT XEM ⭐⭐⭐
   useEffect(() => {
@@ -93,7 +116,7 @@ export default function ProductDetail() {
 
   const handleAddToCart = () => {
     addToCart({ ...product, quantity });
-    router.push("/cart"); // ⭐ chuyển sang trang giỏ hàng
+    router.push("/cart");
   };
 
   const handleCheckout = () => {
@@ -164,15 +187,16 @@ export default function ProductDetail() {
       <div className="bg-white p-4 mt-2 shadow-sm flex justify-between items-center">
         <h2 className="text-lg font-semibold text-gray-800">{product.name}</h2>
         <div className="flex items-center gap-2">
-  <p className="text-xl font-bold text-orange-600">
-    π {product.finalPrice}
-  </p>
+          <p className="text-xl font-bold text-orange-600">
+            π {product.finalPrice}
+          </p>
 
-  {product.isSale && (
-    <p className="line-through text-gray-400 text-sm">
-      π {product.price}
-    </p>
-  )}
+          {product.isSale && (
+            <p className="line-through text-gray-400 text-sm">
+              π {product.price}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Views */}
@@ -219,7 +243,9 @@ export default function ProductDetail() {
                 className="w-full h-20 object-cover rounded"
               />
               <p className="text-xs mt-1 line-clamp-1">{p.name}</p>
-              <p className="text-orange-600 font-bold text-sm">π {p.price}</p>
+              <p className="text-orange-600 font-bold text-sm">
+                π {p.price}
+              </p>
             </div>
           ))}
         </div>
