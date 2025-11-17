@@ -49,26 +49,27 @@ export default function SellerStockPage() {
   /* ============================================
      📦 Lấy sản phẩm theo seller
   ============================================ */
+  async function loadProducts(username: string) {
+    try {
+      const res = await fetch(`/api/products`, { cache: "no-store" });
+      let data = await res.json();
 
-      async function loadProducts(username: string) {
-  try {
-    const res = await fetch(`/api/products?seller=${username}`, {
-      cache: "no-store",
-    });
-    const data = await res.json();
-    setProducts(data);
-  } catch {
-    setMessage({ text: "Không thể tải sản phẩm!", type: "error" });
-  } finally {
-    setPageLoading(false);
+      // LỌC THEO SELLER
+      data = data.filter((p: any) => p.seller === username);
+
+      setProducts(data);
+    } catch {
+      setMessage({ text: "Không thể tải sản phẩm!", type: "error" });
+    } finally {
+      setPageLoading(false);
+    }
   }
-}
 
   /* ============================================
      ❌ Xóa sản phẩm
   ============================================ */
   const handleDelete = async (id: number) => {
-    const product = products.find((p) => p.id === id);
+    const product = products.find((p) => p.id == id);
     if (!product) return;
 
     if (!confirm(`Bạn có chắc muốn xóa "${product.name}"?`)) return;
@@ -142,7 +143,11 @@ export default function SellerStockPage() {
             const end = product.saleEnd ? new Date(product.saleEnd) : null;
 
             const isSale =
-              product.salePrice && start && end && now >= start && now <= end;
+              product.salePrice &&
+              start &&
+              end &&
+              now.getTime() >= start.getTime() &&
+              now.getTime() <= end.getTime();
 
             const salePercent =
               isSale && product.price && product.salePrice
@@ -156,7 +161,7 @@ export default function SellerStockPage() {
                 key={product.id}
                 className="flex gap-3 p-3 bg-white rounded-lg shadow border relative"
               >
-                {/* ⭐ BADGE SALE – đặt trên hình */}
+                {/* ⭐ BADGE SALE */}
                 {isSale && (
                   <span className="absolute top-2 left-2 z-10 bg-red-600 text-white text-xs px-2 py-0.5 rounded-full shadow">
                     -{salePercent}%
@@ -182,14 +187,15 @@ export default function SellerStockPage() {
                   )}
                 </div>
 
-                {/* Thông tin sản phẩm */}
+                {/* Thông tin */}
                 <div className="flex-1">
                   <h3 className="font-semibold truncate">{product.name}</h3>
 
-                  {/* ⭐ HIỂN THỊ GIÁ SALE */}
                   {isSale ? (
                     <>
-                      <p className="text-red-600 font-bold">{product.salePrice} π</p>
+                      <p className="text-red-600 font-bold">
+                        {product.salePrice} π
+                      </p>
                       <p className="text-xs text-gray-500 line-through">
                         {product.price} π
                       </p>
@@ -200,7 +206,9 @@ export default function SellerStockPage() {
 
                   <div className="flex gap-4 mt-2">
                     <button
-                      onClick={() => router.push(`/seller/edit/${product.id}`)}
+                      onClick={() =>
+                        router.push(`/seller/edit/${product.id}`)
+                      }
                       className="text-green-600 underline"
                     >
                       Sửa
