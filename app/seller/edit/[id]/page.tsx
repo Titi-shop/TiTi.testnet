@@ -2,28 +2,20 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useLanguage } from "../../../context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 
-/* ======================
-    Format Date -> yyyy-MM-dd
-====================== */
 function formatDateToInput(dateString: string | null) {
   if (!dateString) return "";
   const d = new Date(dateString);
   if (isNaN(d.getTime())) return "";
-
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-
-  return `${yyyy}-${mm}-${dd}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
 }
 
 export default function EditProductPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { translate } = useLanguage();
   const { user, loading, piReady } = useAuth();
 
   const [product, setProduct] = useState<any>(null);
@@ -31,67 +23,61 @@ export default function EditProductPage() {
   const [loadingPage, setLoadingPage] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [message, setMessage] = useState({
-    text: "",
-    type: "",
-  });
+  const [message, setMessage] = useState({ text: "", type: "" });
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [images, setImages] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
 
-  /* ======================
-      AUTH CHECK
-  ====================== */
+  /* AUTH CHECK */
   useEffect(() => {
-    if (!loading && piReady) {
-      if (!user) router.push("/pilogin");
+    if (!loading && piReady && !user) {
+      router.push("/pilogin");
     }
   }, [loading, piReady, user]);
 
-  /* ======================
-      LOAD CATEGORIES
-  ====================== */
+  /* LOAD CATEGORIES */
   useEffect(() => {
     fetch("/api/categories")
-      .then(r => r.json())
-      .then(data => setCategories(data || []));
+      .then((r) => r.json())
+      .then((data) => setCategories(data || []));
   }, []);
 
-  /* ======================
-      LOAD PRODUCT
-  ====================== */
+  /* LOAD PRODUCT */
   useEffect(() => {
-  if (!id || !user) return;
+    if (!id || !user) return;
 
-  fetch(`/api/products?id=${id}`, { cache: "no-store" })
-    .then(r => r.json())
-    .then(p => {
-      if (!p || p.seller !== user.username.toLowerCase()) {
-        setMessage({ text: "🚫 Bạn không có quyền sửa sản phẩm!", type: "error" });
-        setTimeout(() => router.push("/seller/stock"), 2000);
-        return;
-      }
+    fetch(`/api/products`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((list) => {
+        const p = list.find((x: any) => x.id == id);
 
-      setProduct(p);
-      setPreviews(p.images || []);
-    })
-    .finally(() => setLoadingPage(false));
-}, [id, user]);
+        if (!p || p.seller !== user.username.toLowerCase()) {
+          setMessage({
+            text: "🚫 Bạn không có quyền sửa sản phẩm!",
+            type: "error",
+          });
+          setTimeout(() => router.push("/seller/stock"), 2000);
+          return;
+        }
 
-  /* ======================
-      UPLOAD FILE
-  ====================== */
+        setProduct(p);
+        setPreviews(p.images || []);
+      })
+      .finally(() => setLoadingPage(false));
+  }, [id, user]);
+
+  /* UPLOAD FILE */
   async function handleFileUpload(file: File): Promise<string | null> {
     try {
-      const arrayBuffer = await file.arrayBuffer();
+      const arr = await file.arrayBuffer();
       const upload = await fetch("/api/upload", {
         method: "POST",
         headers: {
           "x-filename": encodeURIComponent(file.name),
           "Content-Type": file.type,
         },
-        body: arrayBuffer,
+        body: arr,
       });
       const data = await upload.json();
       return data.url;
@@ -100,33 +86,29 @@ export default function EditProductPage() {
     }
   }
 
-  /* ======================
-      IMAGE CHANGE
-  ====================== */
+  /* ADD IMAGE */
   const handleFileChange = (e: any) => {
     const files = Array.from(e.target.files);
-    setImages(prev => [...prev, ...files]);
-    setPreviews(prev => [...prev, ...files.map(f => URL.createObjectURL(f))]);
+    setImages((prev) => [...prev, ...files]);
+    setPreviews((prev) => [...prev, ...files.map((f) => URL.createObjectURL(f))]);
   };
 
   const removeImage = (i: number) => {
-    setPreviews(prev => prev.filter((_, idx) => idx !== i));
-    setProduct(prev => ({
+    setPreviews((prev) => prev.filter((_, idx) => idx !== i));
+    setProduct((prev) => ({
       ...prev,
-      images: prev?.images?.filter((_: any, idx: number) => idx !== i) || [],
+      images: prev?.images?.filter((_, idx) => idx !== i) || [],
     }));
   };
 
-  /* ======================
-      SAVE PRODUCT
-  ====================== */
+  /* SAVE PRODUCT */
   async function handleSave(e: any) {
     e.preventDefault();
     setSaving(true);
 
     const form = e.target;
 
-    const payload = {
+    const payload: any = {
       id: product.id,
       name: form.name.value.trim(),
       price: Number(form.price.value),
@@ -158,25 +140,25 @@ export default function EditProductPage() {
       setMessage({ text: "✅ Lưu thành công!", type: "success" });
       setTimeout(() => router.push("/seller/stock"), 1000);
     } else {
-      setMessage({ text: result.message || "❌ Lỗi lưu sản phẩm!", type: "error" });
+      setMessage({ text: "❌ Lỗi lưu sản phẩm!", type: "error" });
     }
 
     setSaving(false);
   }
 
-  /* ======================
-      UI
-  ====================== */
+  /* UI */
   if (loadingPage || loading || !piReady)
     return <p className="text-center mt-10">⏳ Đang tải...</p>;
 
   if (!product)
-    return <p className="text-center mt-10 text-red-500">❌ Không tìm thấy sản phẩm!</p>;
+    return (
+      <p className="text-center mt-10 text-red-500">
+        ❌ Không tìm thấy sản phẩm!
+      </p>
+    );
 
   return (
     <main className="max-w-lg mx-auto p-6 bg-white rounded-xl shadow mt-10 pb-32">
-      
-      {/* 🔙 Nút quay về */}
       <button
         className="mb-3 text-orange-600 font-bold text-lg"
         onClick={() => router.back()}
@@ -230,7 +212,7 @@ export default function EditProductPage() {
             className="w-full border p-2 rounded"
           >
             <option value="">— Chọn danh mục —</option>
-            {categories.map(c => (
+            {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
@@ -238,7 +220,7 @@ export default function EditProductPage() {
           </select>
         </div>
 
-        {/* 🔥 SALE */}
+        {/* SALE */}
         <div className="p-3 bg-orange-50 border rounded">
           <h3 className="font-bold text-orange-600 mb-2">🔥 Giảm giá</h3>
 
@@ -276,6 +258,7 @@ export default function EditProductPage() {
           />
         </div>
 
+        {/* Hình ảnh */}
         <div>
           <label>Ảnh sản phẩm</label>
           <input type="file" multiple ref={fileInputRef} onChange={handleFileChange} />
