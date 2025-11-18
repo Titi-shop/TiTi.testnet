@@ -53,10 +53,11 @@ export default function ProfilePage() {
           />
         </div>
 
-        {/* Hiển thị Username (Pi Network) */}
-        <h2 className="text-center text-xl font-bold text-gray-900">
-          {user?.username}
-        </h2>
+        {/* Username + huy hiệu */}
+<h2 className="text-center text-xl font-bold text-gray-900 flex items-center justify-center gap-2">
+  @{user?.username}
+  <span className="text-blue-500 text-lg">✔️</span>
+</h2>
 
         {/* ⚠️ Đã loại bỏ hiển thị email dưới avatar */}
         {/* KHÔNG CÒN: <p className="text-center text-gray-500">@{profile?.username}</p> */}
