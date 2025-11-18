@@ -1,17 +1,31 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { User, Package, Wallet, HelpCircle, LogOut } from "lucide-react";
+import {
+  User,
+  Package,
+  Wallet,
+  HelpCircle,
+  MessageCircle,
+  Globe,
+  MapPin,
+  LogOut,
+} from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 const menuItems = [
   { label: "Hồ sơ cá nhân", icon: <User size={22} />, path: "/customer/profile" },
   { label: "Đơn hàng của tôi", icon: <Package size={22} />, path: "/customer/orders" },
   { label: "Ví Pi", icon: <Wallet size={22} />, path: "/customer/wallet" },
+  { label: "Tin nhắn", icon: <MessageCircle size={22} />, path: "/customer/messages" },
+  { label: "Ngôn ngữ", icon: <Globe size={22} />, path: "/settings/language" },
+  { label: "Địa chỉ giao hàng", icon: <MapPin size={22} />, path: "/customer/address" },
   { label: "Hỗ trợ", icon: <HelpCircle size={22} />, path: "/support" },
 ];
 
 export default function CustomerMenu() {
   const router = useRouter();
+  const { user, logout } = useAuth(); // 🔥 Lấy logout từ AuthContext
 
   return (
     <div className="bg-white mx-3 mt-4 p-4 rounded-lg shadow">
@@ -30,13 +44,15 @@ export default function CustomerMenu() {
         ))}
       </div>
 
-      {/* Nút đăng xuất */}
-      <button
-        onClick={() => router.push("/logout")}
-        className="flex items-center gap-2 mt-5 text-red-500 font-medium justify-center w-full"
-      >
-        <LogOut size={20} /> Đăng xuất
-      </button>
+      {/* 🔥 Đăng xuất đúng cách: Gọi logout() từ context */}
+      {user && (
+        <button
+          onClick={logout}
+          className="flex items-center gap-2 mt-5 text-red-500 font-medium justify-center w-full"
+        >
+          <LogOut size={20} /> Đăng xuất
+        </button>
+      )}
     </div>
   );
 }
