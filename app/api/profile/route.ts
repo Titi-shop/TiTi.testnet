@@ -29,9 +29,9 @@ export async function GET(req: Request) {
     if (!data) {
       // Nếu chưa có dữ liệu, tạo hồ sơ mặc định
       const newProfile = {
-  username: normalize(username),   // định danh cố định
-  displayName: username,           // tên Pi thật
-  appName: "",                     // BIỆT DANH (mặc định rỗng)
+  username: normalize(username),   // định danh cố định (được lowercase)
+  displayName: username.trim(),    // giữ nguyên tên PI thật, không lowercase
+  appName: "",                     // biệt danh (nickname)
   avatar: null,
   email: "",
   phone: "",
