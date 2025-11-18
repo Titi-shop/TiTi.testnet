@@ -26,7 +26,7 @@ export default function CustomerDashboard() {
       .catch(() => console.log("⚠️ Không thể tải avatar"));
   }, [user]);
 
-  // 🛑 Chưa login → chuyển đến PiLogin
+  // 🛑 Chưa login → chuyển PiLogin
   useEffect(() => {
     if (piReady && !user) {
       router.replace("/pilogin");
@@ -46,10 +46,10 @@ export default function CustomerDashboard() {
       {/* Header */}
       <div className="bg-orange-500 text-white p-6 text-center shadow">
 
-        {/* Avatar - bỏ click */}
+        {/* Avatar - chỉ hiển thị hình hoặc chữ cái, KHÔNG click */}
         <div
           className="w-20 h-20 bg-white rounded-full mx-auto mb-3 overflow-hidden 
-          flex items-center justify-center text-orange-500 font-bold text-2xl"
+          flex items-center justify-center text-orange-500 font-bold text-3xl shadow-lg"
         >
           {avatar ? (
             <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
@@ -58,8 +58,10 @@ export default function CustomerDashboard() {
           )}
         </div>
 
-        {/* 🟢 Username - bỏ dấu @ */}
-        <h1 className="text-xl font-semibold">{user.username}</h1>
+        {/* Hiển thị Username với dấu @ */}
+        <h1 className="text-xl font-semibold">
+          @{user.username}
+        </h1>
       </div>
 
       {/* Đơn hàng */}
@@ -79,7 +81,7 @@ export default function CustomerDashboard() {
         </div>
       </div>
 
-      {/* Ví Pi Network – màu cam nổi bật */}
+      {/* Ví Pi – giao diện màu cam */}
       <div className="mx-3 mt-4 p-4 rounded-lg text-center bg-orange-100 border border-orange-300">
         <p className="text-orange-700 font-medium">
           💰 Ví của bạn:{" "}
@@ -89,13 +91,13 @@ export default function CustomerDashboard() {
         </p>
       </div>
 
-      {/* Menu dưới cùng */}
+      {/* Menu footer */}
       <CustomerMenu />
     </div>
   );
 }
 
-/* Component con để giảm code lặp */
+/* Component MenuButton để giảm code lặp */
 function MenuButton({ icon, label, path }: any) {
   const router = useRouter();
   return (
