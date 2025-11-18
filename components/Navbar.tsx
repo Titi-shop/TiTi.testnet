@@ -50,15 +50,8 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* 3) 🔍 Tìm kiếm → 4) 🌐 Ngôn ngữ (phải) */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={goSearch}
-            aria-label="Tìm kiếm"
-            className="hover:text-yellow-300 transition"
-          >
-            <Search size={22} />
-          </button>
+        {/* 3)  🌐 Ngôn ngữ (phải) */}
+  
           <Link
             href="/language"
             aria-label="Ngôn ngữ"
