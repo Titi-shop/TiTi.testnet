@@ -76,16 +76,16 @@ export default function ChatPage({ params }: { params: { uid: string } }) {
       {/* Ô nhập tin nhắn */}
       <div className="fixed bottom-0 left-0 right-0 bg-white p-3 flex gap-2 border-t shadow-lg">
         <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Nhập tin nhắn..."
-          className="flex-1 p-2 border rounded-lg shadow-sm"
-        />
-        <button
-          onClick={sendMessage}
-          className="bg-orange-500 text-white px-4 py-2 rounded-lg"
-        >
-          Gửi
+  value={input}
+  onChange={(e) => setInput(e.target.value)}
+  placeholder="Nhập tin nhắn..."
+  className="flex-1 p-2 border rounded-lg shadow-sm"
+/>
+<button
+  onClick={sendMessage}
+  className="bg-orange-500 text-white px-4 py-2 rounded-lg"
+>
+  Gửi
         </button>
       </div>
     </div>
