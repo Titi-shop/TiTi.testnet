@@ -6,8 +6,8 @@ import { db } from "@/firebaseConfig";
 import { collection, addDoc, query, orderBy, onSnapshot } from "firebase/firestore";
 
 export default function ChatPage({ params }: { params: { uid: string } }) {
-  const { user } = useAuth(); // người đang đăng nhập
-  const otherUid = params.uid; // người cần chat
+  const { user } = useAuth();
+  const otherUid = params.uid;
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -42,33 +42,34 @@ export default function ChatPage({ params }: { params: { uid: string } }) {
   }, [messages]);
 
   return (
-    <main className="flex flex-col h-screen max-w-md mx-auto bg-gray-100 pt-14 pb-20">
-      {/* Header cố định tránh bị che */}
-      <header className="bg-orange-500 text-white p-3 text-center fixed top-0 left-0 right-0 z-20">
+    <div className="fixed inset-0 flex flex-col bg-gray-100 pt-[60px] pb-[80px]">
+      {/* Header chat */}
+      <header className="fixed top-0 left-0 right-0 bg-orange-500 text-white p-3 text-center z-20">
         💬 Chat với {otherUid}
       </header>
 
-      {/* Khu vực hiển thị tin nhắn */}
-      <div className="flex-1 p-4 space-y-2 overflow-y-auto mt-12 mb-16">
+      {/* Tin nhắn */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-2">
         {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`p-2 rounded-lg max-w-[75%] shadow-sm ${
+          <div key={i}
+            className={`p-2 max-w-[75%] rounded-lg shadow-md ${
               msg.sender === user?.username
                 ? "ml-auto bg-orange-500 text-white"
                 : "mr-auto bg-white text-gray-800"
             }`}
           >
-            {msg.text}
+            <div>{msg.text}</div>
             <div className="text-[10px] text-gray-300 mt-1">
-              {new Date(msg.timestamp?.seconds * 1000).toLocaleTimeString()}
+              {msg.timestamp?.seconds
+                ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString()
+                : "—"}
             </div>
           </div>
         ))}
         <div ref={bottomRef} />
       </div>
 
-      {/* Khu nhập tin nhắn */}
+      {/* Ô nhập tin nhắn */}
       <div className="fixed bottom-0 left-0 right-0 bg-white p-3 flex gap-2 border-t">
         <input
           value={input}
@@ -78,11 +79,11 @@ export default function ChatPage({ params }: { params: { uid: string } }) {
         />
         <button
           onClick={sendMessage}
-          className="bg-orange-500 text-white px-4 py-2 rounded-lg shadow-md"
+          className="bg-orange-500 text-white px-4 py-2 rounded-lg"
         >
           Gửi
         </button>
       </div>
-    </main>
+    </div>
   );
 }
