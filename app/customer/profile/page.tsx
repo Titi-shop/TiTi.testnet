@@ -87,15 +87,6 @@ export default function ProfilePage() {
         >
           <Edit3 size={18} /> Chỉnh sửa
         </button>
-
-        {/* Nút đăng xuất – nằm giữa, tách riêng, nổi bật */}
-        <button
-          onClick={logout}
-          className="mt-6 bg-gray-800 text-white py-2 px-6 rounded flex items-center gap-2 mx-auto"
-        >
-          <LogOut size={18} /> Đăng xuất
-        </button>
-
       </div>
     </main>
   );
