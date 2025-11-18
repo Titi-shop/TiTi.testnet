@@ -21,7 +21,7 @@ const customerMenuItems = [
   { label: "Đơn hàng của tôi", icon: <Package size={22} />, path: "/customer/orders" },
   { label: "Ví Pi", icon: <Wallet size={22} />, path: "/customer/wallet" },
   { label: "Tin nhắn", icon: <MessageCircle size={22} />, path: "/customer/messages" },
-  { label: "Ngôn ngữ", icon: <Globe size={22} />, path: "/settings/language" },
+  { label: "Ngôn ngữ", icon: <Globe size={22} />, path: "/language" },
   { label: "Địa chỉ giao hàng", icon: <MapPin size={22} />, path: "/customer/address" },
   { label: "Hỗ trợ", icon: <HelpCircle size={22} />, path: "/support" },
 ];
