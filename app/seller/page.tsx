@@ -95,16 +95,13 @@ export default function SellerDashboard() {
           <span className="mt-2 font-semibold block">Đơn hàng</span>
         </Link>
 
-        {/* Ví Pi Network */}
-<div className="bg-white mx-3 mt-4 p-4 rounded-lg shadow text-center">
-  <p className="text-gray-700">
-    💰 {translate("wallet_label") || "Ví Pi"}:{" "}
-    <b>{user?.wallet_address || "Chưa liên kết"}</b>
-  </p>
-</div>
-
-{/* 🟠 Menu dưới cùng */}
-<CustomerMenu />
+        {/* Ví Pi */}
+        <Link
+          href="/seller/wallet"
+          className="bg-emerald-500 hover:bg-emerald-600 text-white p-5 rounded-xl shadow-md transition"
+        >
+          <Wallet size={34} className="mx-auto" />
+          <span className="mt-2 font-semibold block">Ví Pi</span>
         </Link>
       </div>
     </main>
