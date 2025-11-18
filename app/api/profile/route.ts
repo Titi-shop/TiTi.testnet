@@ -6,6 +6,7 @@ function normalize(str: string) {
   return str?.trim().toLowerCase();
 }
 
+// 🟢 GET: Lấy hồ sơ người dùng
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -17,11 +18,11 @@ export async function GET(req: Request) {
     const key = `user_profile:${normalize(username)}`;
     const data = await kv.get<Record<string, any>>(key);
 
+    // Nếu chưa có dữ liệu thì tạo mới
     if (!data) {
       const newProfile = {
-        username: normalize(username),
-        displayName: username.trim(),  // Giữ nguyên tên PI thật
-        appName: "",                   // Biệt danh rỗng
+        username: normalize(username),  // Định danh Pi
+        appName: "",                    // Biệt danh trong app (người dùng sửa được)
         avatar: null,
         email: "",
         phone: "",
@@ -44,6 +45,7 @@ export async function GET(req: Request) {
   }
 }
 
+// 🟢 POST: Cập nhật hồ sơ người dùng (chỉ cho sửa appName và thông tin phụ)
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -57,15 +59,14 @@ export async function POST(req: Request) {
 
     const updatedProfile = {
       ...existing,
-      appName: body.appName,   // CHỈ CHO PHÉP SỬA appName
-      email: body.email || "",
-      phone: body.phone || "",
-      address: body.address || "",
-      province: body.province || "",
-      country: body.country || "VN",
-      avatar: body.avatar || existing.avatar,
-      username: normalize(username),
-      displayName: existing.displayName,   // KHÓA LẠI TÊN PI
+      username: normalize(username), // KHÔNG CHO SỬA
+      appName: body.appName || existing.appName || "", // CHỈ CHO SỬA appName
+      email: body.email || existing.email || "",
+      phone: body.phone || existing.phone || "",
+      address: body.address || existing.address || "",
+      province: body.province || existing.province || "",
+      country: body.country || existing.country || "VN",
+      avatar: body.avatar || existing.avatar || null,
       updatedAt: Date.now(),
     };
 
