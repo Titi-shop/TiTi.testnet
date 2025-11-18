@@ -133,11 +133,9 @@ export default function CustomerDashboard() {
           <b>{user?.wallet_address || "Chưa liên kết"}</b>
         </p>
       </div>
-    </div>
-
+      
     {/* Menu dưới cùng */}
     <CustomerMenu />
     </div>
-  </div>
   );
 }
