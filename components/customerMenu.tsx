@@ -1,64 +1,42 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
-import { User, Package, Wallet, Phone, LogOut } from "lucide-react";
+import { User, Package, Wallet, HelpCircle, LogOut } from "lucide-react";
+
+const menuItems = [
+  { label: "Hồ sơ cá nhân", icon: <User size={22} />, path: "/customer/profile" },
+  { label: "Đơn hàng của tôi", icon: <Package size={22} />, path: "/customer/orders" },
+  { label: "Ví Pi", icon: <Wallet size={22} />, path: "/customer/wallet" },
+  { label: "Hỗ trợ", icon: <HelpCircle size={22} />, path: "/support" },
+];
 
 export default function CustomerMenu() {
   const router = useRouter();
-  const { user, logout } = useAuth();
 
   return (
-    <div className="bg-white shadow-lg rounded-lg p-4 w-64 border absolute top-16 right-4 z-50">
-      <div className="flex items-center gap-3 border-b pb-3 mb-3">
-        <div className="w-12 h-12 rounded-full bg-orange-500 text-white flex items-center justify-center text-lg font-bold">
-          {user?.username?.charAt(0).toUpperCase()}
-        </div>
-        <div>
-          <p className="font-bold">@{user?.username}</p>
-          <p className="text-sm text-gray-500">{user?.appName || "Chưa đặt biệt danh"}</p>
-        </div>
+    <div className="bg-white mx-3 mt-4 p-4 rounded-lg shadow">
+      <div className="grid grid-cols-4 gap-4 text-center">
+        {menuItems.map((item, index) => (
+          <button
+            key={index}
+            onClick={() => router.push(item.path)}
+            className="flex flex-col items-center text-gray-700 hover:text-orange-500"
+          >
+            <div className="p-3 bg-gray-100 rounded-full mb-1">
+              {item.icon}
+            </div>
+            <span className="text-sm">{item.label}</span>
+          </button>
+        ))}
       </div>
 
-      <ul className="space-y-3">
-        <li
-          onClick={() => router.push("/customer/profile")}
-          className="flex items-center gap-3 cursor-pointer hover:text-orange-500"
-        >
-          <User size={20} /> Hồ sơ cá nhân
-        </li>
-
-        <li
-          onClick={() => router.push("/customer/orders")}
-          className="flex items-center gap-3 cursor-pointer hover:text-orange-500"
-        >
-          <Package size={20} /> Đơn hàng của tôi
-        </li>
-
-        <li
-          onClick={() => router.push("/customer/wallet")}
-          className="flex items-center gap-3 cursor-pointer hover:text-orange-500"
-        >
-          <Wallet size={20} /> Ví Pi
-        </li>
-
-        <li
-          onClick={() => router.push("/customer/support")}
-          className="flex items-center gap-3 cursor-pointer hover:text-orange-500"
-        >
-          <Phone size={20} /> Hỗ trợ
-        </li>
-
-        <li
-          onClick={() => {
-            logout();
-            router.push("/account");
-          }}
-          className="flex items-center gap-3 text-red-500 cursor-pointer hover:text-red-600"
-        >
-          <LogOut size={20} /> Đăng xuất
-        </li>
-      </ul>
+      {/* Nút đăng xuất */}
+      <button
+        onClick={() => router.push("/logout")}
+        className="flex items-center gap-2 mt-5 text-red-500 font-medium justify-center w-full"
+      >
+        <LogOut size={20} /> Đăng xuất
+      </button>
     </div>
   );
 }
