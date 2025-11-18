@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLanguage } from "@/app/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { Clock, Package, Truck, Star, RotateCcw } from "lucide-react";
-import CustomerMenu from "../components/CustomerMenu";
+import CustomerMenu from "@/components/customerMenu";
 
 
 export default function CustomerDashboard() {
