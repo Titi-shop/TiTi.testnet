@@ -42,16 +42,20 @@ export default function ChatPage({ params }: { params: { uid: string } }) {
   }, [messages]);
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-gray-100 pt-[100px] pb-[100px]">
+    <div
+      className="fixed top-0 left-0 right-0 bottom-0 flex flex-col bg-gray-100"
+      style={{ zIndex: 9999 }}
+    >
       {/* Header chat */}
-      <header className="fixed top-0 left-0 right-0 bg-orange-500 text-white p-3 text-center z-20">
+      <header className="fixed top-0 left-0 right-0 bg-orange-500 text-white p-3 text-center shadow-md">
         💬 Chat với {otherUid}
       </header>
 
       {/* Tin nhắn */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+      <div className="flex-1 overflow-y-auto p-4 space-y-2 mt-[50px] mb-[70px]">
         {messages.map((msg, i) => (
-          <div key={i}
+          <div
+            key={i}
             className={`p-2 max-w-[75%] rounded-lg shadow-md ${
               msg.sender === user?.username
                 ? "ml-auto bg-orange-500 text-white"
@@ -70,7 +74,7 @@ export default function ChatPage({ params }: { params: { uid: string } }) {
       </div>
 
       {/* Ô nhập tin nhắn */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white p-3 flex gap-2 border-t">
+      <div className="fixed bottom-0 left-0 right-0 bg-white p-3 flex gap-2 border-t shadow-lg">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
