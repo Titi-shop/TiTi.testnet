@@ -42,7 +42,7 @@ export default function ChatPage({ params }: { params: { uid: string } }) {
   }, [messages]);
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-gray-100 pt-[70px] pb-[90px]">
+    <div className="fixed inset-0 flex flex-col bg-gray-100 pt-[100px] pb-[100px]">
       {/* Header chat */}
       <header className="fixed top-0 left-0 right-0 bg-orange-500 text-white p-3 text-center z-20">
         💬 Chat với {otherUid}
