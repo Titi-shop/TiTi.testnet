@@ -58,10 +58,11 @@ export default function CustomerDashboard() {
           )}
         </div>
 
-        {/* Hiển thị Username với dấu @ */}
-        <h1 className="text-xl font-semibold">
-          @{user.username}
-        </h1>
+        {/* 🟢 Username + Huy hiệu xác minh */}
+<h1 className="text-xl font-semibold flex items-center justify-center gap-2">
+  @{user.username}
+  <span className="text-blue-500 text-lg">✔️</span>
+</h1>
       </div>
 
       {/* Đơn hàng */}
