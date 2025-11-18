@@ -48,7 +48,7 @@ export default function CustomerMenu() {
       {user && (
         <button
           onClick={logout}
-          className="flex items-center gap-2 mt-5 text-red-500 font-medium justify-center w-full"
+          className="flex items-center gap-2 mt-5 text-red-800 font-medium justify-center w-full"
         >
           <LogOut size={20} /> Đăng xuất
         </button>
