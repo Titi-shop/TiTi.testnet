@@ -29,14 +29,17 @@ export async function GET(req: Request) {
     if (!data) {
       // Nếu chưa có dữ liệu, tạo hồ sơ mặc định
       const newProfile = {
-        username: normalize(username),
-        displayName: username,
-        avatar: null,
-        email: "",
-        phone: "",
-        address: "",
-        createdAt: Date.now(),
-      };
+  username: normalize(username),   // định danh cố định
+  displayName: username,           // tên Pi thật
+  appName: "",                     // BIỆT DANH (mặc định rỗng)
+  avatar: null,
+  email: "",
+  phone: "",
+  address: "",
+  province: "",
+  country: "VN",
+  createdAt: Date.now(),
+};
       await kv.set(key, newProfile);
       return NextResponse.json(newProfile);
     }
