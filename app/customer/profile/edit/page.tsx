@@ -211,7 +211,7 @@ export default function EditProfilePage() {
           onClick={handleSave}
           className="w-full mt-6 bg-green-500 text-white py-2 rounded"
         >
-          💾 Lưu thay đổi
+         Lưu 
         </button>
 
       </div>
