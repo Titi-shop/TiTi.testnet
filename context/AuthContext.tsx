@@ -5,9 +5,9 @@ import { createContext, useContext, useState, useEffect } from "react";
 interface PiUser {
   username: string;
   uid?: string;
-  accessToken: string; // chỉ tạm lưu để verify với backend
+  accessToken: string;
+  role?: string; // ⬅️ thêm dòng này
 }
-
 interface AuthContextType {
   user: PiUser | null;
   piReady: boolean;
@@ -54,10 +54,10 @@ useEffect(() => {
       const saved = localStorage.getItem("pi_user");
       if (saved) {
         const parsed = JSON.parse(saved);
-        const username = parsed?.user?.username || parsed?.username;
-        const accessToken = parsed?.accessToken || "";
-        if (username && accessToken) {
-          setUser({ username, accessToken });
+        const { username, accessToken, role } = parsed;
+if (username && accessToken) {
+  setUser({ username, accessToken, role });
+}
           localStorage.setItem("titi_username", username);
           localStorage.setItem("titi_is_logged_in", "true");
         }
