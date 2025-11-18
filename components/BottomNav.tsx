@@ -2,18 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Grid, Bell, User, PlusCircle } from "lucide-react";
+import { Home, Grid, Bell, User, Search } from "lucide-react"; // 🔹 Đổi PlusCircle thành Search
 import { useLanguage } from "../app/context/LanguageContext";
 
 export default function BottomNav() {
   const pathname = usePathname();
   const { translate } = useLanguage();
 
-  // 🔹 Danh sách 5 mục chính (giữ đúng key, label)
   const navItems = [
     { href: "/", label: translate("home") || "Trang chủ", icon: Home },
     { href: "/shop", label: translate("category") || "Danh mục", icon: Grid },
-    { href: "/seller", label: translate(" ") || " ", icon: PlusCircle },
+
+    // 🔹 Nút giữa đổi thành Search
+    { href: "/search", label: translate("search") || "Tìm kiếm", icon: Search },
+
     { href: "/notifications", label: translate("notifications") || "Thông báo", icon: Bell },
     { href: "/account", label: translate("me") || "Tôi", icon: User },
   ];
