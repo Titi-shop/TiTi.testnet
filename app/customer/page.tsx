@@ -13,7 +13,7 @@ export default function CustomerDashboard() {
 
   const [avatar, setAvatar] = useState<string | null>(null);
 
-  // 🟢 Lấy avatar thật từ API
+  // 🟢 Lấy avatar từ API (nếu có)
   useEffect(() => {
     if (!user?.username) return;
 
@@ -25,13 +25,14 @@ export default function CustomerDashboard() {
       .catch(() => console.log("⚠️ Không thể tải avatar"));
   }, [user]);
 
-  // 🛑 Chưa login → chuyển đến PiLogin
+  // 🛑 Nếu chưa login → chuyển đến trang PiLogin
   useEffect(() => {
     if (piReady && !user) {
       router.replace("/pilogin");
     }
   }, [piReady, user, router]);
 
+  // 🕒 Loading
   if (!piReady || !user)
     return (
       <main className="min-h-screen flex items-center justify-center text-gray-500">
@@ -45,7 +46,7 @@ export default function CustomerDashboard() {
       {/* Header */}
       <div className="bg-orange-500 text-white p-6 text-center shadow">
 
-        {/* 🟢 Avatar */}
+        {/* Avatar */}
         <div
           onClick={() => router.push("/customer/profile")}
           className="w-20 h-20 bg-white rounded-full mx-auto mb-3 overflow-hidden cursor-pointer flex items-center justify-center text-orange-500 font-bold text-2xl hover:opacity-90 transition"
@@ -61,7 +62,7 @@ export default function CustomerDashboard() {
           )}
         </div>
 
-        {/* 🟢 Username chính thức */}
+        {/* 🟢 Chỉ hiển thị username từ AuthContext */}
         <h1 className="text-xl font-semibold">@{user.username}</h1>
       </div>
 
@@ -80,7 +81,6 @@ export default function CustomerDashboard() {
         </div>
 
         <div className="grid grid-cols-5 text-center py-4">
-
           <button
             onClick={() => router.push("/customer/pending")}
             className="flex flex-col items-center text-gray-700 hover:text-orange-500"
@@ -113,7 +113,7 @@ export default function CustomerDashboard() {
             <span className="text-sm mt-1">{translate("review") || "Đánh giá"}</span>
           </button>
 
-          {/* 🔄 Trả hàng */}
+          {/* Trả hàng */}
           <button
             onClick={() => router.push("/customer/returns")}
             className="flex flex-col items-center text-gray-700 hover:text-orange-500"
@@ -121,11 +121,10 @@ export default function CustomerDashboard() {
             <RotateCcw size={28} />
             <span className="text-sm mt-1">{translate("return_order") || "Trả hàng"}</span>
           </button>
-
         </div>
       </div>
 
-      {/* Ví người dùng */}
+      {/* Ví Pi Network */}
       <div className="bg-white mx-3 mt-4 p-4 rounded-lg shadow text-center">
         <p className="text-gray-700">
           💰 {translate("wallet_label") || "Ví Pi"}:{" "}
