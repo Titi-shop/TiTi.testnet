@@ -127,15 +127,15 @@ export default function CustomerDashboard() {
       </div>
 
       {/* Ví Pi Network */}
-      <div className="bg-white mx-3 mt-4 p-4 rounded-lg shadow text-center">
-        <p className="text-gray-700">
-          💰 {translate("wallet_label") || "Ví Pi"}:{" "}
-          <b>{user?.wallet_address || "Chưa liên kết"}</b>
-        </p>
-      </div>
-      
-    {/* Menu dưới cùng */}
-    <CustomerMenu />
+<div className="bg-white mx-3 mt-4 p-4 rounded-lg shadow text-center">
+  <p className="text-gray-700">
+    💰 {translate("wallet_label") || "Ví Pi"}:{" "}
+    <b>{user?.wallet_address || "Chưa liên kết"}</b>
+  </p>
+</div>
+
+{/* 🟠 Menu dưới cùng */}
+<CustomerMenu />
     </div>
   );
 }
