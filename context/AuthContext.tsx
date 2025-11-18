@@ -1,56 +1,127 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import {
-  User,
-  Package,
-  Wallet,
-  HelpCircle,
-  MessageCircle,
-  Globe,
-  MapPin,
-  LogOut,
-} from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { createContext, useContext, useState, useEffect } from "react";
 
-const menuItems = [
-  { label: "Hồ sơ cá nhân", icon: <User size={22} />, path: "/customer/profile" },
-  { label: "Đơn hàng của tôi", icon: <Package size={22} />, path: "/customer/orders" },
-  { label: "Ví Pi", icon: <Wallet size={22} />, path: "/customer/wallet" },
-  { label: "Tin nhắn", icon: <MessageCircle size={22} />, path: "/customer/messages" },
-  { label: "Ngôn ngữ", icon: <Globe size={22} />, path: "/settings/language" },
-  { label: "Địa chỉ giao hàng", icon: <MapPin size={22} />, path: "/customer/address" },
-  { label: "Hỗ trợ", icon: <HelpCircle size={22} />, path: "/support" },
-];
+interface PiUser {
+  username: string;
+  uid?: string;
+  accessToken: string; // chỉ tạm lưu để verify với backend
+}
 
-export default function CustomerMenu() {
-  const router = useRouter();
-  const { user } = useAuth(); // ⬅️ Vẫn lấy user từ AuthContext (nếu cần sử dụng)
+interface AuthContextType {
+  user: PiUser | null;
+  piReady: boolean;
+  loading: boolean;
+  pilogin: () => Promise<void>;
+  logout: () => void;
+}
+
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  piReady: false,
+  loading: true,
+  pilogin: async () => {},
+  logout: () => {},
+});
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<PiUser | null>(null);
+  const [piReady, setPiReady] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // ✅ Kiểm tra SDK Pi đã sẵn sàng chưa
+useEffect(() => {
+  if (typeof window !== "undefined" && window.Pi) {
+    try {
+      window.Pi.init({ version: "2.0", sandbox: true }); // ✅ đổi false khi chạy mainnet
+      console.log("✅ Pi SDK đã khởi tạo!");
+    } catch (err) {
+      console.error("❌ Lỗi khởi tạo Pi SDK:", err);
+    }
+  }
+
+  const timer = setInterval(() => {
+    if (typeof window !== "undefined" && window.Pi) {
+      setPiReady(true);
+      clearInterval(timer);
+    }
+  }, 400);
+  return () => clearInterval(timer);
+}, []);
+  // ✅ Khôi phục user khi reload
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("pi_user");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const username = parsed?.user?.username || parsed?.username;
+        const accessToken = parsed?.accessToken || "";
+        if (username && accessToken) {
+          setUser({ username, accessToken });
+          localStorage.setItem("titi_username", username);
+          localStorage.setItem("titi_is_logged_in", "true");
+        }
+      }
+    } catch (err) {
+      console.error("❌ Lỗi đọc pi_user:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ✅ Đăng nhập bằng Pi SDK
+  const pilogin = async () => {
+    if (typeof window === "undefined" || !window.Pi) {
+      alert("⚠️ Vui lòng mở trong Pi Browser!");
+      return;
+    }
+
+    try {
+      const scopes = ["username", "payments"];
+      const authResult = await window.Pi.authenticate(scopes, (payment: any) =>
+        console.log("⚠️ Payment chưa hoàn tất:", payment)
+      );
+
+      if (!authResult) throw new Error("Không nhận được phản hồi từ Pi Network");
+
+      const username = authResult.user?.username || "guest";
+      const accessToken = authResult.accessToken || "";
+
+      const piUser: PiUser = { username, accessToken };
+      setUser(piUser);
+
+      // ✅ Chỉ lưu thông tin cần thiết
+      localStorage.setItem("pi_user", JSON.stringify({ username, accessToken }));
+      localStorage.setItem("titi_is_logged_in", "true");
+      localStorage.setItem("titi_username", username);
+
+      console.log("✅ Đăng nhập thành công:", piUser);
+    } catch (err: any) {
+      console.error("❌ Lỗi đăng nhập:", err);
+      alert("❌ Đăng nhập thất bại. Vui lòng thử lại.");
+    }
+  };
+
+  // ✅ Đăng xuất
+  const logout = () => {
+    try {
+      if (typeof window !== "undefined" && window.Pi?.logout) {
+        window.Pi.logout();
+      }
+    } catch {
+      console.warn("⚠️ Pi SDK không hỗ trợ logout");
+    }
+    setUser(null);
+    localStorage.removeItem("pi_user");
+    localStorage.removeItem("titi_is_logged_in");
+    localStorage.removeItem("titi_username");
+  };
 
   return (
-    <div className="bg-white mx-3 mt-4 p-4 rounded-lg shadow">
-
-      {/* 🔹 Chỉ hiển thị menu, KHÔNG hiển tên / avatar */}
-      <div className="grid grid-cols-4 gap-4 text-center">
-        {menuItems.map((item, index) => (
-          <button
-            key={index}
-            onClick={() => router.push(item.path)}
-            className="flex flex-col items-center text-gray-700 hover:text-orange-500"
-          >
-            <div className="p-3 bg-gray-100 rounded-full mb-1">{item.icon}</div>
-            <span className="text-sm">{item.label}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* 🔹 Nút đăng xuất */}
-      <button
-        onClick={() => router.push("/logout")}
-        className="flex items-center gap-2 mt-5 text-red-500 font-medium justify-center w-full"
-      >
-        <LogOut size={20} /> Đăng xuất
-      </button>
-    </div>
+    <AuthContext.Provider value={{ user, piReady, loading, pilogin, logout }}>
+      {children}
+    </AuthContext.Provider>
   );
-}
+};
+
+export const useAuth = () => useContext(AuthContext);
