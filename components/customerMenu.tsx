@@ -25,32 +25,38 @@ const menuItems = [
 
 export default function CustomerMenu() {
   const router = useRouter();
-  const { user, logout } = useAuth(); // 🔥 Lấy logout từ AuthContext
+  const { user, logout } = useAuth();
 
   return (
-    <div className="bg-white mx-3 mt-4 p-4 rounded-lg shadow">
+    <div className="bg-white mx-3 mt-6 p-5 rounded-2xl shadow-lg border border-gray-100 mb-6">
+
+      {/* 🟠 Menu items */}
       <div className="grid grid-cols-4 gap-4 text-center">
         {menuItems.map((item, index) => (
           <button
             key={index}
             onClick={() => router.push(item.path)}
-            className="flex flex-col items-center text-gray-700 hover:text-orange-500"
+            className="flex flex-col items-center text-gray-700 hover:text-orange-500 transition"
           >
-            <div className="p-3 bg-gray-100 rounded-full mb-1">
+            <div className="p-3 bg-gray-100 rounded-full shadow-sm mb-1">
               {item.icon}
             </div>
-            <span className="text-sm">{item.label}</span>
+            <span className="text-xs font-medium">{item.label}</span>
           </button>
         ))}
       </div>
 
-      {/* 🔥 Đăng xuất đúng cách: Gọi logout() từ context */}
+      {/* 🔻 Đường kẻ ngăn giữa menu và logout */}
+      {user && <div className="border-t border-gray-200 my-4"></div>}
+
+      {/* 🟥 Nút Đăng xuất (hiện đại, nổi bật) */}
       {user && (
         <button
           onClick={logout}
-          className="flex items-center gap-2 mt-5 text-red-800 font-medium justify-center w-full"
+          className="flex items-center gap-2 py-2 text-white bg-red-500 hover:bg-red-600 
+          rounded-lg justify-center w-full font-medium shadow-md transition"
         >
-          <LogOut size={20} /> Đăng xuất
+          <LogOut size={18} /> Đăng xuất
         </button>
       )}
     </div>
