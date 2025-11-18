@@ -26,7 +26,7 @@ const customerMenuItems = [
   { label: "Hỗ trợ", icon: <HelpCircle size={22} />, path: "/support" },
 ];
 
-// 🛒 Menu Seller luôn hiển thị
+// 🎯 Thêm 3 mục Seller — Ai cũng nhìn thấy & bấm được
 const sellerMenuItems = [
   { label: "Đăng hàng", icon: <PackagePlus size={22} />, path: "/seller/post" },
   { label: "Kho hàng", icon: <Store size={22} />, path: "/seller/stock" },
@@ -37,24 +37,10 @@ export default function CustomerMenu() {
   const router = useRouter();
   const { user, logout } = useAuth();
 
-  // ⭐ CHỈ kiểm tra để điều hướng đúng chứ KHÔNG ẩn menu nữa
-  const isSeller = user?.role === "seller";
-
-  const handleSellerClick = (path: string) => {
-    if (!user) {
-      alert("⚠️ Vui lòng đăng nhập trước!");
-      return router.push("/login");
-    }
-    if (!isSeller) {
-      return router.push("/seller/register"); // 👉 Trang đăng ký người bán
-    }
-    router.push(path); // 👉 Nếu là seller thật → cho vào
-  };
-
   return (
     <div className="bg-white mx-3 mt-6 p-5 rounded-2xl shadow-lg border border-gray-100 mb-6">
-      
-      {/* 👤 Menu khách hàng */}
+
+      {/* 🟠 Menu khách hàng */}
       <div className="grid grid-cols-4 gap-4 text-center">
         {customerMenuItems.map((item, index) => (
           <button
@@ -70,14 +56,15 @@ export default function CustomerMenu() {
         ))}
       </div>
 
-      {/* 🛒 Menu Người Bán — luôn hiển thị */}
+      {/* 🛒 Menu dành cho bán hàng — Luôn hiển thị */}
       <div className="border-t border-gray-200 my-4"></div>
-      <p className="text-gray-500 text-sm mb-3 font-semibold"> 🛒 Kênh Người Bán</p>
+      <p className="text-gray-500 text-sm mb-3 font-semibold">🛒 Kênh Người Bán</p>
+
       <div className="grid grid-cols-4 gap-4 text-center">
         {sellerMenuItems.map((item, index) => (
           <button
             key={index}
-            onClick={() => handleSellerClick(item.path)}
+            onClick={() => router.push(item.path)}
             className="flex flex-col items-center text-gray-700 hover:text-green-600 transition"
           >
             <div className="p-3 bg-green-100 rounded-full shadow-sm mb-1">
