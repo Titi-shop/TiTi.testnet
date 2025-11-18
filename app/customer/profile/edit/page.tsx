@@ -80,16 +80,24 @@ export default function EditProfilePage() {
 
       <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg mt-12 p-6">
 
-        {/* avatar */}
-        <div className="relative w-24 h-24 mx-auto mb-4">
-          <img
-            src={avatar || "/default-avatar.png"}
-            className="w-24 h-24 rounded-full object-cover border-4 border-orange-500"
-          />
-        </div>
+        {/* Avatar */}
+<div className="relative w-24 h-24 mx-auto mb-4">
+  <img
+    src={
+      avatar ||
+      (user?.username
+        ? `/api/getAvatar?username=${user.username}`
+        : "/default-avatar.png")
+    }
+    alt="avatar"
+    className="w-24 h-24 rounded-full object-cover border-4 border-orange-500"
+  />
+</div>
 
-        {/* Tên Pi thật */}
-        <h1 className="text-center text-lg font-semibold mb-4">{user.displayName}</h1>
+{/* Tên hiển thị */}
+<h1 className="text-center text-lg font-semibold text-gray-800 mb-4">
+  {user?.displayName || "(Chưa đăng nhập)"}
+</h1>
 
         <div className="space-y-4">
 
