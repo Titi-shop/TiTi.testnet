@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useLanguage } from "@/app/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { Clock, Package, Truck, Star, RotateCcw } from "lucide-react";
+import CustomerMenu from "@/components/CustomerMenu";
+
 
 export default function CustomerDashboard() {
   const { user, piReady } = useAuth();
@@ -132,5 +134,10 @@ export default function CustomerDashboard() {
         </p>
       </div>
     </div>
+
+    {/* Menu dưới cùng */}
+    <CustomerMenu />
+    </div>
+  </div>
   );
 }
