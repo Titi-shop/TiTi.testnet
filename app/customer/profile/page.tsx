@@ -5,21 +5,18 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { Upload, LogOut, Edit3 } from "lucide-react";
+import { LogOut, Edit3 } from "lucide-react";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, loading: authLoading, piReady, pilogin } = useAuth();
+  const { user, loading: authLoading, logout } = useAuth();
 
   const [profile, setProfile] = useState<any>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) return;
+    if (authLoading || !user) return;
 
     fetch(`/api/profile?username=${user.username}`)
       .then((res) => res.json())
@@ -30,11 +27,13 @@ export default function ProfilePage() {
       .finally(() => setLoading(false));
   }, [authLoading, user]);
 
-  if (loading) return <p className="p-4 text-center">⏳ Đang tải...</p>;
+  if (loading)
+    return <p className="p-4 text-center">⏳ Đang tải...</p>;
 
   return (
     <main className="min-h-screen bg-gray-100 pb-24 relative">
 
+      {/* Nút quay lại */}
       <button
         onClick={() => router.back()}
         className="absolute top-4 left-4 text-orange-500 text-3xl font-bold"
@@ -44,6 +43,7 @@ export default function ProfilePage() {
 
       <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg mt-12 p-6">
 
+        {/* Avatar */}
         <div className="relative w-28 h-28 mx-auto mb-4">
           <Image
             src={avatar || "/default-avatar.png"}
@@ -53,14 +53,15 @@ export default function ProfilePage() {
           />
         </div>
 
+        {/* Hiển thị Username (Pi Network) */}
         <h2 className="text-center text-xl font-bold text-gray-900">
-          {profile?.displayName}
+          {user?.username}
         </h2>
 
-        <p className="text-center text-gray-500 mb-6">
-          @{profile?.username}
-        </p>
+        {/* ⚠️ Đã loại bỏ hiển thị email dưới avatar */}
+        {/* KHÔNG CÒN: <p className="text-center text-gray-500">@{profile?.username}</p> */}
 
+        {/* Thông tin user */}
         <div className="bg-white p-4 rounded-xl shadow-md space-y-3 mt-4">
           {[
             { label: "Biệt danh trong ứng dụng", key: "appName" },
@@ -79,6 +80,7 @@ export default function ProfilePage() {
           ))}
         </div>
 
+        {/* Nút chỉnh sửa */}
         <button
           onClick={() => router.push("/customer/profile/edit")}
           className="mt-6 bg-orange-500 text-white py-2 px-6 rounded flex items-center gap-2 mx-auto"
@@ -86,12 +88,10 @@ export default function ProfilePage() {
           <Edit3 size={18} /> Chỉnh sửa
         </button>
 
+        {/* Nút đăng xuất – nằm giữa, tách riêng, nổi bật */}
         <button
-          onClick={() => {
-            localStorage.clear();
-            router.push("/account");
-          }}
-          className="mt-3 bg-gray-600 text-white py-2 px-6 rounded mx-auto"
+          onClick={logout}
+          className="mt-6 bg-gray-800 text-white py-2 px-6 rounded flex items-center gap-2 mx-auto"
         >
           <LogOut size={18} /> Đăng xuất
         </button>
