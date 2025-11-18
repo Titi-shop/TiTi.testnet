@@ -5,8 +5,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 interface PiUser {
   username: string;
   uid?: string;
-  accessToken: string;
-  role?: string; // ⬅️ thêm dòng này
+  accessToken: string; // chỉ tạm lưu để verify với backend
 }
 
 interface AuthContextType {
@@ -30,36 +29,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [piReady, setPiReady] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // 🔹 Kiểm tra SDK Pi đã sẵn sàng
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.Pi) {
-      try {
-        window.Pi.init({ version: "2.0", sandbox: true }); // Đổi thành false khi chạy mainnet
-        console.log("✅ Pi SDK đã khởi tạo!");
-      } catch (err) {
-        console.error("❌ Lỗi khởi tạo Pi SDK:", err);
-      }
+  // ✅ Kiểm tra SDK Pi đã sẵn sàng chưa
+useEffect(() => {
+  if (typeof window !== "undefined" && window.Pi) {
+    try {
+      window.Pi.init({ version: "2.0", sandbox: true }); // ✅ đổi false khi chạy mainnet
+      console.log("✅ Pi SDK đã khởi tạo!");
+    } catch (err) {
+      console.error("❌ Lỗi khởi tạo Pi SDK:", err);
     }
+  }
 
-    const timer = setInterval(() => {
-      if (typeof window !== "undefined" && window.Pi) {
-        setPiReady(true);
-        clearInterval(timer);
-      }
-    }, 400);
-    return () => clearInterval(timer);
-  }, []);
-
-  // 🔹 Khôi phục user khi reload
+  const timer = setInterval(() => {
+    if (typeof window !== "undefined" && window.Pi) {
+      setPiReady(true);
+      clearInterval(timer);
+    }
+  }, 400);
+  return () => clearInterval(timer);
+}, []);
+  // ✅ Khôi phục user khi reload
   useEffect(() => {
     try {
       const saved = localStorage.getItem("pi_user");
       if (saved) {
-        const { username, accessToken, role } = JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        const username = parsed?.user?.username || parsed?.username;
+        const accessToken = parsed?.accessToken || "";
         if (username && accessToken) {
-          setUser({ username, accessToken, role });
-          localStorage.setItem("titi_is_logged_in", "true");
+          setUser({ username, accessToken });
           localStorage.setItem("titi_username", username);
+          localStorage.setItem("titi_is_logged_in", "true");
         }
       }
     } catch (err) {
@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  // 🔹 Đăng nhập bằng Pi SDK
+  // ✅ Đăng nhập bằng Pi SDK
   const pilogin = async () => {
     if (typeof window === "undefined" || !window.Pi) {
       alert("⚠️ Vui lòng mở trong Pi Browser!");
@@ -87,22 +87,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const username = authResult.user?.username || "guest";
       const accessToken = authResult.accessToken || "";
 
-      let role = "buyer";
-
-      // 🔹 Gọi API để kiểm tra role (seller/buyer)
-      try {
-        const res = await fetch(`/api/users/role?username=${username}`);
-        const data = await res.json();
-        role = data.role || "buyer";
-      } catch (err) {
-        console.warn("⚠️ Không lấy được role, mặc định buyer");
-      }
-
-      const piUser: PiUser = { username, accessToken, role };
+      const piUser: PiUser = { username, accessToken };
       setUser(piUser);
 
-      // 🔹 Lưu cả role vào localStorage
-      localStorage.setItem("pi_user", JSON.stringify(piUser));
+      // ✅ Chỉ lưu thông tin cần thiết
+      localStorage.setItem("pi_user", JSON.stringify({ username, accessToken }));
       localStorage.setItem("titi_is_logged_in", "true");
       localStorage.setItem("titi_username", username);
 
@@ -113,7 +102,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // 🔹 Đăng xuất
+  // ✅ Đăng xuất
   const logout = () => {
     try {
       if (typeof window !== "undefined" && window.Pi?.logout) {
