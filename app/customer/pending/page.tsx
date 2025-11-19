@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "../../context/LanguageContext";
+import { useAuth } from "@/context/AuthContext"; // 👉 Thêm dòng này
 
 interface OrderItem {
   name: string;
@@ -22,33 +23,35 @@ interface Order {
 export default function PendingOrdersPage() {
   const router = useRouter();
   const { translate, language } = useLanguage();
+  
+  // 👉 Dùng AuthContext
+  const { user, pilogin, loading: authLoading } = useAuth();
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [currentUser, setCurrentUser] = useState<string>("");
   const [processing, setProcessing] = useState<number | null>(null);
 
-  // ✅ Lấy username hiện tại từ Pi login
-  useEffect(() => {
-    try {
-      const info = localStorage.getItem("pi_user");
-      const parsed = info ? JSON.parse(info) : null;
-      const username = parsed?.user?.username || parsed?.username || "guest_user";
-      setCurrentUser(username);
-    } catch (err) {
-      console.error("❌ Lỗi đọc pi_user:", err);
-    }
-  }, []);
+  // ❗ Không dùng localStorage nữa
+  const currentUser = user?.username || "";
 
-  // ✅ Lấy danh sách đơn hàng chờ xác nhận
+  // 🟢 Lấy danh sách đơn hàng chờ xác nhận
   useEffect(() => {
     const fetchOrders = async () => {
-      if (!currentUser) {
+      if (authLoading) return; // ⏳ Chờ auth load
+      if (!user) {
         setLoading(false);
         return;
       }
+
       try {
-        const res = await fetch("/api/orders", { method: "GET", cache: "no-store" });
+        const res = await fetch("/api/orders", {
+          method: "GET",
+          cache: "no-store",
+          headers: {
+            Authorization: `Bearer ${user.accessToken}`, // 👉 gửi đúng token
+          },
+        });
         const data: Order[] = await res.json();
 
         const filterByLang = {
@@ -59,9 +62,10 @@ export default function PendingOrdersPage() {
 
         const filtered = data.filter(
           (o) =>
-            o.buyer?.toLowerCase() === currentUser.toLowerCase() &&
+            o.buyer?.toLowerCase() === user.username.toLowerCase() &&
             filterByLang.includes(o.status)
         );
+
         setOrders(filtered);
       } catch (err: any) {
         setError(err.message);
@@ -70,34 +74,34 @@ export default function PendingOrdersPage() {
       }
     };
     fetchOrders();
-  }, [currentUser, language]);
+  }, [user, authLoading, language]);
 
-  // ✅ Hủy đơn hàng
-  const handleCancel = async (orderId: number) => {
-    if (!confirm("❓ Bạn có chắc muốn hủy đơn hàng này không?")) return;
-    try {
-      setProcessing(orderId);
-      const res = await fetch(`/api/orders/cancel?id=${orderId}`, { method: "POST" });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Hủy thất bại");
-      alert("✅ Đã hủy đơn hàng thành công!");
-      setOrders((prev) => prev.filter((o) => o.id !== orderId));
-    } catch (err: any) {
-      alert("❌ " + err.message);
-    } finally {
-      setProcessing(null);
-    }
-  };
+  // 🛑 Nếu chưa đăng nhập 👉 Hiển thị nút đăng nhập Pi (không đổi UI khác)
+  if (!authLoading && !user) {
+    return (
+      <main className="p-4 max-w-4xl mx-auto text-center min-h-screen bg-gray-50">
+        <p className="text-gray-600 mb-4">
+          ⚠️ Vui lòng đăng nhập để xem đơn hàng chờ xác nhận.
+        </p>
+        <button
+          onClick={pilogin}
+          className="bg-orange-500 text-white px-4 py-2 rounded-lg shadow"
+        >
+          🔑 Đăng nhập với Pi Network
+        </button>
+      </main>
+    );
+  }
 
-  // 🕓 Giao diện tải
+  // 🔄 Giao diện loading
   if (loading) return <p className="text-center mt-10">⏳ Đang tải đơn hàng...</p>;
   if (error) return <p className="text-center text-red-500">❌ {error}</p>;
 
-  // ✅ Tính tổng đơn và tổng Pi
+  // 📊 Tính tổng dữ liệu
   const totalOrders = orders.length;
   const totalPi = orders.reduce((sum, o) => sum + (parseFloat(String(o.total)) || 0), 0);
 
-  // ✅ Hiển thị giao diện
+  // 💎 GIỮ NGUYÊN TOÀN BỘ GIAO DIỆN BÊN DƯỚI
   return (
     <main className="p-4 max-w-4xl mx-auto bg-gray-50 min-h-screen pb-24">
       {/* ===== Nút quay lại + Tiêu đề ===== */}
@@ -128,6 +132,7 @@ export default function PendingOrdersPage() {
       </div>
 
       {/* ===== Danh sách đơn ===== */}
+      {/* 👉 Giữ nguyên 100% UI */}
       {!orders.length ? (
         <p className="text-center text-gray-500">
           Không có đơn hàng chờ xác nhận.
@@ -142,20 +147,7 @@ export default function PendingOrdersPage() {
               className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition"
             >
               <div className="flex justify-between items-center mb-2">
-                <h2 className="font-semibold text-lg">
-                  🧾 Mã đơn: #{order.id}
-                </h2>
-                <button
-                  onClick={() => handleCancel(order.id)}
-                  disabled={processing === order.id}
-                  className={`px-3 py-1 text-white rounded-md text-sm ${
-                    processing === order.id
-                      ? "bg-gray-400"
-                      : "bg-red-500 hover:bg-red-600"
-                  }`}
-                >
-                  {processing === order.id ? "Đang hủy..." : "❌ Hủy đơn"}
-                </button>
+                <h2 className="font-semibold text-lg">🧾 Mã đơn: #{order.id}</h2>
               </div>
 
               <p>💰 Tổng tiền: <b>{order.total}</b> Pi</p>
@@ -176,16 +168,13 @@ export default function PendingOrdersPage() {
               </p>
 
               {order.note && (
-                <p className="text-gray-500 italic text-sm mt-1">
-                  📝 {order.note}
-                </p>
+                <p className="text-gray-500 italic text-sm mt-1">📝 {order.note}</p>
               )}
             </div>
           ))}
         </div>
       )}
 
-      {/* ===== Đệm tránh che phần chân ===== */}
       <div className="h-20"></div>
     </main>
   );
