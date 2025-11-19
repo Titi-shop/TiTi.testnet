@@ -3,49 +3,38 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "../../context/LanguageContext";
+import { useAuth } from "@/context/AuthContext"; // 👉 Dùng AuthContext
 
 export default function CustomerShippingPage() {
   const router = useRouter();
   const { translate, language } = useLanguage();
 
+  const { user, loading: authLoading, pilogin } = useAuth(); // 👉 Lấy từ AuthContext
+
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState<string>("guest_user");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // ✅ Lấy thông tin đăng nhập từ Pi login
+  const currentUser = user?.username || ""; // 👉 Lấy đúng username từ context
+
+  // ⚡ Tải đơn hàng khi có user
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("pi_user");
-      const logged = localStorage.getItem("titi_is_logged_in");
-
-      if (stored && logged === "true") {
-        const parsed = JSON.parse(stored);
-        const username =
-          parsed?.user?.username || parsed?.username || "guest_user";
-        setCurrentUser(username);
-        setIsLoggedIn(true);
-      } else {
-        setIsLoggedIn(false);
-      }
-    } catch (err) {
-      console.error("❌ Lỗi đọc dữ liệu đăng nhập:", err);
-      setIsLoggedIn(false);
-    }
-  }, []);
-
-  // ✅ Tải đơn hàng đang giao
-  useEffect(() => {
-    if (!isLoggedIn) {
+    if (authLoading) return;
+    if (!user) {
       setLoading(false);
       return;
     }
     fetchOrders();
-  }, [language, isLoggedIn]);
+  }, [language, user, authLoading]);
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch("/api/orders", { cache: "no-store" });
+      const res = await fetch("/api/orders", { 
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${user?.accessToken}`, // 👉 Gửi token nếu backend cần
+        },
+      });
+
       if (!res.ok) throw new Error("Không thể tải danh sách đơn hàng");
 
       const data = await res.json();
@@ -70,7 +59,7 @@ export default function CustomerShippingPage() {
     }
   };
 
-  // ✅ Xác nhận đã nhận hàng
+  // 🧾 Xác nhận đã nhận hàng
   const confirmReceived = async (id: number) => {
     if (
       !confirm(
@@ -83,7 +72,10 @@ export default function CustomerShippingPage() {
     try {
       const res = await fetch("/api/orders", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user?.accessToken}`, // 👉 gửi token chính xác
+        },
         body: JSON.stringify({
           id,
           status: translate("completed_status") || "Hoàn tất",
@@ -107,25 +99,23 @@ export default function CustomerShippingPage() {
     }
   };
 
-  // 🕓 Giao diện khi đang tải
-  if (loading)
+  // 🕓 Hiển thị loading
+  if (authLoading || loading)
     return (
       <p className="text-center mt-6 text-gray-500">
         {translate("loading_orders") || "⏳ Đang tải danh sách đơn hàng..."}
       </p>
     );
 
-  // 🔒 Nếu chưa đăng nhập
-  if (!isLoggedIn)
+  // 🔒 Chưa đăng nhập → Giữ nguyên giao diện
+  if (!user)
     return (
       <main className="p-6 text-center min-h-screen flex flex-col items-center justify-center bg-gray-50">
         <h2 className="text-xl text-red-600 mb-3">
-          🔐{" "}
-          {translate("login_required") ||
-            "Vui lòng đăng nhập bằng Pi Network"}
+          🔐 {translate("login_required") || "Vui lòng đăng nhập bằng Pi Network"}
         </h2>
         <button
-          onClick={() => router.push("/pilogin")}
+          onClick={pilogin} // 👉 Gọi pilogin từ context
           className="mt-3 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded"
         >
           👉 {translate("go_to_login") || "Đăng nhập ngay"}
@@ -133,14 +123,14 @@ export default function CustomerShippingPage() {
       </main>
     );
 
-  // ✅ Tính tổng đơn và tổng Pi
+  // 📊 Tính tổng đơn và tổng Pi
   const totalOrders = orders.length;
   const totalPi = orders.reduce(
     (sum, o) => sum + (parseFloat(o.total) || 0),
     0
   );
 
-  // ✅ Giao diện hiển thị
+  // 🎨 ⭐ GIỮ NGUYÊN TOÀN BỘ GIAO DIỆN BÊN DƯỚI ⭐ 🎨
   return (
     <main className="p-4 max-w-4xl mx-auto bg-gray-50 min-h-screen pb-24">
       {/* ===== Nút quay lại + Tiêu đề ===== */}
