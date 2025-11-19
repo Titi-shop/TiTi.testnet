@@ -1,0 +1,12 @@
+{
+  "home": "主页",
+  "category": "分类",
+  "search": "搜索",
+  "notifications": "通知",
+  "account": "账户",
+  "select_language": "选择语言",
+  "loading": "正在加载...",
+  "no_notifications": "暂无新通知。",
+  "shipping_orders_title": "配送中的订单",
+  "confirm_received_button": "我已收货"
+}
