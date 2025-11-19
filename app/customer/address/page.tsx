@@ -7,104 +7,53 @@ import { useAuth } from "@/context/AuthContext";
 
 export default function CustomerAddressPage() {
   const router = useRouter();
-  const { user, loading } = useAuth(); // ✔ Không dùng autologin
+  const { user, loading } = useAuth();
 
+  const [addresses, setAddresses] = useState<any[]>([]);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [form, setForm] = useState({
     name: "",
     phone: "",
     address: "",
-    country: "",
-    countryCode: "",
+    country: "VN",
+    countryCode: "+84",
+    isDefault: false,
   });
 
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  /**
-   * ================================
-   *  1) LOAD ADDRESS KHI USER ĐÃ LOGIN
-   * ================================
-   */
+  // 🚀 FETCH danh sách địa chỉ từ API
   useEffect(() => {
-    if (loading) return; // Đợi AuthContext hoàn tất
-
-    // ❗ Nếu chưa login → không tự login → giống profile/edit
+    if (loading) return;
     if (!user) return;
 
-    fetchAddress(user.username);
+    fetch(`/api/address?username=${user.username}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setAddresses(data?.addresses || []);
+      })
+      .catch(() => console.error("❌ Lỗi tải địa chỉ"));
   }, [user, loading]);
 
-  /**
-   * ================================
-   *  2) FETCH ADDRESS TỪ BACKEND
-   * ================================
-   */
-  const fetchAddress = async (username: string) => {
-  try {
-    const res = await fetch(`/api/address?username=${username}`);
-    const data = await res.json();
-
-    if (data?.address) {
-      const saved = data.address;
-
-      // ❗ FIX: nếu API trả về rỗng → tự lấy VN hoặc country[0]
-      const countryCode = saved.country || "VN";
-
-      const countryData = countries.find(
-        (c) => c.code === countryCode
-      );
-
+  // 📝 Xử lý đổi country
+  const handleCountryChange = (e: any) => {
+    const selected = countries.find((c) => c.code === e.target.value);
+    if (selected) {
       setForm({
-        name: saved.name || "",
-        phone: saved.phone || "",
-        address: saved.address || "",
-        country: countryCode,
-        countryCode: countryData?.dial || "+84", // ❗ không bao giờ dùng +00 nữa
-      });
-    } else {
-      // Không có địa chỉ → set mặc định
-      const first = countries[0];
-      setForm({
-        name: "",
-        phone: "",
-        address: "",
-        country: first.code,
-        countryCode: first.dial,
+        ...form,
+        country: selected.code,
+        countryCode: selected.dial,
       });
     }
-  } catch (err) {
-    console.error("❌ Lỗi tải địa chỉ:", err);
-  }
-};
-
-  /**
-   * ================================
-   *  3) ĐỔI QUỐC GIA
-   * ================================
-   */
-  const handleCountryChange = (e: any) => {
-    const code = e.target.value;
-    const selected = countries.find((c) => c.code === code);
-    if (!selected) return;
-
-    setForm({
-      ...form,
-      country: selected.code,
-      countryCode: selected.dial,
-    });
   };
 
-  /**
-   * ================================
-   *  4) LƯU ĐỊA CHỈ
-   * ================================
-   */
+  // 🧾 Lưu hoặc cập nhật địa chỉ
   const handleSave = async () => {
     if (!form.name || !form.phone || !form.address) {
       setMessage("⚠️ Vui lòng nhập đầy đủ thông tin!");
       return;
     }
-
     if (!user) {
       setMessage("⚠️ Bạn chưa đăng nhập!");
       return;
@@ -112,27 +61,41 @@ export default function CustomerAddressPage() {
 
     setSaving(true);
 
-    const payload = {
-      username: user.username,
-      ...form,
-    };
+    let updatedList = [...addresses];
+
+    if (form.isDefault) {
+      updatedList = updatedList.map((a) => ({ ...a, isDefault: false }));
+    }
+
+    if (editingIndex !== null) {
+      updatedList[editingIndex] = { ...form };
+    } else {
+      updatedList.push({ ...form });
+    }
 
     const res = await fetch("/api/address", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        username: user.username,
+        addresses: updatedList,
+      }),
     });
 
     const data = await res.json();
 
     if (data.success) {
+      setAddresses(updatedList);
+      setForm({
+        name: "",
+        phone: "",
+        address: "",
+        country: "VN",
+        countryCode: "+84",
+        isDefault: false,
+      });
+      setEditingIndex(null);
       setMessage("✅ Đã lưu địa chỉ!");
-      localStorage.setItem("shipping_info", JSON.stringify(form));
-
-      // Chuyển sang checkout
-      setTimeout(() => {
-        router.push("/checkout");
-      }, 500);
     } else {
       setMessage("❌ Lưu thất bại!");
     }
@@ -140,11 +103,38 @@ export default function CustomerAddressPage() {
     setSaving(false);
   };
 
-  /**
-   * ================================
-   *  5) UI KHI CHƯA CÓ USER
-   * ================================
-   */
+  // ✏️ Chỉnh sửa địa chỉ
+  const handleEdit = (index: number) => {
+    setForm({ ...addresses[index] });
+    setEditingIndex(index);
+  };
+
+  // ❌ Xóa địa chỉ
+  const handleDelete = (index: number) => {
+    const updatedList = addresses.filter((_, i) => i !== index);
+    setAddresses(updatedList);
+    fetch("/api/address", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: user?.username, addresses: updatedList }),
+    });
+  };
+
+  // 🌟 Chọn làm địa chỉ mặc định
+  const setDefault = (index: number) => {
+    const updated = addresses.map((a, i) => ({
+      ...a,
+      isDefault: i === index,
+    }));
+    setAddresses(updated);
+    fetch("/api/address", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: user?.username, addresses: updated }),
+    });
+  };
+
+  // ⏳ Loading hoặc chưa login
   if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center">
@@ -167,25 +157,70 @@ export default function CustomerAddressPage() {
     );
   }
 
-  /**
-   * ================================
-   *  6) UI CHÍNH
-   * ================================
-   */
   return (
     <main className="min-h-screen bg-gray-100 pb-20 relative">
-
       <button
-  onClick={() => router.back()}
-  className="absolute top-3 left-3 text-orange-600 text-lg font-bold"
->
-  ←
-</button>
+        onClick={() => router.back()}
+        className="absolute top-3 left-3 text-orange-600 text-lg font-bold"
+      >
+        ←
+      </button>
 
       <div className="max-w-md mx-auto p-6 bg-white rounded-xl shadow mt-14">
         <h1 className="text-2xl font-bold text-center text-orange-600 mb-4">
           📍 Địa chỉ giao hàng
         </h1>
+
+        {/* 📋 Danh sách địa chỉ đã lưu */}
+        {addresses.length > 0 && (
+          <div className="mb-6">
+            <h2 className="font-semibold mb-2">📦 Địa chỉ đã lưu:</h2>
+            <ul className="space-y-3">
+              {addresses.map((item, index) => (
+                <li
+                  key={index}
+                  className="border p-3 rounded relative bg-gray-50"
+                >
+                  {item.isDefault && (
+                    <span className="absolute top-2 right-2 text-green-600 text-xs border px-2 py-1 rounded">
+                      Mặc định
+                    </span>
+                  )}
+                  <p><b>👤 {item.name}</b></p>
+                  <p>📞 {item.countryCode} {item.phone}</p>
+                  <p>🏠 {item.address}</p>
+                  <div className="flex gap-2 mt-2 text-sm">
+                    <button
+                      onClick={() => handleEdit(index)}
+                      className="px-3 py-1 bg-blue-500 text-white rounded"
+                    >
+                      Sửa
+                    </button>
+                    <button
+                      onClick={() => handleDelete(index)}
+                      className="px-3 py-1 bg-red-500 text-white rounded"
+                    >
+                      Xóa
+                    </button>
+                    {!item.isDefault && (
+                      <button
+                        onClick={() => setDefault(index)}
+                        className="px-3 py-1 bg-green-500 text-white rounded"
+                      >
+                        Chọn mặc định
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* 🧾 Form thêm / sửa địa chỉ */}
+        <h2 className="text-lg font-semibold mb-3">
+          {editingIndex !== null ? "✏️ Cập nhật địa chỉ" : "➕ Thêm địa chỉ mới"}
+        </h2>
 
         {/* Quốc gia */}
         <label className="block mb-2 font-medium">🌍 Quốc gia</label>
@@ -201,7 +236,7 @@ export default function CustomerAddressPage() {
           ))}
         </select>
 
-        {/* Họ và tên */}
+        {/* Tên, SĐT, Địa chỉ */}
         <label className="block mb-2 font-medium">👤 Họ và tên</label>
         <input
           className="border p-2 w-full rounded mb-3"
@@ -209,7 +244,6 @@ export default function CustomerAddressPage() {
           onChange={(e) => setForm({ ...form, name: e.target.value })}
         />
 
-        {/* Số điện thoại */}
         <label className="block mb-2 font-medium">📞 Số điện thoại</label>
         <div className="flex mb-3">
           <span className="px-3 py-2 bg-gray-100 border rounded-l">
@@ -219,12 +253,10 @@ export default function CustomerAddressPage() {
             type="tel"
             className="border p-2 w-full rounded-r"
             value={form.phone}
-            placeholder="Nhập số điện thoại"
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
           />
         </div>
 
-        {/* Địa chỉ */}
         <label className="block mb-2 font-medium">🏠 Địa chỉ</label>
         <textarea
           className="border p-2 w-full rounded mb-4"
@@ -233,7 +265,15 @@ export default function CustomerAddressPage() {
           onChange={(e) => setForm({ ...form, address: e.target.value })}
         />
 
-        {/* Nút lưu */}
+        <label className="flex items-center mb-3 gap-2">
+          <input
+            type="checkbox"
+            checked={form.isDefault}
+            onChange={(e) => setForm({ ...form, isDefault: e.target.checked })}
+          />
+          Đặt làm địa chỉ mặc định
+        </label>
+
         <button
           onClick={handleSave}
           disabled={saving}
@@ -241,7 +281,11 @@ export default function CustomerAddressPage() {
             saving ? "bg-gray-400" : "bg-orange-600 hover:bg-orange-700"
           }`}
         >
-          {saving ? "Đang lưu..." : "💾 Lưu địa chỉ"}
+          {saving
+            ? "Đang lưu..."
+            : editingIndex !== null
+            ? "💾 Cập nhật địa chỉ"
+            : "➕ Thêm địa chỉ"}
         </button>
 
         {message && (
