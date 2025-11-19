@@ -3,8 +3,8 @@ import { kv } from "@vercel/kv";
 
 /**
  * 🟢 API: /api/address
- * - GET: lấy địa chỉ theo username
- * - POST: lưu/cập nhật địa chỉ
+ * - GET: lấy danh sách địa chỉ theo username
+ * - POST: thêm/cập nhật địa chỉ (hỗ trợ nhiều địa chỉ)
  */
 
 export async function GET(req: Request) {
@@ -15,22 +15,38 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "missing username" }, { status: 400 });
 
   const key = `address:${username.toLowerCase()}`;
-  const data = (await kv.get(key)) || null;
+  const data = (await kv.get(key)) || []; // 🟢 Trả mảng địa chỉ
 
-  return NextResponse.json({ success: true, address: data });
+  return NextResponse.json({ success: true, addresses: data });
 }
 
 export async function POST(req: Request) {
   try {
-    const { username, name, phone, address } = await req.json();
-    if (!username) throw new Error("Missing username");
+    const body = await req.json();
+    const { username, ...newAddress } = body;
+
+    if (!username)
+      return NextResponse.json({ error: "missing username" }, { status: 400 });
 
     const key = `address:${username.toLowerCase()}`;
-    await kv.set(key, { name, phone, address });
+    let existing = (await kv.get(key)) || [];
 
-    return NextResponse.json({ success: true });
+    // 🟠 Nếu address mới là mặc định → bỏ mặc định cũ
+    if (newAddress.isDefault) {
+      existing = existing.map((a: any) => ({ ...a, isDefault: false }));
+    }
+
+    // 🟢 Thêm địa chỉ mới vào danh sách
+    existing.push(newAddress);
+
+    await kv.set(key, existing);
+
+    return NextResponse.json({ success: true, addresses: existing });
   } catch (err: any) {
-    console.error("❌ Lỗi lưu địa chỉ:", err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error("❌ API Error:", err);
+    return NextResponse.json(
+      { success: false, error: err.message },
+      { status: 500 }
+    );
   }
 }
