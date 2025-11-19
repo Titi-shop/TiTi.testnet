@@ -136,18 +136,28 @@ export default function CustomerAddressPage() {
 
             <div className="flex justify-between mt-3 text-sm">
               <button
-                onClick={() => {
-                  const updated = addresses.map((a, i) => ({
-                    ...a,
-                    isDefault: i === index,
-                  }));
-                  setAddresses(updated);
-                  localStorage.setItem(`addresses_${user.username}`, JSON.stringify(updated));
-                }}
-                className={item.isDefault ? "text-orange-600 font-bold" : "text-gray-500"}
-              >
-                ✓ Mặc định
-              </button>
+  onClick={async () => {
+    const updated = addresses.map((a, i) => ({
+      ...a,
+      isDefault: i === index,
+    }));
+
+    setAddresses(updated);
+    localStorage.setItem(`addresses_${user.username}`, JSON.stringify(updated));
+
+    // 🔥 Gửi địa chỉ mặc định lên server
+    await fetch("/api/address", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: user.username, ...updated[index] }),
+    });
+
+    alert("🎯 Đã đặt làm địa chỉ mặc định!");
+  }}
+  className={item.isDefault ? "text-orange-600 font-bold" : "text-gray-500"}
+>
+  ✓ Mặc định
+</button>
               <div className="flex gap-4">
                 <button
                   className="text-blue-500"
