@@ -19,11 +19,29 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [shipping, setShipping] = useState<any>(null);
 
-  // ✅ Lấy địa chỉ giao hàng từ localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem("shipping_info");
-    if (saved) setShipping(JSON.parse(saved));
-  }, []);
+  // ✅ Lấy địa chỉ từ API, ưu tiên địa chỉ mặc định
+useEffect(() => {
+  if (!user) return;
+
+  const fetchDefaultAddress = async () => {
+    try {
+      const res = await fetch(`/api/address?username=${user.username}`);
+      const data = await res.json();
+
+      if (data?.addresses?.length > 0) {
+        const defaultAddress =
+          data.addresses.find((a: any) => a.isDefault) || data.addresses[0];
+
+        setShipping(defaultAddress);
+        localStorage.setItem("shipping_info", JSON.stringify(defaultAddress));
+      }
+    } catch (err) {
+      console.error("⚠️ Lỗi tải địa chỉ mặc định:", err);
+    }
+  };
+
+  fetchDefaultAddress();
+}, [user]);
 
   // ✅ Thanh toán qua Pi Network
   const handlePayWithPi = async () => {
