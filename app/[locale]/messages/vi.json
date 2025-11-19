@@ -1,0 +1,10 @@
+{
+  "Home": {
+    "title": "Chào mừng đến TiTi Shop",
+    "welcome": "Mua sắm bằng Pi nhanh chóng, an toàn."
+  },
+  "Pickup": {
+    "title": "Đơn hàng chờ lấy",
+    "no_orders": "Bạn chưa có đơn hàng nào."
+  }
+}
