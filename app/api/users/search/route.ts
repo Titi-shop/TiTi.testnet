@@ -1,17 +1,44 @@
 import { NextResponse } from "next/server";
-import { kv } from "@vercel/kv"; // nếu bạn lưu user ở KV
-// hoặc fetch từ MongoDB nếu dùng database khác
+import { kv } from "@vercel/kv";
+
+function normalize(str: string) {
+  return str?.trim().toLowerCase();
+}
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const q = searchParams.get("q")?.toLowerCase();
+  try {
+    const { searchParams } = new URL(req.url);
+    const q = normalize(searchParams.get("q") || "");
 
-  if (!q) return NextResponse.json([]);
+    if (!q) return NextResponse.json([]);
 
-  // Giả sử bạn lưu danh sách username ở KV key: "users:all"
-  const allUsers = await kv.smembers("users:all"); // ["admin", "abc111", "titi99"]
+    // 📌 Lấy danh sách tất cả usernames đã đăng ký
+    const allUsers = await kv.smembers<string>("users:all"); // ["admin", "titi99", "duc111"]
 
-  const found = allUsers.filter((u) => u.includes(q));
+    if (!allUsers || allUsers.length === 0) return NextResponse.json([]);
 
-  return NextResponse.json(found);
+    // 📌 Tìm user phù hợp
+    const matchedUsers = [];
+
+    for (const username of allUsers) {
+      const profile = await kv.get<any>(`user_profile:${username}`);
+      if (!profile) continue;
+
+      if (
+        username.includes(q) ||
+        profile.appName?.toLowerCase().includes(q)
+      ) {
+        matchedUsers.push({
+          username,
+          appName: profile.appName || username,
+          avatar: profile.avatar || null,
+        });
+      }
+    }
+
+    return NextResponse.json(matchedUsers);
+  } catch (err) {
+    console.error("Search API Error", err);
+    return NextResponse.json({ error: "Server Error" }, { status: 500 });
+  }
 }
