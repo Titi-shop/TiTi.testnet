@@ -1,0 +1,10 @@
+{
+  "Home": {
+    "title": "欢迎来到 TiTi 商店",
+    "welcome": "使用 Pi 快速安全购物。"
+  },
+  "Pickup": {
+    "title": "待取订单",
+    "no_orders": "您没有订单。"
+  }
+}
