@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { FiSearch, FiMessageCircle } from "react-icons/fi";
 
 export default function MessagesPage() {
   const [query, setQuery] = useState("");
@@ -18,55 +19,62 @@ export default function MessagesPage() {
   };
 
   return (
-    <main className="max-w-md mx-auto bg-white min-h-screen p-4">
-      <header className="bg-purple-600 text-white p-4 text-center text-lg font-semibold rounded-lg">
+    <main className="max-w-md mx-auto bg-gray-50 min-h-screen p-4">
+      {/* Header */}
+      <header className="bg-orange-500 text-white p-4 text-center text-lg font-semibold rounded-lg shadow-md">
         🔎 Tìm người để chat
       </header>
 
+      {/* Search Bar */}
       <div className="flex gap-2 my-4">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Nhập username hoặc tên hiển thị..."
-          className="flex-1 border p-2 rounded"
+          className="flex-1 border border-gray-300 p-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
         />
         <button
           onClick={searchUser}
-          className="bg-purple-500 text-white px-4 rounded"
+          className="bg-orange-500 hover:bg-orange-600 transition text-white px-4 rounded-lg flex items-center gap-1 shadow"
         >
-          Tìm
+          <FiSearch /> Tìm
         </button>
       </div>
 
-      {loading && <p>⏳ Đang tìm kiếm...</p>}
+      {loading && (
+        <p className="text-orange-500 font-medium text-center">
+          ⏳ Đang tìm kiếm...
+        </p>
+      )}
 
+      {/* Results List */}
       <div className="space-y-3">
         {!loading && results.length === 0 && (
-          <p className="text-gray-500">Không tìm thấy người dùng</p>
+          <p className="text-gray-500 text-center">Không tìm thấy người dùng</p>
         )}
 
         {results.map((user) => (
           <div
             key={user.username}
-            className="flex items-center justify-between p-3 border rounded-lg shadow-sm"
+            className="flex items-center justify-between p-3 bg-white border rounded-xl shadow-sm hover:shadow-md transition"
           >
             <div className="flex items-center gap-3">
               <img
                 src={user.avatar || "https://i.pravatar.cc/50"}
                 alt={user.appName}
-                className="w-10 h-10 rounded-full border"
+                className="w-12 h-12 rounded-full border"
               />
               <div>
-                <p className="font-semibold">{user.appName}</p>
+                <p className="font-semibold text-gray-800">{user.appName}</p>
                 <p className="text-sm text-gray-500">@{user.username}</p>
               </div>
             </div>
 
             <Link
               href={`/chat/${user.username}`}
-              className="bg-purple-500 text-white px-3 py-1 rounded"
+              className="bg-orange-500 hover:bg-orange-600 transition text-white px-3 py-1.5 rounded-lg flex items-center gap-1 text-sm shadow"
             >
-              Chat
+              <FiMessageCircle /> Chat
             </Link>
           </div>
         ))}
