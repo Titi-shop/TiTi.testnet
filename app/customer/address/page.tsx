@@ -45,14 +45,13 @@ export default function CustomerAddressPage() {
     setFormVisible(false);
 
     await fetch("/api/address", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: user?.username,
-        address: form, // Gửi đúng 1 địa chỉ
-      }),
-    });
-  };
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    username: user?.username,
+    ...form,   // ✔ Trải thẳng form ra như Code 2
+  }),
+});
 
   // 📌 Set địa chỉ mặc định
   const setDefault = (index: number) => {
