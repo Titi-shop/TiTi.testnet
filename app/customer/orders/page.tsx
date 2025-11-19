@@ -1,18 +1,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function OrdersSummaryPage() {
+  const { user, pilogin, loading: authLoading } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // 🚨 Chờ AuthContext load xong
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    if (!authLoading && user?.accessToken) {
+      fetchOrders();
+    } else if (!authLoading && !user) {
+      setLoading(false); // Không fetch nếu chưa login
+    }
+  }, [authLoading, user]);
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch("/api/orders", { cache: "no-store" });
+      const res = await fetch("/api/orders", {
+        method: "GET",
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${user?.accessToken}`,
+        },
+      });
       const data = await res.json();
       setOrders(data || []);
     } catch (err) {
@@ -22,10 +35,30 @@ export default function OrdersSummaryPage() {
     }
   };
 
+  // 💡 Nếu vẫn đang tải AuthContext
+  if (authLoading) {
+    return <p className="text-center mt-10 text-gray-500">⏳ Đang kiểm tra đăng nhập...</p>;
+  }
+
+  // ❌ Nếu chưa đăng nhập → Hiển thị nút đăng nhập Pi
+  if (!user) {
+    return (
+      <main className="max-w-4xl mx-auto p-4 text-center">
+        <p className="text-gray-600 mb-4">⚠️ Vui lòng đăng nhập để xem đơn hàng.</p>
+        <button
+          onClick={pilogin}
+          className="bg-orange-500 text-white px-4 py-2 rounded-lg shadow"
+        >
+          🔑 Đăng nhập với Pi Network
+        </button>
+      </main>
+    );
+  }
+
+  // ⭐ Giữ NGUYÊN giao diện bạn đã viết
   if (loading)
     return <p className="text-center mt-10 text-gray-500">⏳ Đang tải...</p>;
 
-  // ✅ Tính tổng đơn & tổng Pi
   const totalOrders = orders.length;
   const totalPi = orders.reduce(
     (sum, o) => sum + (parseFloat(o.total) || 0),
@@ -81,7 +114,6 @@ export default function OrdersSummaryPage() {
         </div>
       )}
 
-      {/* ===== Đệm tránh che chân ===== */}
       <div className="h-20"></div>
     </main>
   );
