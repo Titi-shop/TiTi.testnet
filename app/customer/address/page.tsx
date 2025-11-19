@@ -23,6 +23,7 @@ export default function CustomerAddressPage() {
     isDefault: false,
   });
 
+  // 📌 Load dữ liệu lưu trên server
   useEffect(() => {
     if (loading || !user) return;
     fetch(`/api/address?username=${user.username}`)
@@ -30,6 +31,7 @@ export default function CustomerAddressPage() {
       .then((data) => setAddresses(data?.addresses || []));
   }, [user, loading]);
 
+  // 📌 Lưu địa chỉ (dạng 1 object chứ không phải array)
   const handleSave = async () => {
     if (!form.name || !form.phone || !form.address) return;
 
@@ -42,13 +44,17 @@ export default function CustomerAddressPage() {
     setAddresses(updated);
     setFormVisible(false);
 
-    fetch("/api/address", {
+    await fetch("/api/address", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: user?.username, addresses: updated }),
+      body: JSON.stringify({
+        username: user?.username,
+        address: form, // Gửi đúng 1 địa chỉ
+      }),
     });
   };
 
+  // 📌 Set địa chỉ mặc định
   const setDefault = (index: number) => {
     const updated = addresses.map((item, i) => ({
       ...item,
@@ -65,20 +71,15 @@ export default function CustomerAddressPage() {
       </button>
 
       <div className="max-w-md mx-auto p-4 mt-14">
-        <h1 className="text-xl font-bold mb-4 text-orange-600">
-          📦 Địa chỉ giao hàng
-        </h1>
+        <h1 className="text-xl font-bold mb-4 text-orange-600">📦 Địa chỉ giao hàng</h1>
 
-        {/* Danh sách địa chỉ */}
+        {/* 📌 Danh sách địa chỉ */}
         {addresses.map((item, index) => (
-          <div
-            key={index}
-            className="bg-white p-4 rounded-lg shadow-sm mb-3 border"
-          >
+          <div key={index} className="bg-white p-4 rounded-lg shadow-sm mb-3 border">
             <p className="font-semibold">{item.name} — {item.phone}</p>
             <p className="text-sm text-gray-600 mt-1">{item.address}</p>
-            <p className="text-xs text-gray-500 mt-1">
-              🌍 {countries.find((c) => c.code === item.country)?.name}
+            <p className="text-xs text-gray-500 mt-1">🌍 
+              {countries.find((c) => c.code === item.country)?.name}
             </p>
 
             <div className="flex justify-between mt-3 text-sm">
@@ -88,8 +89,7 @@ export default function CustomerAddressPage() {
                   item.isDefault ? "text-orange-600 font-semibold" : "text-gray-500"
                 }`}
               >
-                <CheckCircle size={18} />
-                Đặt làm mặc định
+                <CheckCircle size={18} /> Mặc định
               </button>
 
               <div className="flex gap-4">
@@ -105,16 +105,14 @@ export default function CustomerAddressPage() {
                 <Trash2
                   size={20}
                   className="text-red-500 cursor-pointer"
-                  onClick={() =>
-                    setAddresses(addresses.filter((_, i) => i !== index))
-                  }
+                  onClick={() => setAddresses(addresses.filter((_, i) => i !== index))}
                 />
               </div>
             </div>
           </div>
         ))}
 
-        {/* Nút mở form */}
+        {/* 📌 Nút Thêm địa chỉ mới */}
         {!formVisible && (
           <button
             className="w-full py-3 rounded-lg bg-orange-500 text-white font-semibold flex items-center justify-center gap-2 mt-4"
@@ -135,11 +133,30 @@ export default function CustomerAddressPage() {
           </button>
         )}
 
-        {/* Form nhập địa chỉ */}
+        {/* 📌 Form nhập địa chỉ */}
         {formVisible && (
           <div className="bg-white p-4 rounded-lg shadow mt-4">
+
+            {/* 🔹 Chọn quốc gia */}
+            <label className="text-sm font-medium">🌍 Quốc gia</label>
+            <select
+              className="border p-2 w-full rounded mb-3"
+              value={form.country}
+              onChange={(e) => {
+                const countryCode = e.target.value;
+                const selected = countries.find((c) => c.code === countryCode);
+                setForm({ ...form, country: countryCode, countryCode: selected?.dial || "+84" });
+              }}
+            >
+              {countries.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.flag} {c.name} ({c.dial})
+                </option>
+              ))}
+            </select>
+
             <input
-              placeholder="Tên"
+              placeholder="Tên người nhận"
               className="border p-2 w-full rounded mb-3"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -153,7 +170,7 @@ export default function CustomerAddressPage() {
             />
 
             <textarea
-              placeholder="Địa chỉ (Tỉnh, Thành phố, Quận...)"
+              placeholder="Địa chỉ chi tiết (Số nhà, đường, Phường...)"
               className="border p-2 w-full rounded mb-3"
               rows={3}
               value={form.address}
@@ -175,7 +192,7 @@ export default function CustomerAddressPage() {
               onClick={handleSave}
               className="w-full py-3 bg-orange-600 text-white rounded-lg font-semibold"
             >
-              Lưu ngay bây giờ
+              Lưu địa chỉ
             </button>
           </div>
         )}
