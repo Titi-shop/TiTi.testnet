@@ -23,24 +23,23 @@ export default function CheckoutPage() {
 useEffect(() => {
   if (!user) return;
 
-  const fetchDefaultAddress = async () => {
+  const fetchAddress = async () => {
     try {
       const res = await fetch(`/api/address?username=${user.username}`);
       const data = await res.json();
 
-      if (data?.addresses?.length > 0) {
-        const defaultAddress =
-          data.addresses.find((a: any) => a.isDefault) || data.addresses[0];
+      console.log("📦 API trả về:", data);
 
-        setShipping(defaultAddress);
-        localStorage.setItem("shipping_info", JSON.stringify(defaultAddress));
+      if (data?.address) {
+        setShipping(data.address);
+        localStorage.setItem("shipping_info", JSON.stringify(data.address));
       }
     } catch (err) {
       console.error("⚠️ Lỗi tải địa chỉ mặc định:", err);
     }
   };
 
-  fetchDefaultAddress();
+  fetchAddress();
 }, [user]);
 
   // ✅ Thanh toán qua Pi Network
@@ -196,23 +195,22 @@ useEffect(() => {
       <div className="flex-1 overflow-y-auto pb-28">
         {/* Địa chỉ giao hàng */}
         <div
-          className="bg-white border-b border-gray-200 p-4 flex justify-between items-center cursor-pointer"
-          onClick={() => router.push("/customer/address")}
-        >
-          {shipping ? (
-            <div className="flex-1">
-              <p className="font-semibold text-gray-800">{shipping.name}</p>
-              <p className="text-gray-600 text-sm">{shipping.phone}</p>
-              <p className="text-gray-500 text-sm">
-                {shipping.country ? `${shipping.country}, ` : ""}
-                {shipping.address}
-              </p>
-            </div>
-          ) : (
-            <p className="text-gray-500">➕ Thêm địa chỉ giao hàng</p>
-          )}
-          <span className="text-blue-500 text-sm ml-3">Chỉnh sửa ➜</span>
-        </div>
+  className="bg-white border-b border-gray-200 p-4 flex justify-between items-center cursor-pointer"
+  onClick={() => router.push("/customer/address")}
+>
+  {shipping ? (
+    <div className="flex-1">
+      <p className="font-semibold text-gray-800">{shipping.name}</p>
+      <p className="text-gray-600 text-sm">{shipping.phone}</p>
+      <p className="text-gray-500 text-sm">
+        {shipping.address}
+      </p>
+    </div>
+  ) : (
+    <p className="text-gray-500">➕ Thêm địa chỉ giao hàng</p>
+  )}
+  <span className="text-blue-500 text-sm ml-3">Chỉnh sửa ➜</span>
+</div>
 
         {/* Sản phẩm */}
         <div className="p-4 bg-white mt-2 border-t">
