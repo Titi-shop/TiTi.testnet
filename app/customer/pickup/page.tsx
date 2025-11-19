@@ -3,49 +3,41 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "../../context/LanguageContext";
+import { useAuth } from "@/context/AuthContext"; // 👉 import AuthContext
 
 export default function PickupOrdersPage() {
   const router = useRouter();
   const { translate: t, language } = useLanguage();
+
+  // 👉 Dùng AuthContext thay cho localStorage
+  const { user, pilogin, loading: authLoading } = useAuth();
+
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState<string>("guest_user");
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
 
-  // ✅ Lấy thông tin đăng nhập từ localStorage
+  // 👉 Lấy username đúng từ AuthContext (không dùng localStorage nữa)
+  const currentUser = user?.username || "";
+
+  // 🚀 Tải đơn hàng khi đã có user và không còn loading Auth
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("pi_user");
-      const logged = localStorage.getItem("titi_is_logged_in");
+    if (authLoading) return;
 
-      if (stored && logged === "true") {
-        const parsed = JSON.parse(stored);
-        const username =
-          parsed?.user?.username || parsed?.username || "guest_user";
-        setCurrentUser(username);
-        setIsLoggedIn(true);
-      } else {
-        setIsLoggedIn(false);
-      }
-    } catch (err) {
-      console.error("❌ Lỗi khi đọc thông tin Pi login:", err);
-      setIsLoggedIn(false);
-    }
-  }, []);
-
-  // ✅ Tải đơn hàng
-  useEffect(() => {
-    if (!isLoggedIn) {
+    if (!user) {
       setLoading(false);
       return;
     }
+
     fetchOrders();
-  }, [language, isLoggedIn]);
+  }, [language, user, authLoading]);
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch("/api/orders", { cache: "no-store" });
-      if (!res.ok) throw new Error("Không thể tải danh sách đơn hàng.");
+      const res = await fetch("/api/orders", { 
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${user?.accessToken}`, // 👉 gửi đúng token
+        },
+      });
 
       const data = await res.json();
       const filterByLang = {
@@ -61,45 +53,43 @@ export default function PickupOrdersPage() {
       );
 
       setOrders(filtered);
-    } catch (error) {
-      console.error("❌ Lỗi tải đơn hàng:", error);
+    } catch (err) {
+      console.error("❌ Lỗi tải đơn hàng:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Nếu đang tải
-  if (loading)
-    return (
-      <p className="text-center mt-6">
-        ⏳ {t("loading") || "Đang tải đơn hàng..."}
-      </p>
-    );
+  // 🕓 Đang load trạng thái đăng nhập
+  if (authLoading || loading) {
+    return <p className="text-center mt-6">⏳ Đang tải đơn hàng...</p>;
+  }
 
-  // ✅ Nếu chưa đăng nhập
-  if (!isLoggedIn)
+  // ❌ Nếu chưa đăng nhập → yêu cầu login (giữ nguyên giao diện)
+  if (!user) {
     return (
       <main className="p-6 text-center min-h-screen flex flex-col items-center justify-center bg-gray-50">
         <h2 className="text-xl text-red-600 mb-3">
-          🔐 {t("login_required") || "Vui lòng đăng nhập bằng Pi Network"}
+          🔐 Vui lòng đăng nhập bằng Pi Network
         </h2>
         <button
-          onClick={() => router.push("/pilogin")}
+          onClick={pilogin}
           className="mt-3 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded"
         >
-          👉 {t("go_to_login") || "Đăng nhập ngay"}
+          👉 Đăng nhập với Pi Network
         </button>
       </main>
     );
+  }
 
-  // ✅ Tính tổng đơn và tổng Pi
+  // 📊 Tính tổng đơn & tổng Pi
   const totalOrders = orders.length;
   const totalPi = orders.reduce(
     (sum, o) => sum + (parseFloat(o.total) || 0),
     0
   );
 
-  // ✅ Hiển thị danh sách đơn
+  // 🎨⭐ GIỮ NGUYÊN TOÀN BỘ GIAO DIỆN BÊN DƯỚI KHÔNG THAY ĐỔI ⭐🎨
   return (
     <main className="p-4 max-w-4xl mx-auto bg-gray-50 min-h-screen pb-24">
       {/* ===== Nút quay lại + tiêu đề ===== */}
@@ -132,13 +122,9 @@ export default function PickupOrdersPage() {
       {/* ===== Danh sách đơn ===== */}
       {orders.length === 0 ? (
         <p className="text-center text-gray-500">
-          {language === "vi"
-            ? "Bạn chưa có đơn hàng nào đang giao hoặc chờ lấy."
-            : language === "en"
-            ? "You have no orders currently delivering or waiting for pickup."
-            : "您当前没有正在配送或等待取货的订单。"}
+          Bạn chưa có đơn hàng nào đang giao hoặc chờ lấy.
           <br />
-          👤 {t("current_user") || "Tài khoản"}: <b>{currentUser}</b>
+          👤 Người dùng: <b>{currentUser}</b>
         </p>
       ) : (
         <div className="space-y-4">
