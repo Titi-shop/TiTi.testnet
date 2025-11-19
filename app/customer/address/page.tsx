@@ -34,256 +34,161 @@ export default function CustomerAddressPage() {
     isDefault: false,
   });
 
-  // ===== 1. Load dữ liệu khi đã login =====
   useEffect(() => {
-    if (loading) return;
-    if (!user) return;
+    if (!user || loading) return;
 
-    const key = `addresses_${user.username}`;
-    const local = typeof window !== "undefined" ? localStorage.getItem(key) : null;
-
+    const local = localStorage.getItem(`addresses_${user.username}`);
     if (local) {
-      // ưu tiên danh sách lưu local (nhiều địa chỉ)
-      try {
-        const parsed = JSON.parse(local) as Address[];
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setAddresses(parsed);
-          return;
-        }
-      } catch {
-        /* ignore */
-      }
+      setAddresses(JSON.parse(local));
+    } else {
+      fetchFromAPI(user.username);
     }
-
-    // nếu local chưa có → lấy từ API (địa chỉ đơn cũ)
-    fetchAddressFromApi(user.username);
   }, [user, loading]);
 
-  const fetchAddressFromApi = async (username: string) => {
+  const fetchFromAPI = async (username: string) => {
     try {
       const res = await fetch(`/api/address?username=${username}`);
       const data = await res.json();
-
       if (data?.address) {
         const saved = data.address;
-        const countryCode = saved.country || "VN";
-        const countryData = countries.find((c) => c.code === countryCode);
-
-        const addr: Address = {
-          name: saved.name || "",
-          phone: saved.phone || "",
-          address: saved.address || "",
-          country: countryCode,
-          countryCode: countryData?.dial || "+84",
-          isDefault: true,
-        };
-
-        setAddresses([addr]);
-      } else {
-        setAddresses([]);
+        setAddresses([
+          {
+            ...saved,
+            isDefault: true,
+            country: saved.country || "VN",
+            countryCode:
+              countries.find((c) => c.code === saved.country)?.dial || "+84",
+          },
+        ]);
       }
     } catch (err) {
-      console.error("❌ Lỗi tải địa chỉ:", err);
+      console.error(err);
     }
   };
 
-  // ===== 2. Lưu danh sách vào localStorage (theo user) =====
-  const persistAddressesLocal = (next: Address[]) => {
+  const saveToLocal = (list: Address[]) => {
     if (!user) return;
-    const key = `addresses_${user.username}`;
-    try {
-      localStorage.setItem(key, JSON.stringify(next));
-    } catch (err) {
-      console.error("❌ Lỗi lưu localStorage:", err);
-    }
+    localStorage.setItem(`addresses_${user.username}`, JSON.stringify(list));
   };
 
-  // ===== 3. Lưu địa chỉ (thêm / sửa) =====
   const handleSave = async () => {
     if (!form.name || !form.phone || !form.address) {
-      setMessage("⚠️ Vui lòng nhập đầy đủ thông tin!");
-      return;
-    }
-    if (!user) {
-      setMessage("⚠️ Bạn chưa đăng nhập!");
+      setMessage("⚠️ Nhập đầy đủ thông tin!");
       return;
     }
 
-    setSaving(true);
-
-    // cập nhật danh sách trên UI + local
     let updated = [...addresses];
-    if (form.isDefault) {
-      updated = updated.map((a) => ({ ...a, isDefault: false }));
-    }
+    if (form.isDefault) updated = updated.map((a) => ({ ...a, isDefault: false }));
 
-    if (editingIndex !== null) {
-      updated[editingIndex] = { ...form };
-    } else {
-      updated.push({ ...form });
-    }
+    if (editingIndex !== null) updated[editingIndex] = { ...form };
+    else updated.push({ ...form });
 
     setAddresses(updated);
-    persistAddressesLocal(updated);
+    saveToLocal(updated);
     setFormVisible(false);
 
-    try {
-      // Gửi về API với format cũ (một địa chỉ duy nhất – địa chỉ mặc định)
-      const defaultAddress =
-        updated.find((a) => a.isDefault) || updated[updated.length - 1];
+    // Gửi địa chỉ mặc định lên API như cũ
+    const defaultAddr = updated.find((a) => a.isDefault) || updated[0];
 
-      const payload = {
-        username: user.username,
-        name: defaultAddress.name,
-        phone: defaultAddress.phone,
-        address: defaultAddress.address,
-        country: defaultAddress.country,
-        countryCode: defaultAddress.countryCode,
-      };
-
-      const res = await fetch("/api/address", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setMessage("✅ Đã lưu địa chỉ!");
-        localStorage.setItem("shipping_info", JSON.stringify(payload));
-      } else {
-        setMessage("❌ Lưu thất bại trên server, nhưng địa chỉ vẫn được lưu trên máy.");
-      }
-    } catch (err) {
-      console.error("❌ Lỗi lưu API:", err);
-      setMessage("❌ Lưu thất bại trên server, nhưng địa chỉ vẫn được lưu trên máy.");
-    } finally {
-      setSaving(false);
-    }
+    setSaving(true);
+    const res = await fetch("/api/address", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: user?.username, ...defaultAddr }),
+    });
+    const data = await res.json();
+    setSaving(false);
+    setMessage(data?.success ? "✅ Đã lưu!" : "❌ Lỗi khi lưu!");
   };
 
-  // ===== 4. Đặt mặc định =====
-  const setDefault = (index: number) => {
-    const updated = addresses.map((item, i) => ({
-      ...item,
-      isDefault: i === index,
-    }));
-    setAddresses(updated);
-    persistAddressesLocal(updated);
-  };
-
-  // ===== 5. Xoá địa chỉ =====
   const handleDelete = (index: number) => {
     const updated = addresses.filter((_, i) => i !== index);
     setAddresses(updated);
-    persistAddressesLocal(updated);
+    saveToLocal(updated);
   };
 
-  // ===== 6. UI khi loading / chưa login =====
-  if (loading) {
+  const setDefault = (index: number) => {
+    const updated = addresses.map((a, i) => ({
+      ...a,
+      isDefault: i === index,
+    }));
+    setAddresses(updated);
+    saveToLocal(updated);
+  };
+
+  if (loading)
     return (
       <main className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">⏳ Đang tải...</p>
+        <p>⏳ Loading...</p>
       </main>
     );
-  }
 
-  if (!user) {
+  if (!user)
     return (
       <main className="min-h-screen flex flex-col items-center justify-center">
-        <p className="text-gray-600 mb-4">
-          Bạn cần đăng nhập bằng Pi để tiếp tục
-        </p>
+        <p>🔐 Bạn cần đăng nhập để tiếp tục</p>
         <button
           onClick={() => router.push("/login")}
           className="bg-orange-600 text-white px-5 py-2 rounded"
         >
-          Đăng nhập với Pi
+          Đăng nhập
         </button>
       </main>
     );
-  }
 
-  // ===== 7. UI chính =====
   return (
-    <main className="min-h-screen bg-gray-100 pb-24 relative">
-      {/* nút quay lại */}
-      <button
-        onClick={() => router.back()}
-        className="absolute top-3 left-3 text-orange-600 text-lg font-bold"
-      >
+    <main className="min-h-screen bg-gray-100 pb-20 relative">
+      <button onClick={() => router.back()} className="absolute top-3 left-3 text-orange-600">
         ←
       </button>
 
-      <div className="max-w-md mx-auto p-4 mt-14">
-        <h1 className="text-xl font-bold mb-4 text-orange-600">
-          📦 Địa chỉ giao hàng
+      <div className="max-w-md mx-auto p-6 mt-14">
+        <h1 className="text-xl font-bold text-orange-600 mb-4">
+          📍 Địa chỉ giao hàng
         </h1>
 
-        {/* Danh sách địa chỉ */}
-        {addresses.length > 0 && (
-          <>
-            <h2 className="font-semibold mb-2">📦 Địa chỉ đã lưu:</h2>
-            {addresses.map((item, index) => (
-              <div
-                key={index}
-                className="bg-white p-4 rounded-lg shadow-sm mb-3 border"
+        {/* Danh sách nhiều địa chỉ */}
+        {addresses.map((item, index) => (
+          <div key={index} className="bg-white p-4 rounded shadow mb-3 border">
+            <p className="font-semibold">{item.name} — {item.phone}</p>
+            <p className="text-sm">{item.address}</p>
+            <p className="text-xs text-gray-500">
+              🌍 {countries.find((c) => c.code === item.country)?.name} ({item.countryCode})
+            </p>
+
+            <div className="flex justify-between mt-3 text-sm">
+              <button
+                onClick={() => setDefault(index)}
+                className={item.isDefault ? "text-orange-600 font-bold" : "text-gray-500"}
               >
-                <p className="font-semibold">
-                  {item.name} — {item.phone}
-                </p>
-                <p className="text-sm text-gray-600 mt-1">{item.address}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  🌍{" "}
-                  {countries.find((c) => c.code === item.country)?.name ||
-                    item.country}{" "}
-                  ({item.countryCode})
-                </p>
+                ✓ Mặc định
+              </button>
 
-                <div className="flex justify-between mt-3 text-sm">
-                  <button
-                    onClick={() => setDefault(index)}
-                    className={`flex items-center gap-1 ${
-                      item.isDefault
-                        ? "text-orange-600 font-semibold"
-                        : "text-gray-500"
-                    }`}
-                  >
-                    <CheckCircle size={18} />
-                    {item.isDefault ? "Mặc định" : "Chọn mặc định"}
-                  </button>
-
-                  <div className="flex gap-4">
-                    <button
-                      onClick={() => {
-                        setForm(item);
-                        setEditingIndex(index);
-                        setFormVisible(true);
-                        setMessage("");
-                      }}
-                      className="flex items-center gap-1 text-orange-500"
-                    >
-                      <Edit size={18} />
-                      Sửa
-                    </button>
-                    <button
-                      onClick={() => handleDelete(index)}
-                      className="flex items-center gap-1 text-red-500"
-                    >
-                      <Trash2 size={18} />
-                      Xoá
-                    </button>
-                  </div>
-                </div>
+              <div className="flex gap-3">
+                <button
+                  className="text-blue-500"
+                  onClick={() => {
+                    setForm(item);
+                    setEditingIndex(index);
+                    setFormVisible(true);
+                  }}
+                >
+                  ✏️ Sửa
+                </button>
+                <button
+                  className="text-red-500"
+                  onClick={() => handleDelete(index)}
+                >
+                  🗑 Xoá
+                </button>
               </div>
-            ))}
-          </>
-        )}
+            </div>
+          </div>
+        ))}
 
-        {/* Nút mở form */}
+        {/* Nút thêm địa chỉ */}
         {!formVisible && (
           <button
-            className="w-full py-3 rounded-lg bg-orange-500 text-white font-semibold flex items-center justify-center gap-2 mt-4"
             onClick={() => {
               setFormVisible(true);
               setEditingIndex(null);
@@ -293,30 +198,28 @@ export default function CustomerAddressPage() {
                 address: "",
                 country: "VN",
                 countryCode: "+84",
-                isDefault: addresses.length === 0, // địa chỉ đầu tiên mặc định
+                isDefault: addresses.length === 0,
               });
-              setMessage("");
             }}
+            className="w-full py-3 bg-orange-600 text-white rounded flex justify-center gap-2"
           >
-            <PlusCircle size={20} />
-            Thêm địa chỉ mới
+            <PlusCircle /> Thêm địa chỉ mới
           </button>
         )}
 
         {/* Form nhập địa chỉ */}
         {formVisible && (
-          <div className="bg-white p-4 rounded-lg shadow mt-4">
-            <label className="text-sm font-medium mb-1 block">🌍 Quốc gia</label>
+          <div className="bg-white p-4 rounded shadow mt-4">
             <select
               className="border p-2 w-full rounded mb-3"
               value={form.country}
               onChange={(e) => {
                 const code = e.target.value;
-                const selected = countries.find((c) => c.code === code);
+                const c = countries.find((x) => x.code === code);
                 setForm({
                   ...form,
                   country: code,
-                  countryCode: selected?.dial || "+84",
+                  countryCode: c?.dial || "+84",
                 });
               }}
             >
@@ -328,58 +231,39 @@ export default function CustomerAddressPage() {
             </select>
 
             <input
-              placeholder="Tên người nhận"
               className="border p-2 w-full rounded mb-3"
+              placeholder="Tên người nhận"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
 
             <div className="flex mb-3">
-              <span className="px-3 py-2 bg-gray-100 border rounded-l">
+              <span className="px-3 py-2 bg-gray-200 border rounded-l">
                 {form.countryCode}
               </span>
               <input
-                placeholder="Số điện thoại"
                 className="border p-2 w-full rounded-r"
+                placeholder="Số điện thoại"
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
               />
             </div>
 
             <textarea
-              placeholder="Địa chỉ chi tiết (Tỉnh/Thành phố, Quận/Huyện...)"
               className="border p-2 w-full rounded mb-3"
               rows={3}
+              placeholder="Địa chỉ chi tiết"
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
             />
 
-            <label className="flex items-center gap-2 mb-3 text-sm">
-              <input
-                type="checkbox"
-                checked={form.isDefault}
-                onChange={(e) =>
-                  setForm({ ...form, isDefault: e.target.checked })
-                }
-              />
-              Đặt làm địa chỉ mặc định
-            </label>
-
             <button
               onClick={handleSave}
               disabled={saving}
-              className={`w-full py-3 rounded-lg text-white font-semibold ${
-                saving ? "bg-gray-400" : "bg-orange-600 hover:bg-orange-700"
-              }`}
+              className="w-full py-3 bg-orange-600 text-white rounded"
             >
-              {saving ? "Đang lưu..." : "Lưu địa chỉ"}
+              {saving ? "Đang lưu..." : "💾 Lưu"}
             </button>
-
-            {message && (
-              <p className="mt-3 text-center text-sm text-gray-700">
-                {message}
-              </p>
-            )}
           </div>
         )}
       </div>
