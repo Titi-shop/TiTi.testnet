@@ -13,8 +13,7 @@ import {
 
 export default function SellerWalletPage() {
   const router = useRouter();
-  const { translate } = useLanguage();
-
+ const t = useTranslations();
   const [username, setUsername] = useState<string>("");
   const [role, setRole] = useState<string>("buyer");
   const [balance, setBalance] = useState<number>(0);

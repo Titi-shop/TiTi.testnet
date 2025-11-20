@@ -8,8 +8,7 @@ import { useTranslations } from 'next-intl';
 export default function Navbar() {
   const [piPrice, setPiPrice] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const { translate } = useLanguage();
-
+  const t = useTranslations();
   useEffect(() => {
     const fetchPrice = async () => {
       try {

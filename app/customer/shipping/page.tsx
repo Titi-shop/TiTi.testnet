@@ -7,8 +7,7 @@ import { useAuth } from "@/context/AuthContext"; // 👉 Dùng AuthContext
 
 export default function CustomerShippingPage() {
   const router = useRouter();
-  const { translate, language } = useLanguage();
-
+  const t = useTranslations();
   const { user, loading: authLoading, pilogin } = useAuth(); // 👉 Lấy từ AuthContext
 
   const [orders, setOrders] = useState<any[]>([]);

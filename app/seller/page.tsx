@@ -10,7 +10,7 @@ import { PackagePlus, Package, ClipboardList, Wallet } from "lucide-react";
 
 export default function SellerDashboard() {
   const router = useRouter();
-  const { translate } = useLanguage();
+  const t = useTranslations();
   const { user, loading, piReady } = useAuth();
 
   const [role, setRole] = useState<string>("");

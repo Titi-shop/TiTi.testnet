@@ -6,8 +6,7 @@ import { useTranslations } from 'next-intl';
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { translate } = useLanguage();
-
+  const t = useTranslations();
   useEffect(() => {
     const fetchNotifications = async () => {
       try {

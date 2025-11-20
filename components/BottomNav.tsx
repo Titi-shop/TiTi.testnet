@@ -7,8 +7,7 @@ import { useTranslations } from 'next-intl';
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const { translate } = useLanguage();
-
+  const t = useTranslations();
   const navItems = [
     { href: "/", label: translate("home") || "Trang chủ", icon: Home },
     { href: "/shop", label: translate("category") || "Danh mục", icon: Grid },

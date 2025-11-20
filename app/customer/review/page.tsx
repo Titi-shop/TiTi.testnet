@@ -17,7 +17,7 @@ interface Order {
 
 export default function ReviewPage() {
   const router = useRouter();
-  const { translate } = useLanguage();
+  const t = useTranslations();
   const { user, piReady } = useAuth();
 
   const [orders, setOrders] = useState<Order[]>([]);

@@ -1,19 +1,23 @@
 import { NextIntlClientProvider } from 'next-intl';
 import { notFound } from 'next/navigation';
+import '../globals.css';
 
-export default async function LocaleLayout({ children, params: { locale } }) {
+export function generateStaticParams() {
+  return [{ locale: 'en' }, { locale: 'vi' }, { locale: 'zh' }];
+}
+
+export default async function LocaleLayout({ children, params }) {
   let messages;
-  
   try {
-    messages = (await import(`../messages/${locale}.json`)).default;
-  } catch {
+    messages = (await import(`@/locales/${params.locale}.json`)).default;
+  } catch (error) {
     notFound();
   }
 
   return (
-    <html lang={locale}>
+    <html lang={params.locale}>
       <body>
-        <NextIntlClientProvider messages={messages} locale={locale}>
+        <NextIntlClientProvider locale={params.locale} messages={messages}>
           {children}
         </NextIntlClientProvider>
       </body>

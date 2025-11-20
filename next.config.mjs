@@ -30,6 +30,9 @@ const nextConfig = {
 
   experimental: {
     serverActions: false,
+
+    /** 🚀 Fix lỗi SWC trên Windows */
+    forceSwcTransforms: false,
   },
 };
 

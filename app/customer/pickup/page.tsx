@@ -7,8 +7,7 @@ import { useAuth } from "@/context/AuthContext"; // 👉 import AuthContext
 
 export default function PickupOrdersPage() {
   const router = useRouter();
-  const { translate: t, language } = useLanguage();
-
+  const t = useTranslations();
   // 👉 Dùng AuthContext thay cho localStorage
   const { user, pilogin, loading: authLoading } = useAuth();
 

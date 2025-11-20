@@ -22,7 +22,7 @@ interface Order {
 
 export default function PendingOrdersPage() {
   const router = useRouter();
-  const { translate, language } = useLanguage();
+ const t = useTranslations();
   
   // 👉 Dùng AuthContext
   const { user, pilogin, loading: authLoading } = useAuth();

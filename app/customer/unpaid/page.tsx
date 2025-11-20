@@ -1,144 +1,94 @@
 "use client";
+
+// 🚀 Ngăn Next.js prerender trang này
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 import { useEffect, useState } from "react";
-import { useAuth } from "@/context/AuthContext"; // 👉 dùng AuthContext
+import { useAuth } from "@/context/AuthContext";
 
-export default function UnpaidOrdersPage() {
-  const { user, pilogin, loading: authLoading } = useAuth(); // 👉 lấy user & token trực tiếp
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+type PiPay = { id: string; amount: number; status: string; memo?: string; from?: string; created_at?: string };
 
-  const currentUser = user?.username || "";
+export default function PiPendingAdmin() {
+  const { user, loading: authLoading } = useAuth();
+  const [payments, setPayments] = useState<PiPay[]>([]);
+  const [loading, setLoading] = useState(false); // 🔄 Không để true khi load ban đầu
+  const [msg, setMsg] = useState("");
 
-  // 🚀 Tải đơn hàng khi có user (đã login)
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-    fetchOrders();
-  }, [user, authLoading]);
-
-  const fetchOrders = async () => {
+  const load = async () => {
+    setLoading(true);
+    setMsg("");
     try {
-      const res = await fetch("/api/orders", {
-        cache: "no-store",
-        headers: {
-          Authorization: `Bearer ${user?.accessToken}`, // 👉 gửi token nếu backend cần
-        },
-      });
-      const all = await res.json();
-      const filtered = all.filter(
-        (o: any) =>
-          o.buyer?.toLowerCase() === currentUser.toLowerCase() &&
-          ["Chưa thanh toán", "pending"].includes(o.status)
-      );
-      setOrders(filtered);
-    } catch (err) {
-      console.error("❌ Lỗi tải đơn hàng:", err);
+      const res = await fetch("/api/pi/pending?status=pending", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Load failed");
+      setPayments(data.payments || []);
+      setMsg(`Found ${data.count} pending payment(s).`);
+    } catch (e: any) {
+      setMsg("Error: " + e.message);
+      setPayments([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // 💳 Thanh toán lại bằng Pi SDK
-  const repay = async (order: any) => {
-    alert(`🔄 Thanh toán lại đơn ${order.id}`);
-    const payment = {
-      amount: order.total,
-      memo: `Thanh toán lại đơn #${order.id}`,
-      metadata: { orderId: order.id },
-    };
+  useEffect(() => {
+    if (!authLoading) load();
+  }, [authLoading]);
 
-    if (!window.Pi) {
-      alert("⚠️ Vui lòng mở trong Pi Browser!");
-      return;
+  const act = async (id: string, action: "approve" | "complete" | "cancel") => {
+    setLoading(true);
+    setMsg("");
+    try {
+      const res = await fetch(`/api/pi/pending/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      setMsg(`${action.toUpperCase()} -> ${data.status}`);
+      await load();
+    } catch (e: any) {
+      setMsg("Action error: " + e.message);
+    } finally {
+      setLoading(false);
     }
-
-    window.Pi.createPayment(payment, {
-      onReadyForServerApproval: async (pid: string) =>
-        await fetch("/api/pi/approve", {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${user?.accessToken}`,
-          },
-          body: JSON.stringify({ paymentId: pid }),
-        }),
-      onReadyForServerCompletion: async (pid: string, txid: string) =>
-        await fetch("/api/pi/complete", {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${user?.accessToken}`,
-          },
-          body: JSON.stringify({ paymentId: pid, txid }),
-        }),
-    });
   };
 
-  // ❌ Hủy đơn
-  const cancelOrder = async (id: number) => {
-    if (!confirm(`Bạn có chắc muốn hủy đơn #${id}?`)) return;
-    await fetch(`/api/orders/cancel`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${user?.accessToken}`,
-      },
-      body: JSON.stringify({ id }),
-    });
-    alert("✅ Đã hủy đơn!");
-    fetchOrders();
-  };
-
-  // ⏳ Loading
-  if (authLoading || loading) return <p>Đang tải...</p>;
-
-  // 🔐 Nếu chưa đăng nhập
-  if (!user)
-    return (
-      <main className="p-6 text-center">
-        <h2 className="text-xl text-red-600">🔐 Bạn chưa đăng nhập</h2>
-        <button
-          onClick={pilogin}
-          className="mt-3 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded"
-        >
-          👉 Đăng nhập với Pi Network
-        </button>
-      </main>
-    );
-
-  // 🎨 GIỮ NGUYÊN GIAO DIỆN BÊN DƯỚI
   return (
-    <main className="p-6">
-      <h1 className="text-2xl font-bold text-red-600 mb-4">
-        🔴 Đơn chưa thanh toán
-      </h1>
-      {orders.length === 0 ? (
-        <p>Không có đơn chưa thanh toán</p>
+    <main className="max-w-3xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-4">🧹 Dọn payment pending</h1>
+
+      <div className="mb-3 text-sm text-gray-600">
+        Trang này chỉ hiển thị & xử lý payment “pending” từ Pi API (Testnet).
+      </div>
+
+      <div className="flex gap-2 mb-4">
+        <button onClick={load} disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded">
+          {loading ? "Đang tải..." : "🔄 Tải danh sách"}
+        </button>
+      </div>
+
+      {msg && <div className="mb-4 text-gray-800">{msg}</div>}
+
+      {payments.length === 0 ? (
+        <div className="text-gray-500">Không có payment pending.</div>
       ) : (
-        orders.map((o) => (
-          <div key={o.id} className="p-4 border rounded mb-3 bg-white shadow">
-            <h2>🧾 Đơn #{o.id}</h2>
-            <p>💰 Tổng: {o.total} Pi</p>
-            <p>📅 Ngày tạo: {new Date(o.createdAt).toLocaleString()}</p>
-            <div className="mt-3 space-x-2">
-              <button
-                onClick={() => repay(o)}
-                className="bg-green-500 text-white px-3 py-1 rounded"
-              >
-                💳 Thanh toán lại
-              </button>
-              <button
-                onClick={() => cancelOrder(o.id)}
-                className="bg-gray-500 text-white px-3 py-1 rounded"
-              >
-                ❌ Hủy đơn
-              </button>
-            </div>
-          </div>
-        ))
+        <ul className="space-y-3">
+          {payments.map((p) => (
+            <li key={p.id} className="border rounded p-3 bg-white">
+              <div><b>ID:</b> {p.id}</div>
+              <div><b>Số tiền:</b> {p.amount} Pi</div>
+              <div><b>Memo:</b> {p.memo || "-"}</div>
+              <div><b>Tạo lúc:</b> {p.created_at || "-"}</div>
+              <div className="mt-2 flex gap-2">
+                <button onClick={() => act(p.id, "approve")} className="px-3 py-1 bg-orange-500 text-white rounded">Approve</button>
+                <button onClick={() => act(p.id, "complete")} className="px-3 py-1 bg-green-600 text-white rounded">Complete</button>
+                <button onClick={() => act(p.id, "cancel")} className="px-3 py-1 bg-red-600 text-white rounded">Cancel</button>
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
     </main>
   );

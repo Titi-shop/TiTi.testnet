@@ -16,7 +16,7 @@ export default function ProductDetail() {
   const [showZoom, setShowZoom] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const { addToCart, clearCart } = useCart();
-  const { translate } = useLanguage();
+  const t = useTranslations();
   const [related, setRelated] = useState<any[]>([]);
 
   const handleSwipe = (direction: string) => {

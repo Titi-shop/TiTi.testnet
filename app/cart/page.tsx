@@ -17,8 +17,7 @@ export default function CartPage() {
   const { cart, removeFromCart, updateQty, clearCart } = useCart();
   const { user, piReady } = useAuth();
   const router = useRouter();
-  const { translate } = useLanguage();
-
+  const t = useTranslations();
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 

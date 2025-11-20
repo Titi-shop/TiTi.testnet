@@ -12,7 +12,7 @@ function toISO(dateString: string | null) {
 
 export default function SellerPostPage() {
   const router = useRouter();
-  const { translate } = useLanguage();
+  const t = useTranslations();
   const { user, loading, piReady } = useAuth();
 
   const [role, setRole] = useState<string>("");

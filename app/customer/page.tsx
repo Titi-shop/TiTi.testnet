@@ -9,7 +9,7 @@ import CustomerMenu from "@/components/customerMenu";
 
 export default function CustomerDashboard() {
   const { user, piReady } = useAuth();
-  const { translate } = useLanguage();
+  const t = useTranslations();
   const router = useRouter();
 
   const [avatar, setAvatar] = useState<string | null>(null);
