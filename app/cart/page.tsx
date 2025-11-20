@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useCart } from "../context/CartContext";
 import { useRouter } from "next/navigation";
-import { useLanguage } from "../context/LanguageContext";
+import { useTranslations } from 'next-intl';
 import { useAuth } from "@/context/AuthContext";
 
 declare global {
