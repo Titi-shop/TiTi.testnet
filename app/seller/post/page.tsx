@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useLanguage } from "../../context/LanguageContext";
+import { useTranslations } from 'next-intl';
 import { useAuth } from "@/context/AuthContext";
 
 function toISO(dateString: string | null) {
