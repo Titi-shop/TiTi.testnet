@@ -11,7 +11,6 @@ import PiStatus from "@/app/components/PiStatus";
 
 export default function PiRootClient({ children }: { children: React.ReactNode }) {
   return (
-    <LanguageProvider>
       <AuthProvider>
         <CartProvider>
           <PiProvider />
@@ -28,6 +27,5 @@ export default function PiRootClient({ children }: { children: React.ReactNode }
           <BottomNav />
         </CartProvider>
       </AuthProvider>
-    </LanguageProvider>
   );
 }
