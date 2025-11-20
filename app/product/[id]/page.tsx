@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useCart } from "../../context/CartContext";
-import { useLanguage } from "../../context/LanguageContext";
+import { useTranslations } from 'next-intl';
 import { ArrowLeft, ShoppingCart, X } from "lucide-react";
 
 export default function ProductDetail() {
