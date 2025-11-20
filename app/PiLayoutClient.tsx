@@ -5,7 +5,6 @@ import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/app/context/CartContext";
-import { LanguageProvider } from "@/app/context/LanguageContext";
 
 export default function PiLayoutClient({ children }: { children: React.ReactNode }) {
   return (
