@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useLanguage } from "../../context/LanguageContext";
+import { useTranslations } from 'next-intl';
 import {
   Wallet as WalletIcon,
   ArrowUpCircle,
