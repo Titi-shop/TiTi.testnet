@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ShoppingCart, Globe } from "lucide-react";
-import { useLanguage } from "@/app/context/LanguageContext";
+import { useTranslations } from 'next-intl';
 
 export default function Navbar() {
   const [piPrice, setPiPrice] = useState<number | null>(null);
