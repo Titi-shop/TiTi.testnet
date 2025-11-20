@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useLanguage } from "../context/LanguageContext";
+import { useTranslations } from 'next-intl';
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
