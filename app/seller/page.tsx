@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useLanguage } from "../context/LanguageContext";
+import { useTranslations } from 'next-intl';
 import { useAuth } from "@/context/AuthContext";
 
 import { PackagePlus, Package, ClipboardList, Wallet } from "lucide-react";
