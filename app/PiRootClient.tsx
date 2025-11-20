@@ -3,7 +3,7 @@
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/app/context/CartContext";
-import { LanguageProvider } from "@/app/context/LanguageContext";
+import { useTranslations } from 'next-intl';
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import PiProvider from "@/app/pi/PiProvider";
