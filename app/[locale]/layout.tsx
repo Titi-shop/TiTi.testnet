@@ -3,16 +3,17 @@ import { notFound } from 'next/navigation';
 
 export default async function LocaleLayout({ children, params: { locale } }) {
   let messages;
+  
   try {
     messages = (await import(`../../../messages/${locale}.json`)).default;
-  } catch (error) {
+  } catch {
     notFound();
   }
 
   return (
     <html lang={locale}>
       <body>
-        <NextIntlClientProvider locale={locale} messages={messages}>
+        <NextIntlClientProvider messages={messages} locale={locale}>
           {children}
         </NextIntlClientProvider>
       </body>
