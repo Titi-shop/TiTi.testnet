@@ -9,7 +9,6 @@ import { LanguageProvider } from "@/app/context/LanguageContext";
 
 export default function PiLayoutClient({ children }: { children: React.ReactNode }) {
   return (
-    <LanguageProvider>
       <AuthProvider>
         <CartProvider>
           <PiProvider />
@@ -25,6 +24,5 @@ export default function PiLayoutClient({ children }: { children: React.ReactNode
           <BottomNav />
         </CartProvider>
       </AuthProvider>
-    </LanguageProvider>
   );
 }
