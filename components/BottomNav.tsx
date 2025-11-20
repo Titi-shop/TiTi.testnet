@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Grid, Bell, User, Search } from "lucide-react"; // 🔹 Đổi PlusCircle thành Search
-import { useLanguage } from "../app/context/LanguageContext";
+import { useTranslations } from 'next-intl';
 
 export default function BottomNav() {
   const pathname = usePathname();
