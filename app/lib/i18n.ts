@@ -2,26 +2,29 @@
 
 import { useState, useEffect } from "react";
 
-// Import tất cả file JSON tự động
 const languages: Record<string, any> = {
   vi: () => import("@/messages/vi.json"),
   en: () => import("@/messages/en.json"),
   zh: () => import("@/messages/zh.json"),
-  // 👉 chỉ cần thêm dòng ở đây nếu có ngôn ngữ mới
 };
 
 export function useTranslation() {
   const [lang, setLang] = useState("vi");
   const [t, setT] = useState<any>({});
 
+  // Load ngôn ngữ từ localStorage
   useEffect(() => {
     const savedLang = localStorage.getItem("lang") || "vi";
     setLang(savedLang);
-
-    if (languages[savedLang]) {
-      languages[savedLang]().then((mod) => setT(mod.default));
-    }
   }, []);
 
-  return { t, lang };
+  // Load file JSON tương ứng khi lang thay đổi
+  useEffect(() => {
+    if (languages[lang]) {
+      languages[lang]().then((mod) => setT(mod.default));
+      localStorage.setItem("lang", lang);
+    }
+  }, [lang]);
+
+  return { t, lang, setLang }; // 👉 Quan trọng: phải trả cả setLang
 }
