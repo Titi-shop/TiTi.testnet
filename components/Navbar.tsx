@@ -1,29 +1,43 @@
 "use client";
-import { ShoppingCart, Search } from "lucide-react";
 import Link from "next/link";
+import { ShoppingCart, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTranslation } from "@/app/lib/i18n";
+import { useTranslation, availableLanguages } from "@/app/lib/i18n";
 
 export default function Navbar() {
-  const { t, lang, changeLang } = useTranslation();
+  const { t, lang, setLang } = useTranslation();
   const router = useRouter();
 
-  const toggleLang = () => {
-    const nextLang = lang === "vi" ? "en" : lang === "en" ? "zh" : "vi";
-    changeLang(nextLang); // 👈 Không dùng setLang, phải dùng changeLang
+  const changeLang = (newLang: string) => {
+    setLang(newLang);
+    router.refresh();
   };
 
   return (
-    <header className="bg-orange-500 p-3 flex justify-between text-white">
+    <header className="bg-orange-500 p-3 text-white flex justify-between">
+
+      {/* Cart */}
       <Link href="/cart" aria-label={t.cart}>
         <ShoppingCart size={22} />
       </Link>
 
-      <button onClick={() => router.push("/search")}>{t.search}</button>
+      {/* Search + Language dropdown */}
+      <div className="flex items-center gap-3">
+        <button onClick={() => router.push("/search")}>{t.search}</button>
 
-      <button onClick={toggleLang}>
-        {lang === "vi" ? "🇻🇳" : lang === "en" ? "🇬🇧" : "🇨🇳"}
-      </button>
+        {/* 🌐 Dropdown chọn ngôn ngữ */}
+        <select
+          value={lang}
+          onChange={(e) => changeLang(e.target.value)}
+          className="bg-white text-black text-xs px-2 py-1 rounded"
+        >
+          {Object.entries(availableLanguages).map(([code, label]) => (
+            <option key={code} value={code}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </div>
     </header>
   );
 }
