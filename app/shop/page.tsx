@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useTranslation } from "@/app/lib/i18n";
 
 export default function ShopPage() {
-  const { t } = useTranslation(); // ⬅ Lấy hàm dịch từ i18n
+  const { t } = useTranslation();
   const [categories, setCategories] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [visibleCount, setVisibleCount] = useState(20);
@@ -13,9 +13,7 @@ export default function ShopPage() {
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(true);
 
-  /* =============================
-      LOAD DANH MỤC
-  ============================== */
+  // 🔹 Load danh mục
   useEffect(() => {
     fetch("/api/categories")
       .then((res) => res.json())
@@ -25,9 +23,7 @@ export default function ShopPage() {
       });
   }, []);
 
-  /* =============================
-      LOAD TẤT CẢ SẢN PHẨM
-  ============================== */
+  // 🔹 Load sản phẩm
   useEffect(() => {
     fetch("/api/products", { cache: "no-store" })
       .then((res) => res.json())
@@ -45,6 +41,7 @@ export default function ShopPage() {
 
   return (
     <main className="pb-20 bg-white min-h-screen">
+      
       {/* BANNER */}
       <img
         src="/banners/Messenger_creation_9F1CAD64-6ACE-4FF9-9EFF-E68A79A745AD.jpeg"
@@ -53,11 +50,11 @@ export default function ShopPage() {
 
       <div className="mt-3">
         
-        {/* DANH MỤC */}
-        <h2 className="text-xl font-semibold mb-2">{t.categories}</h2>
+        {/* 🏷 DANH MỤC */}
+        <h2 className="text-xl font-semibold mb-2">{t("categories")}</h2>
 
         {loadingCategories ? (
-          <p className="text-gray-500">{t.loading_categories}</p>
+          <p className="text-gray-500">{t("loading_categories")}</p>
         ) : (
           <div className="flex overflow-x-auto space-x-6 pb-3 scrollbar-hide">
             {categories.map((c) => (
@@ -76,28 +73,25 @@ export default function ShopPage() {
           </div>
         )}
 
-        {/* 1️⃣ Giá cao nhất */}
-        <ProductRow title={t.highest_price} items={
+        {/* 🔹 Sắp xếp theo các tiêu chí */}
+        <ProductRow title={t("highest_price")} items={
           [...products].sort((a, b) => b.price - a.price).slice(0, 10)
         } />
 
-        {/* 2️⃣ Sản phẩm mới nhất */}
-        <ProductRow title={t.newest_products} items={
+        <ProductRow title={t("newest_products")} items={
           [...products].sort(
-            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           ).slice(0, 10)
         } />
 
-        {/* 3️⃣ Đang giảm giá */}
-        <ProductRow title={t.discount_products} items={products.filter(p => p.isSale)} />
+        <ProductRow title={t("discount_products")} items={products.filter(p => p.isSale)} />
 
-        {/* ==============================
-           TẤT CẢ SẢN PHẨM
-        =============================== */}
-        <h2 className="text-xl font-bold mt-6 mb-3">{t.all_products}</h2>
+        {/* 🔹 Tất cả sản phẩm */}
+        <h2 className="text-xl font-bold mt-6 mb-3">{t("all_products")}</h2>
 
         {loadingProducts ? (
-          <p className="text-gray-500">{t.loading_products}</p>
+          <p className="text-gray-500">{t("loading_products")}</p>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-4 px-2">
@@ -113,7 +107,6 @@ export default function ShopPage() {
                     href={`/product/${item.id}`}
                     className="bg-white p-2 rounded-lg shadow border relative"
                   >
-                    {/* ICON SALE */}
                     {item.isSale && salePercent > 0 && (
                       <span className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full">
                         -{salePercent}%
@@ -128,87 +121,3 @@ export default function ShopPage() {
                     <h3 className="mt-2 text-sm font-semibold truncate">{item.name}</h3>
 
                     {item.isSale ? (
-                      <>
-                        <p className="text-red-600 font-bold">{item.salePrice} π</p>
-                        <p className="text-xs line-through text-gray-400">{item.price} π</p>
-                      </>
-                    ) : (
-                      <p className="text-orange-600 font-bold">{item.price} π</p>
-                    )}
-
-                    <p className="text-xs text-gray-500 mt-1">
-                      {item.views} {t.views}
-                    </p>
-                  </Link>
-                );
-              })}
-            </div>
-
-            {visibleCount < products.length && (
-              <div className="flex justify-center mt-4">
-                <button
-                  onClick={loadMore}
-                  className="px-6 py-2 bg-orange-600 text-white rounded-full font-semibold shadow"
-                >
-                  {t.load_more}
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </main>
-  );
-}
-
-/* ============================================
-   COMPONENT HIỂN THỊ SLIDER SẢN PHẨM
-=============================================== */
-function ProductRow({ title, items }: any) {
-  const { t } = useTranslation(); // 🔹 Cần thêm để dùng t.views nếu cần
-
-  return (
-    <div className="p-3">
-      <h3 className="font-bold mb-2">{title}</h3>
-
-      <div className="flex overflow-x-auto gap-4 scrollbar-hide">
-        {items.map((p: any) => {
-          const salePercent =
-            p.isSale && p.salePrice
-              ? Math.round(((p.price - p.salePrice) / p.price) * 100)
-              : 0;
-
-          return (
-            <Link
-              key={p.id}
-              href={`/product/${p.id}`}
-              className="min-w-[140px] bg-white border rounded-lg p-2 shadow relative"
-            >
-              {p.isSale && salePercent > 0 && (
-                <span className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full">
-                  -{salePercent}%
-                </span>
-              )}
-
-              <img
-                src={p.images?.[0] || "/placeholder.png"}
-                className="w-full h-24 object-cover rounded"
-              />
-
-              <p className="text-sm font-semibold mt-2 truncate">{p.name}</p>
-
-              {p.isSale ? (
-                <>
-                  <p className="text-red-600 font-bold">{p.salePrice} π</p>
-                  <p className="text-xs line-through text-gray-400">{p.price} π</p>
-                </>
-              ) : (
-                <p className="text-orange-600 font-bold">{p.price} π</p>
-              )}
-            </Link>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
