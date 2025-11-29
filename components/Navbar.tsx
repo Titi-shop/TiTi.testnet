@@ -1,13 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingCart, Search } from "lucide-react";
+import { ShoppingCart, Search, Globe } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTranslation } from "@/app/lib/i18n"; // vẫn giữ để dùng t.key
+import { useTranslation } from "@/app/lib/i18n";
 
 export default function Navbar() {
-  const { t } = useTranslation();
+  const { t, lang, setLang } = useTranslation();
   const router = useRouter();
+
+  // Hàm chuyển đổi ngôn ngữ xoay vòng VI → EN → ZH
+  const toggleLang = () => {
+    const nextLang = lang === "vi" ? "en" : lang === "en" ? "zh" : "vi";
+    setLang(nextLang);
+    router.refresh();
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 bg-orange-500 border-b shadow-sm z-50">
@@ -18,20 +25,19 @@ export default function Navbar() {
           <ShoppingCart size={22} />
         </Link>
 
-        {/* 2) 💰 Giá Pi (giữa) */}
-        <div className="absolute left-1/2 -translate-x-1/2">
-          <div className="text-xs sm:text-sm font-semibold bg-white text-orange-600 px-3 py-1 rounded-md shadow-sm">
-            {loading
-              ? "⏳ " + (translate("loading") || "Đang tải...")
-              : piPrice
-              ? `π1 ≈ ${piPrice.toFixed(2)} USDT`
-              : "⚠️ " + (translate("no_data") || "Không có dữ liệu")}
-          </div>
-
-        {/* 🔍 Search */}
-        <div className="flex items-center gap-3">
+        {/* 🔍 Search + 🌐 Nút đổi ngôn ngữ */}
+        <div className="flex items-center gap-3 ml-auto">
           <button onClick={() => router.push("/search")} aria-label={t.search}>
             <Search size={22} />
+          </button>
+
+          {/* 🌐 Nút đổi ngôn ngữ */}
+          <button
+            onClick={toggleLang}
+            aria-label="Đổi ngôn ngữ"
+            className="text-white hover:text-yellow-300 transition"
+          >
+            {lang === "vi" ? "🇻🇳" : lang === "en" ? "🇬🇧" : "🇨🇳"}
           </button>
         </div>
       </div>
