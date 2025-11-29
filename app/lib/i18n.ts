@@ -9,22 +9,33 @@ const languages: Record<string, any> = {
 };
 
 export function useTranslation() {
-  const [lang, setLang] = useState("vi");
+  const [lang, setLang] = useState<string>("vi");
   const [t, setT] = useState<any>({});
 
-  // Load ngôn ngữ từ localStorage
+  // ⬅ Lần đầu load ngôn ngữ từ localStorage
   useEffect(() => {
     const savedLang = localStorage.getItem("lang") || "vi";
     setLang(savedLang);
+    loadLanguage(savedLang);
   }, []);
 
-  // Load file JSON tương ứng khi lang thay đổi
+  // ⬅ Khi lang thay đổi thì load ngôn ngữ mới
   useEffect(() => {
-    if (languages[lang]) {
-      languages[lang]().then((mod) => setT(mod.default));
-      localStorage.setItem("lang", lang);
-    }
+    loadLanguage(lang);
+    localStorage.setItem("lang", lang);
   }, [lang]);
 
-  return { t, lang, setLang }; // 👉 Quan trọng: phải trả cả setLang
+  const loadLanguage = async (lng: string) => {
+    if (languages[lng]) {
+      const mod = await languages[lng]();
+      setT(mod.default);
+    }
+  };
+
+  // ⬅ Đây là hàm đổi ngôn ngữ thật sự
+  const changeLang = (lng: string) => {
+    setLang(lng);
+  };
+
+  return { t, lang, changeLang };
 }
