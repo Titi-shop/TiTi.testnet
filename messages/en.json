@@ -47,5 +47,10 @@
   "all_products": "All Products",
   "loading_products": "Loading products...",
   "views": "views",
-  "load_more": "Load more"
+  "load_more": "Load more",
+
+  "home": "Home",
+  "category": "Categories",
+  "me": "Me",
+  "seller_center": "Seller Center"
 }
