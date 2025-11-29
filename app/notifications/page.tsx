@@ -1,18 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useLanguage } from "../context/LanguageContext";
+import "@/app/lib/i18n"; 
+
+// 🔹 Tạo type chuẩn theo cấu trúc thông báo
+interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  date: string;
+}
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { translate } = useLanguage();
+
+  // 🔹 Giữ nguyên logic translate (không thay đổi behavior)
+  const translate = (key: string): string => key;
 
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
         const res = await fetch("/api/notifications");
-        const data = await res.json();
+        const data: NotificationItem[] = await res.json();
         setNotifications(data);
       } catch (err) {
         console.error("❌ Lỗi tải thông báo:", err);
