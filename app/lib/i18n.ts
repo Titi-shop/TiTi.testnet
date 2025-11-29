@@ -1,6 +1,13 @@
+// app/lib/i18n.ts
 "use client";
 
 import { useState, useEffect } from "react";
+
+export const availableLanguages = {
+  vi: "🇻🇳 Tiếng Việt",
+  en: "🇬🇧 English",
+  zh: "🇨🇳 中文",
+};
 
 const languages: Record<string, any> = {
   vi: () => import("@/messages/vi.json"),
@@ -9,33 +16,20 @@ const languages: Record<string, any> = {
 };
 
 export function useTranslation() {
-  const [lang, setLang] = useState<string>("vi");
+  const [lang, setLang] = useState("vi");
   const [t, setT] = useState<any>({});
 
-  // ⬅ Lần đầu load ngôn ngữ từ localStorage
   useEffect(() => {
     const savedLang = localStorage.getItem("lang") || "vi";
     setLang(savedLang);
-    loadLanguage(savedLang);
   }, []);
 
-  // ⬅ Khi lang thay đổi thì load ngôn ngữ mới
   useEffect(() => {
-    loadLanguage(lang);
-    localStorage.setItem("lang", lang);
+    if (languages[lang]) {
+      languages[lang]().then((mod) => setT(mod.default));
+      localStorage.setItem("lang", lang);
+    }
   }, [lang]);
 
-  const loadLanguage = async (lng: string) => {
-    if (languages[lng]) {
-      const mod = await languages[lng]();
-      setT(mod.default);
-    }
-  };
-
-  // ⬅ Đây là hàm đổi ngôn ngữ thật sự
-  const changeLang = (lng: string) => {
-    setLang(lng);
-  };
-
-  return { t, lang, changeLang };
+  return { t, lang, setLang };
 }
