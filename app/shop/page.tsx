@@ -44,22 +44,17 @@ export default function ShopPage() {
     fetch("/api/products", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
-        const enriched = data.map((p: Product) => {
-          p.views = p.views || 0;
-
-          const now = new Date();
-          const start = p.saleStart ? new Date(p.saleStart) : null;
-          const end = p.saleEnd ? new Date(p.saleEnd) : null;
-
-          p.isSale = start && end && p.salePrice
-            ? now >= start && now <= end
-            : false;
-
-          return p;
-        });
-
-        const sorted = enriched.sort((a, b) => (b.views || 0) - (a.views || 0));
-        setProducts(sorted);
+        const enriched = data.map((p: Product) => ({
+          ...p,
+          views: p.views || 0,
+          isSale:
+            p.saleStart &&
+            p.saleEnd &&
+            p.salePrice &&
+            new Date() >= new Date(p.saleStart) &&
+            new Date() <= new Date(p.saleEnd),
+        }));
+        setProducts(enriched);
         setLoadingProducts(false);
       });
   }, []);
@@ -68,14 +63,16 @@ export default function ShopPage() {
 
   return (
     <main className="pb-20 bg-white min-h-screen">
+      {/* Banner */}
       <img
         src="/banners/Messenger_creation_9F1CAD64-6ACE-4FF9-9EFF-E68A79A745AD.jpeg"
         className="w-full h-40 object-cover"
+        alt="banner"
       />
 
       <div className="mt-3 px-3">
+        {/* Danh mục */}
         <h2 className="text-xl font-semibold mb-2">{t.categories}</h2>
-
         {loadingCategories ? (
           <p className="text-gray-500">{t.loading_categories}</p>
         ) : (
@@ -97,6 +94,7 @@ export default function ShopPage() {
           </div>
         )}
 
+        {/* Flash Sale & Product Rows */}
         <ProductRow title={t.highest_price} items={[...products].sort((a, b) => b.price - a.price).slice(0, 10)} />
         <ProductRow
           title={t.newest_products}
@@ -108,8 +106,8 @@ export default function ShopPage() {
         />
         <ProductRow title={t.discount_products} items={products.filter((p) => p.isSale)} />
 
+        {/* Tất cả sản phẩm */}
         <h2 className="text-xl font-bold mt-6 mb-3">{t.all_products}</h2>
-
         {loadingProducts ? (
           <p className="text-gray-500">{t.loading_products}</p>
         ) : (
@@ -176,14 +174,12 @@ export default function ShopPage() {
 }
 
 function ProductRow({ title, items }: { title: string; items: Product[] }) {
-  const { t } = useTranslation(); 
-
+  const { t } = useTranslation();
   if (!items || items.length === 0) return null;
 
   return (
     <div className="p-3">
       <h3 className="font-bold mb-2">{title}</h3>
-
       <div className="flex overflow-x-auto gap-4 scrollbar-hide">
         {items.map((p) => {
           const salePercent =
@@ -202,15 +198,12 @@ function ProductRow({ title, items }: { title: string; items: Product[] }) {
                   -{salePercent}%
                 </span>
               )}
-
               <img
                 src={p.images?.[0] || "/placeholder.png"}
-                className="w-full h-24 object-cover rounded"
                 alt={p.name}
+                className="w-full h-24 object-cover rounded"
               />
-
               <p className="text-sm font-semibold mt-2 truncate">{p.name}</p>
-
               {p.isSale ? (
                 <>
                   <p className="text-red-600 font-bold">{p.salePrice} π</p>
