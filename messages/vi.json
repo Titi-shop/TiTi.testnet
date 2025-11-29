@@ -37,5 +37,15 @@
   "payment_failed": "Thanh toán thất bại",
   "notifications": "Thông báo",
   "no_notifications": "Không có thông báo nào.",
-  "language_switch": "Chọn ngôn ngữ"
+  "language_switch": "Chọn ngôn ngữ",
+
+  "categories": "Danh mục",
+  "loading_categories": "Đang tải danh mục...",
+  "highest_price": "💎 Giá cao nhất",
+  "newest_products": "🆕 Sản phẩm mới nhất",
+  "discount_products": "⚡ Đang giảm giá",
+  "all_products": "Tất cả sản phẩm",
+  "loading_products": "Đang tải sản phẩm...",
+  "views": "lượt xem",
+  "load_more": "Xem thêm"
 }
