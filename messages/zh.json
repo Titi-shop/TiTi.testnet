@@ -38,4 +38,10 @@
   "notifications": "通知",
   "no_notifications": "暂无通知。",
   "language_switch": "切换语言"
+  
+  "home": "首页",
+  "category": "分类",
+  "notifications": "通知",
+  "me": "我的",
+  "seller_center": "卖家中心"
 }
