@@ -3,18 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Grid, Bell, User, PlusCircle } from "lucide-react";
-import "@/app/lib/i18n";
+import { useTranslation } from "@/app/lib/i18n"; // ⬅ Quan trọng!
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const translate = (key: string) => key; // Dịch tạm
+  const { t } = useTranslation(); // ⬅ Lấy từ i18n
 
   const navItems = [
-    { href: "/", label: translate("home") || "Trang chủ", icon: Home },
-    { href: "/shop", label: translate("category") || "Danh mục", icon: Grid },
+    { href: "/", label: t.home, icon: Home },
+    { href: "/shop", label: t.category, icon: Grid },
     { href: "/seller", label: "", icon: PlusCircle },
-    { href: "/notifications", label: translate("notifications") || "Thông báo", icon: Bell },
-    { href: "/account", label: translate("me") || "Tôi", icon: User },
+    { href: "/notifications", label: t.notifications, icon: Bell },
+    { href: "/account", label: t.me, icon: User },
   ];
 
   return (
@@ -29,7 +29,7 @@ export default function BottomNav() {
               active ? "text-black font-semibold" : "text-gray-500"
             }`}
           >
-            <Icon className={`w-6 h-6 mb-1`} />
+            <Icon className="w-6 h-6 mb-1" />
             <span className="truncate">{label}</span>
           </Link>
         );
