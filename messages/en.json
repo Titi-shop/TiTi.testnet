@@ -37,5 +37,15 @@
   "payment_failed": "Payment Failed",
   "notifications": "Notifications",
   "no_notifications": "No notifications available.",
-  "language_switch": "Change Language"
+  "language_switch": "Change Language",
+
+  "categories": "Categories",
+  "loading_categories": "Loading categories...",
+  "highest_price": "💎 Highest Price",
+  "newest_products": "🆕 Newest Products",
+  "discount_products": "⚡ On Sale",
+  "all_products": "All Products",
+  "loading_products": "Loading products...",
+  "views": "views",
+  "load_more": "Load more"
 }
