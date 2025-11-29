@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useCart } from "@/context/CartContext";
+import { useCart } from "../../context/CartContext";
 import "@/app/lib/i18n";
 import { ArrowLeft, ShoppingCart, X } from "lucide-react";
 
