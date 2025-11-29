@@ -37,11 +37,18 @@
   "payment_failed": "付款失败",
   "notifications": "通知",
   "no_notifications": "暂无通知。",
-  "language_switch": "切换语言"
-  
+  "language_switch": "切换语言",
+  "categories": "分类",
+  "loading_categories": "正在加载分类...",
+  "highest_price": "💎 最高价格",
+  "newest_products": "🆕 最新产品",
+  "discount_products": "⚡ 折扣商品",
+  "all_products": "全部商品",
+  "loading_products": "正在加载产品...",
+  "views": "浏览",
+  "load_more": "查看更多",
   "home": "首页",
   "category": "分类",
-  "notifications": "通知",
   "me": "我的",
   "seller_center": "卖家中心"
 }
