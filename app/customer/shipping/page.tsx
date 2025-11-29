@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import "@/app/lib/i18n";
 import { useAuth } from "@/context/AuthContext";
+import "@/app/lib/i18n";
 
 interface OrderItem {
   name: string;
@@ -24,23 +24,30 @@ export default function CustomerShippingPage() {
   const router = useRouter();
   const { user } = useAuth();
 
-  const translate = (key: string) => key;
+  const translate = (key: string) => key; // Giữ nguyên logic tạm dịch
   const language = "vi";
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // ⛔ Không dùng localStorage thủ công nữa — dùng AuthContext
+  const currentUser = user?.username || "guest_user";
+  const isLoggedIn = !!user;
+
+  // 👉 Load đơn hàng
   useEffect(() => {
-    if (!user) {
+    if (!isLoggedIn) {
       setLoading(false);
       return;
     }
     fetchOrders();
-  }, [language, user]);
+  }, [language, isLoggedIn]);
 
   const fetchOrders = async () => {
     try {
       const res = await fetch("/api/orders", { cache: "no-store" });
+      if (!res.ok) throw new Error("Không thể tải đơn hàng");
+
       const data: Order[] = await res.json();
 
       const filterByLang = {
@@ -52,42 +59,132 @@ export default function CustomerShippingPage() {
       const filtered = data.filter(
         (o) =>
           filterByLang.includes(o.status) &&
-          o.buyer.toLowerCase() === user.username.toLowerCase()
+          o.buyer?.toLowerCase() === currentUser.toLowerCase()
       );
 
       setOrders(filtered);
-    } catch {
-      console.error("❌ Lỗi tải đơn");
+    } catch (err) {
+      console.error("❌ Lỗi tải đơn hàng:", err);
     } finally {
       setLoading(false);
     }
   };
 
+  // 🔄 Xác nhận nhận hàng
   const confirmReceived = async (id: number) => {
     if (!confirm("Bạn đã nhận được hàng?")) return;
-    await fetch("/api/orders", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, status: "Hoàn tất", buyer: user?.username }),
-    });
-    alert("Cảm ơn bạn đã xác nhận!");
-    fetchOrders();
+
+    try {
+      await fetch("/api/orders", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id,
+          status: "Hoàn tất",
+          buyer: currentUser,
+        }),
+      });
+
+      alert("Cảm ơn bạn! Đơn hàng đã hoàn tất.");
+      fetchOrders();
+    } catch {
+      alert("Có lỗi khi xác nhận đơn hàng.");
+    }
   };
 
-  if (loading) return <p className="text-center mt-6">⏳ Đang tải...</p>;
-  if (!user)
+  // 🕓 Loading
+  if (loading)
+    return <p className="text-center mt-6 text-gray-500">⏳ Đang tải đơn hàng...</p>;
+
+  // 🔒 Chưa đăng nhập → Đưa về login
+  if (!isLoggedIn)
     return (
-      <p className="text-center text-red-500 mt-10">
-        🔐 Vui lòng đăng nhập bằng Pi Network
-      </p>
+      <main className="flex flex-col items-center justify-center min-h-screen p-6 text-center bg-gray-50">
+        <h2 className="text-xl text-red-600 mb-3">🔐 Vui lòng đăng nhập bằng Pi Network</h2>
+        <button
+          onClick={() => router.push("/pilogin")}
+          className="mt-3 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded"
+        >
+          👉 Đăng nhập ngay
+        </button>
+      </main>
     );
 
-  const totalPi = orders.reduce((sum, o) => sum + o.total, 0);
+  // 📦 Tổng hợp
+  const totalOrders = orders.length;
+  const totalPi = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
 
   return (
-    <main className="p-4 max-w-4xl mx-auto bg-gray-50 min-h-screen">
-      {/* UI giữ nguyên */}
-      {/* ... */}
+    <main className="p-4 max-w-4xl mx-auto bg-gray-50 min-h-screen pb-24">
+      {/* UI gốc giữ nguyên */}
+      <div className="flex items-center mb-4">
+        <button onClick={() => router.back()} className="text-orange-500 font-semibold text-lg mr-2">
+          ←
+        </button>
+        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+          🚚 Đơn hàng đang giao
+        </h1>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="bg-white border rounded-lg p-4 text-center shadow">
+          <p className="text-gray-500 text-sm">Tổng đơn</p>
+          <p className="text-2xl font-bold text-gray-800">{totalOrders}</p>
+        </div>
+        <div className="bg-white border rounded-lg p-4 text-center shadow">
+          <p className="text-gray-500 text-sm">Tổng Pi</p>
+          <p className="text-2xl font-bold text-gray-800">{totalPi.toFixed(2)} Pi</p>
+        </div>
+      </div>
+
+      {orders.length === 0 ? (
+        <p className="text-center text-gray-500">
+          Bạn chưa có đơn hàng nào đang giao.
+          <br />👤 Tài khoản: <b>{currentUser}</b>
+        </p>
+      ) : (
+        <div className="space-y-5">
+          {orders.map((order) => (
+            <div
+              key={order.id}
+              className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition"
+            >
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="font-semibold text-lg">🧾 #{order.id}</h2>
+                <span className="px-3 py-1 rounded text-sm font-medium bg-blue-100 text-blue-700">
+                  {order.status}
+                </span>
+              </div>
+
+              <p>👤 <b>Người mua:</b> {order.buyer}</p>
+              <p>💰 <b>Tổng:</b> {order.total} Pi</p>
+              <p>📅 <b>Ngày tạo:</b> {new Date(order.createdAt).toLocaleString()}</p>
+
+              <div className="mt-2">
+                <b>🧺 Sản phẩm:</b>
+                <ul className="ml-6 list-disc text-gray-700">
+                  {order.items?.map((item, idx) => (
+                    <li key={idx}>
+                      {item.name} — {item.price} Pi × {item.quantity}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="mt-4">
+                <button
+                  onClick={() => confirmReceived(order.id)}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded"
+                >
+                  ✅ Tôi đã nhận hàng
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="h-20"></div>
     </main>
   );
 }
