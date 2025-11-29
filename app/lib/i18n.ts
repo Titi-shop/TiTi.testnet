@@ -9,7 +9,8 @@ export const availableLanguages = {
   zh: "🇨🇳 中文",
 };
 
-const languages: Record<string, any> = {
+// Dynamic import từng file JSON theo mã ngôn ngữ
+const languages: Record<string, () => Promise<{ default: Record<string, string> }>> = {
   vi: () => import("@/messages/vi.json"),
   en: () => import("@/messages/en.json"),
   zh: () => import("@/messages/zh.json"),
@@ -17,18 +18,25 @@ const languages: Record<string, any> = {
 
 export function useTranslation() {
   const [lang, setLang] = useState("vi");
-  const [t, setT] = useState<any>({});
+  const [t, setT] = useState<Record<string, string>>({});
 
+  // Lấy lang đã lưu trong localStorage khi mount
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const savedLang = localStorage.getItem("lang") || "vi";
     setLang(savedLang);
   }, []);
 
+  // Mỗi khi lang thay đổi → load file JSON tương ứng
   useEffect(() => {
-    if (languages[lang]) {
-      languages[lang]().then((mod) => setT(mod.default));
-      localStorage.setItem("lang", lang);
-    }
+    if (!languages[lang]) return;
+
+    languages[lang]().then((mod) => {
+      setT(mod.default || {});
+      if (typeof window !== "undefined") {
+        localStorage.setItem("lang", lang);
+      }
+    });
   }, [lang]);
 
   return { t, lang, setLang };
