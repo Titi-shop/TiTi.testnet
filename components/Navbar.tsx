@@ -1,71 +1,48 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { ShoppingCart, Globe, Search } from "lucide-react";
-import { useLanguage } from "@/app/context/LanguageContext";
+import { ShoppingCart, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/app/lib/i18n"; // 👉 Dùng file i18n.ts
 
 export default function Navbar() {
-  const [piPrice, setPiPrice] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { translate } = useLanguage();
+  const { t, lang, setLang } = useTranslation();
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchPrice = async () => {
-      try {
-        const res = await fetch("/api/pi-price");
-        const data = await res.json();
-        if (data?.price_usd) setPiPrice(parseFloat(data.price_usd));
-      } catch (error) {
-        console.error("⚠️ Lỗi khi lấy giá Pi:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchPrice();
-    const interval = setInterval(fetchPrice, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const goSearch = () => router.push("/search");
+  const changeLang = (newLang: string) => {
+    setLang(newLang); // 👉 Cập nhật state và localStorage
+    router.refresh(); // Refresh UI để cập nhật text
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 bg-orange-500 border-b shadow-sm z-50">
       <div className="relative flex items-center justify-between px-4 py-2 text-white">
-        {/* 1) 🛒 Giỏ hàng (trái) */}
-        <Link href="/cart" aria-label="Giỏ hàng" className="hover:text-yellow-300 transition">
+
+        {/* 🛒 Cart */}
+        <Link href="/cart" aria-label={t.cart}>
           <ShoppingCart size={22} />
         </Link>
 
-        {/* 2) 💰 Giá Pi (giữa) */}
-        <div className="absolute left-1/2 -translate-x-1/2">
-          <div className="text-xs sm:text-sm font-semibold bg-white text-orange-600 px-3 py-1 rounded-md shadow-sm">
-            {loading
-              ? "⏳ " + (translate("loading") || "Đang tải...")
-              : piPrice
-              ? `π1 ≈ ${piPrice.toFixed(2)} USDT`
-              : "⚠️ " + (translate("no_data") || "Không có dữ liệu")}
-          </div>
+        {/* 💱 Pi Price */}
+        <div className="absolute left-1/2 -translate-x-1/2 text-xs sm:text-sm bg-white text-orange-600 px-3 py-1 rounded-md shadow-sm font-semibold">
+          {t.loading}
         </div>
 
-        {/* 3) 🔍 Tìm kiếm → 4) 🌐 Ngôn ngữ (phải) */}
+        {/* 🔍 Search + 🌐 Language Selector */}
         <div className="flex items-center gap-3">
-          <button
-            onClick={goSearch}
-            aria-label="Tìm kiếm"
-            className="hover:text-yellow-300 transition"
-          >
+          <button onClick={() => router.push("/search")} aria-label={t.search}>
             <Search size={22} />
           </button>
-          <Link
-            href="/language"
-            aria-label="Ngôn ngữ"
-            className="hover:text-yellow-300 transition"
+
+          <select
+            value={lang}
+            onChange={(e) => changeLang(e.target.value)}
+            className="bg-white text-black text-xs px-2 py-1 rounded"
           >
-            <Globe size={22} />
-          </Link>
+            <option value="vi">🇻🇳 VI</option>
+            <option value="en">🇬🇧 EN</option>
+            <option value="zh">🇨🇳 中文</option>
+          </select>
         </div>
       </div>
     </header>
