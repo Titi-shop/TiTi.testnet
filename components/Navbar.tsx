@@ -18,10 +18,15 @@ export default function Navbar() {
           <ShoppingCart size={22} />
         </Link>
 
-        {/* 💱 Pi Price (demo) */}
-        <div className="absolute left-1/2 -translate-x-1/2 text-xs sm:text-sm bg-white text-orange-600 px-3 py-1 rounded-md shadow-sm font-semibold">
-          {t.loading}
-        </div>
+        {/* 2) 💰 Giá Pi (giữa) */}
+        <div className="absolute left-1/2 -translate-x-1/2">
+          <div className="text-xs sm:text-sm font-semibold bg-white text-orange-600 px-3 py-1 rounded-md shadow-sm">
+            {loading
+              ? "⏳ " + (translate("loading") || "Đang tải...")
+              : piPrice
+              ? `π1 ≈ ${piPrice.toFixed(2)} USDT`
+              : "⚠️ " + (translate("no_data") || "Không có dữ liệu")}
+          </div>
 
         {/* 🔍 Search */}
         <div className="flex items-center gap-3">
