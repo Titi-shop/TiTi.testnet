@@ -2,12 +2,42 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 
+// 🔹 Interface chuẩn cho PiUser
 interface PiUser {
   username: string;
   uid?: string;
-  accessToken: string; // chỉ tạm lưu để verify với backend
+  accessToken: string;
 }
 
+// 🔹 Type callback payment của PiSDK
+interface PiPayment {
+  identifier: string;
+  paymentId: string;
+  txid?: string;
+  amount: number;
+}
+
+// 🔹 Type cho Pi SDK trên trình duyệt
+interface PiSDK {
+  init: (config: { version: string; sandbox: boolean }) => void;
+  authenticate: (
+    scopes: string[],
+    onIncompletePaymentFound: (payment: PiPayment) => void
+  ) => Promise<{ user: { username: string }; accessToken: string }>;
+  logout?: () => void;
+  createPayment?: (
+    paymentData: Record<string, unknown>,
+    callbacks: Record<string, (...args: unknown[]) => unknown>
+  ) => Promise<unknown>;
+}
+
+declare global {
+  interface Window {
+    Pi?: PiSDK;
+  }
+}
+
+// 🔹 Interface Context chính
 interface AuthContextType {
   user: PiUser | null;
   piReady: boolean;
@@ -29,33 +59,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [piReady, setPiReady] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Kiểm tra SDK Pi đã sẵn sàng chưa
-useEffect(() => {
-  if (typeof window !== "undefined" && window.Pi) {
-    try {
-      window.Pi.init({ version: "2.0", sandbox: true }); // ✅ đổi false khi chạy mainnet
-      console.log("✅ Pi SDK đã khởi tạo!");
-    } catch (err) {
-      console.error("❌ Lỗi khởi tạo Pi SDK:", err);
-    }
-  }
-
-  const timer = setInterval(() => {
+  // 🔹 Kiểm tra SDK Pi đã sẵn sàng chưa
+  useEffect(() => {
     if (typeof window !== "undefined" && window.Pi) {
-      setPiReady(true);
-      clearInterval(timer);
+      try {
+        window.Pi.init({ version: "2.0", sandbox: true });
+        console.log("✅ Pi SDK đã khởi tạo!");
+      } catch (err) {
+        console.error("❌ Lỗi khởi tạo Pi SDK:", err);
+      }
     }
-  }, 400);
-  return () => clearInterval(timer);
-}, []);
-  // ✅ Khôi phục user khi reload
+
+    const timer = setInterval(() => {
+      if (typeof window !== "undefined" && window.Pi) {
+        setPiReady(true);
+        clearInterval(timer);
+      }
+    }, 400);
+    return () => clearInterval(timer);
+  }, []);
+
+  // 🔹 Khôi phục user khi reload
   useEffect(() => {
     try {
       const saved = localStorage.getItem("pi_user");
       if (saved) {
         const parsed = JSON.parse(saved);
-        const username = parsed?.user?.username || parsed?.username;
-        const accessToken = parsed?.accessToken || "";
+        const username = parsed?.username;
+        const accessToken = parsed?.accessToken;
+
         if (username && accessToken) {
           setUser({ username, accessToken });
           localStorage.setItem("titi_username", username);
@@ -69,7 +101,7 @@ useEffect(() => {
     }
   }, []);
 
-  // ✅ Đăng nhập bằng Pi SDK
+  // 🔹 Đăng nhập bằng Pi SDK
   const pilogin = async () => {
     if (typeof window === "undefined" || !window.Pi) {
       alert("⚠️ Vui lòng mở trong Pi Browser!");
@@ -78,7 +110,7 @@ useEffect(() => {
 
     try {
       const scopes = ["username", "payments"];
-      const authResult = await window.Pi.authenticate(scopes, (payment: any) =>
+      const authResult = await window.Pi.authenticate(scopes, (payment: PiPayment) =>
         console.log("⚠️ Payment chưa hoàn tất:", payment)
       );
 
@@ -90,19 +122,18 @@ useEffect(() => {
       const piUser: PiUser = { username, accessToken };
       setUser(piUser);
 
-      // ✅ Chỉ lưu thông tin cần thiết
       localStorage.setItem("pi_user", JSON.stringify({ username, accessToken }));
       localStorage.setItem("titi_is_logged_in", "true");
       localStorage.setItem("titi_username", username);
 
       console.log("✅ Đăng nhập thành công:", piUser);
-    } catch (err: any) {
+    } catch (err) {
       console.error("❌ Lỗi đăng nhập:", err);
       alert("❌ Đăng nhập thất bại. Vui lòng thử lại.");
     }
   };
 
-  // ✅ Đăng xuất
+  // 🔹 Đăng xuất
   const logout = () => {
     try {
       if (typeof window !== "undefined" && window.Pi?.logout) {
@@ -111,6 +142,7 @@ useEffect(() => {
     } catch {
       console.warn("⚠️ Pi SDK không hỗ trợ logout");
     }
+
     setUser(null);
     localStorage.removeItem("pi_user");
     localStorage.removeItem("titi_is_logged_in");
