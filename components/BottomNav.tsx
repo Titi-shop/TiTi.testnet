@@ -3,17 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Grid, Bell, User, PlusCircle } from "lucide-react";
-import { useLanguage } from "../app/context/LanguageContext";
+import "@/app/lib/i18n";
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const { translate } = useLanguage();
+  const translate = (key: string) => key; // Dịch tạm
 
-  // 🔹 Danh sách 5 mục chính (giữ đúng key, label)
   const navItems = [
     { href: "/", label: translate("home") || "Trang chủ", icon: Home },
     { href: "/shop", label: translate("category") || "Danh mục", icon: Grid },
-    { href: "/seller", label: translate(" ") || " ", icon: PlusCircle },
+    { href: "/seller", label: "", icon: PlusCircle },
     { href: "/notifications", label: translate("notifications") || "Thông báo", icon: Bell },
     { href: "/account", label: translate("me") || "Tôi", icon: User },
   ];
@@ -26,16 +25,12 @@ export default function BottomNav() {
           <Link
             key={href}
             href={href}
-            className={`flex flex-col items-center justify-center w-1/5 text-xs transition-all ${
-              active ? "text-black font-semibold" : "text-gray-500 hover:text-black"
+            className={`flex flex-col items-center w-1/5 text-xs ${
+              active ? "text-black font-semibold" : "text-gray-500"
             }`}
           >
-            <Icon
-              className={`w-6 h-6 mb-1 ${
-                active ? "text-black" : "text-gray-500"
-              }`}
-            />
-            <span className="text-center truncate w-full">{label}</span>
+            <Icon className={`w-6 h-6 mb-1`} />
+            <span className="truncate">{label}</span>
           </Link>
         );
       })}
