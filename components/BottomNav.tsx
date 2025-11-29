@@ -7,20 +7,18 @@ import { useTranslation } from "@/app/lib/i18n";
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const { t } = useTranslation(); // ⭐ Dùng i18n đúng chuẩn
+  const { t } = useTranslation();
 
-  // 🔹 Danh sách mục điều hướng
   const navItems = [
-    { href: "/", label: t.home || "Trang chủ", icon: Home },
-    { href: "/shop", label: t.category || "Danh mục", icon: Grid },
-    { href: "/seller", label: t.sell || "Bán hàng", icon: PlusCircle },
+    { href: "/",            label: t.home || "Trang chủ",     icon: Home },
+    { href: "/shop",        label: t.category || "Danh mục",  icon: Grid },
+    { href: "/seller",      label: t.seller_center || "",     icon: PlusCircle },
     { href: "/notifications", label: t.notifications || "Thông báo", icon: Bell },
-    { href: "/account", label: t.me || "Tôi", icon: User },
+    { href: "/account",     label: t.me || "Tôi",             icon: User },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 
-                    flex justify-around py-1 z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-1 z-50">
       {navItems.map(({ href, label, icon: Icon }) => {
         const active = pathname === href;
         return (
