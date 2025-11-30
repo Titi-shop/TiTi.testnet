@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import BannerCarousel from "./components/BannerCarousel";
 import { useTranslation } from "@/app/lib/i18n";
@@ -34,29 +34,24 @@ export default function HomePage() {
   const router = useRouter();
 
   const [products, setProducts] = useState<Product[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-
   const [visibleCount, setVisibleCount] = useState(20);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<number | "all">("all");
   const [sortOption, setSortOption] = useState<SortOption>("popular");
-  const [loadingProducts, setLoadingProducts] = useState(true);
-  const [loadingCategories, setLoadingCategories] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Load categories
+  /** 🟢 FETCH CATEGORIES — Dùng cache */
   useEffect(() => {
     fetch("/api/categories")
       .then((res) => res.json())
-      .then((data) => setCategories(Array.isArray(data) ? data : []))
-      .catch((err) => console.error("❌ Lỗi tải danh mục:", err))
-      .finally(() => setLoadingCategories(false));
+      .then((data) => setCategories(data))
+      .catch(() => setCategories([]));
   }, []);
 
-  // Load products
+  /** 🟢 FETCH PRODUCTS — Dùng cache để tránh load lại khi đổi ngôn ngữ/trang */
   useEffect(() => {
-    fetch("/api/products", { cache: "no-store" })
+    fetch("/api/products", { cache: "force-cache" })
       .then((res) => res.json())
       .then((data) => {
         const normalized = data.map((p: Product) => ({
@@ -66,19 +61,13 @@ export default function HomePage() {
           isSale: Boolean(p.isSale),
           finalPrice: p.finalPrice ?? (p.isSale ? p.salePrice : p.price),
         }));
-        const sorted = normalized.sort((a, b) => (b.views ?? 0) - (a.views ?? 0));
-        setProducts(sorted);
-        setFilteredProducts(sorted);
+        setProducts(normalized);
       })
-      .catch((err) => {
-        console.error("❌ Lỗi tải sản phẩm:", err);
-        setError(err.message || "Không thể tải sản phẩm");
-      })
-      .finally(() => setLoadingProducts(false));
+      .finally(() => setLoading(false));
   }, []);
 
-  // Filtering & sorting
-  useEffect(() => {
+  /** 🧠 DÙNG useMemo ĐỂ TỐI ƯU LỌC + SẮP XẾP */
+  const filteredProducts = useMemo(() => {
     let list = [...products];
 
     if (selectedCategory !== "all") {
@@ -92,11 +81,7 @@ export default function HomePage() {
 
     switch (sortOption) {
       case "newest":
-        list.sort(
-          (a, b) =>
-            new Date(b.createdAt || "").getTime() -
-            new Date(a.createdAt || "").getTime()
-        );
+        list.sort((a, b) => new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime());
         break;
       case "priceAsc":
         list.sort((a, b) => (a.finalPrice ?? 0) - (b.finalPrice ?? 0));
@@ -104,19 +89,23 @@ export default function HomePage() {
       case "priceDesc":
         list.sort((a, b) => (b.finalPrice ?? 0) - (a.finalPrice ?? 0));
         break;
-      case "popular":
       default:
         list.sort((a, b) => (b.views ?? 0) - (a.views ?? 0));
         break;
     }
 
-    setFilteredProducts(list);
+    return list;
   }, [products, selectedCategory, searchTerm, sortOption]);
 
   const loadMore = () => setVisibleCount((prev) => prev + 20);
 
-  if (loadingProducts) return <p className="text-center mt-10">{t.loading_products}</p>;
-  if (error) return <p className="text-center mt-10 text-red-500">⚠ {error}</p>;
+  /** 🕒 LOADING UI */
+  if (loading)
+    return (
+      <p className="text-center mt-10 text-gray-500">
+        ⏳ {t.loading_products}
+      </p>
+    );
 
   return (
     <main className="bg-gray-50 min-h-screen pb-24">
@@ -126,7 +115,7 @@ export default function HomePage() {
 
       <div className="px-3 space-y-4 max-w-6xl mx-auto">
 
-        {/* Tìm kiếm */}
+        {/* 🔍 Search */}
         <div className="flex items-center gap-2">
           <div className="flex-1 flex items-center bg-white rounded-full shadow px-3 py-2 border">
             <span className="text-gray-400 mr-2">🔍</span>
@@ -140,34 +129,30 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Danh mục */}
+        {/* 🧭 Categories */}
         <section>
           <h2 className="text-base font-semibold">{t.featured_categories}</h2>
-          {loadingCategories ? (
-            <p>{t.loading_categories}</p>
-          ) : (
-            <div className="flex overflow-x-auto space-x-4 scrollbar-hide">
+          <div className="flex overflow-x-auto space-x-4 scrollbar-hide">
+            <button
+              onClick={() => setSelectedCategory("all")}
+              className={`min-w-[70px] text-xs ${selectedCategory === "all" ? "font-bold text-orange-600" : ""}`}
+            >
+              🛍 {t.all}
+            </button>
+            {categories.map((c) => (
               <button
-                onClick={() => setSelectedCategory("all")}
-                className={`min-w-[70px] text-xs ${selectedCategory === "all" ? "font-bold text-orange-600" : ""}`}
+                key={c.id}
+                onClick={() => setSelectedCategory(c.id)}
+                className={`min-w-[70px] text-xs ${selectedCategory === c.id ? "font-bold text-orange-600" : ""}`}
               >
-                🛍 {t.all}
+                <img src={c.icon || "/placeholder.png"} className="w-14 h-14 rounded-full" />
+                {c.name}
               </button>
-              {categories.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setSelectedCategory(c.id)}
-                  className={`min-w-[70px] text-xs ${selectedCategory === c.id ? "font-bold text-orange-600" : ""}`}
-                >
-                  <img src={c.icon || "/placeholder.png"} className="w-14 h-14 rounded-full" />
-                  {c.name}
-                </button>
-              ))}
-            </div>
-          )}
+            ))}
+          </div>
         </section>
 
-        {/* Tất cả sản phẩm */}
+        {/* 📦 All Products */}
         <section>
           <h2 className="text-base font-bold">{t.all_products}</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -175,11 +160,11 @@ export default function HomePage() {
               <div
                 key={p.id}
                 onClick={() => router.push(`/product/${p.id}`)}
-                className="bg-white rounded-xl shadow border hover:shadow-md"
+                className="bg-white rounded-xl shadow border hover:shadow-md duration-200 cursor-pointer"
               >
                 <img src={p.images?.[0] || "/placeholder.png"} className="w-full h-32 object-cover rounded" />
                 <div className="p-2">
-                  <p className="text-sm font-medium">{p.name}</p>
+                  <p className="text-sm font-medium line-clamp-2">{p.name}</p>
                   <p className="text-orange-600 font-bold">{p.finalPrice} π</p>
                   {p.isSale && (
                     <p className="text-xs line-through text-gray-400">{p.price} π</p>
