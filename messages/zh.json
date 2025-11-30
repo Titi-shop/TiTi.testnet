@@ -1,4 +1,15 @@
 {
+  "pickup_orders": "待取货订单",
+  "no_pickup_orders": "您当前没有正在配送或等待取货的订单。",
+  "total_orders": "总订单",
+  "total_pi": "总 Pi",
+  "status": "状态",
+  "buyer": "买家",
+  "order_code": "订单编号",
+  "created_at": "创建时间",
+  "loading_orders": "正在加载订单...",
+  "error_load_orders": "无法加载订单！",
+  "current_user": "当前用户",
   
   "pending_orders": "等待确认的订单",
   "no_pending_orders": "没有等待确认的订单。",
