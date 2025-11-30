@@ -1,7 +1,9 @@
 "use client";
+export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useLanguage } from "../../context/LanguageContext";
+import { useTranslation } from "@/app/lib/i18n";
 
 interface OrderItem {
   name: string;
@@ -21,14 +23,14 @@ interface Order {
 
 export default function PendingOrdersPage() {
   const router = useRouter();
-  const { translate, language } = useLanguage();
+  const { t, lang } = useTranslation();
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [currentUser, setCurrentUser] = useState<string>("");
   const [processing, setProcessing] = useState<number | null>(null);
 
-  // ✅ Lấy username hiện tại từ Pi login
   useEffect(() => {
     try {
       const info = localStorage.getItem("pi_user");
@@ -40,7 +42,6 @@ export default function PendingOrdersPage() {
     }
   }, []);
 
-  // ✅ Lấy danh sách đơn hàng chờ xác nhận
   useEffect(() => {
     const fetchOrders = async () => {
       if (!currentUser) {
@@ -55,7 +56,7 @@ export default function PendingOrdersPage() {
           vi: ["Chờ xác nhận", "Đã thanh toán", "Chờ xác minh"],
           en: ["Pending", "Paid", "Waiting for verification"],
           zh: ["待确认", "已付款", "待核实"],
-        }[language];
+        }[lang];
 
         const filtered = data.filter(
           (o) =>
@@ -69,18 +70,18 @@ export default function PendingOrdersPage() {
         setLoading(false);
       }
     };
-    fetchOrders();
-  }, [currentUser, language]);
 
-  // ✅ Hủy đơn hàng
+    fetchOrders();
+  }, [currentUser, lang]);
+
   const handleCancel = async (orderId: number) => {
-    if (!confirm("❓ Bạn có chắc muốn hủy đơn hàng này không?")) return;
+    if (!confirm(t("cancel_confirm"))) return;
     try {
       setProcessing(orderId);
       const res = await fetch(`/api/orders/cancel?id=${orderId}`, { method: "POST" });
       const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Hủy thất bại");
-      alert("✅ Đã hủy đơn hàng thành công!");
+      if (!data.ok) throw new Error(data.error || t("cancel_failed"));
+      alert(t("cancel_success"));
       setOrders((prev) => prev.filter((o) => o.id !== orderId));
     } catch (err: any) {
       alert("❌ " + err.message);
@@ -89,18 +90,14 @@ export default function PendingOrdersPage() {
     }
   };
 
-  // 🕓 Giao diện tải
-  if (loading) return <p className="text-center mt-10">⏳ Đang tải đơn hàng...</p>;
+  if (loading) return <p className="text-center mt-10">{t("loading_orders")}</p>;
   if (error) return <p className="text-center text-red-500">❌ {error}</p>;
 
-  // ✅ Tính tổng đơn và tổng Pi
   const totalOrders = orders.length;
   const totalPi = orders.reduce((sum, o) => sum + (parseFloat(String(o.total)) || 0), 0);
 
-  // ✅ Hiển thị giao diện
   return (
     <main className="p-4 max-w-4xl mx-auto bg-gray-50 min-h-screen pb-24">
-      {/* ===== Nút quay lại + Tiêu đề ===== */}
       <div className="flex items-center mb-4">
         <button
           onClick={() => router.back()}
@@ -109,30 +106,28 @@ export default function PendingOrdersPage() {
           ←
         </button>
         <h1 className="text-2xl font-bold text-yellow-600 flex items-center gap-2">
-          ⏳ Đơn hàng chờ xác nhận
+          ⏳ {t("pending_orders")}
         </h1>
       </div>
 
-      {/* ===== Tổng đơn & Tổng Pi ===== */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-white border rounded-lg p-4 text-center shadow">
-          <p className="text-gray-500 text-sm">Tổng đơn</p>
+          <p className="text-gray-500 text-sm">{t("total_orders")}</p>
           <p className="text-2xl font-bold text-gray-800">{totalOrders}</p>
         </div>
         <div className="bg-white border rounded-lg p-4 text-center shadow">
-          <p className="text-gray-500 text-sm">Tổng Pi</p>
+          <p className="text-gray-500 text-sm">{t("total_pi")}</p>
           <p className="text-2xl font-bold text-gray-800">
             {totalPi.toFixed(2)} Pi
           </p>
         </div>
       </div>
 
-      {/* ===== Danh sách đơn ===== */}
       {!orders.length ? (
         <p className="text-center text-gray-500">
-          Không có đơn hàng chờ xác nhận.
+          {t("no_pending_orders")}
           <br />
-          👤 Người dùng: <b>{currentUser}</b>
+          👤 {t("current_user")}: <b>{currentUser}</b>
         </p>
       ) : (
         <div className="space-y-5">
@@ -142,9 +137,7 @@ export default function PendingOrdersPage() {
               className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition"
             >
               <div className="flex justify-between items-center mb-2">
-                <h2 className="font-semibold text-lg">
-                  🧾 Mã đơn: #{order.id}
-                </h2>
+                <h2 className="font-semibold text-lg">🧾 #{order.id}</h2>
                 <button
                   onClick={() => handleCancel(order.id)}
                   disabled={processing === order.id}
@@ -154,12 +147,12 @@ export default function PendingOrdersPage() {
                       : "bg-red-500 hover:bg-red-600"
                   }`}
                 >
-                  {processing === order.id ? "Đang hủy..." : "❌ Hủy đơn"}
+                  {processing === order.id ? t("cancelling") : t("cancel_order")}
                 </button>
               </div>
 
-              <p>💰 Tổng tiền: <b>{order.total}</b> Pi</p>
-              <p>📅 Ngày tạo: {new Date(order.createdAt).toLocaleString()}</p>
+              <p>💰 {t("total")}: <b>{order.total}</b> Pi</p>
+              <p>📅 {t("created_at")}: {new Date(order.createdAt).toLocaleString()}</p>
 
               {order.items?.length > 0 && (
                 <ul className="list-disc ml-6 mt-2 text-gray-700">
@@ -172,7 +165,7 @@ export default function PendingOrdersPage() {
               )}
 
               <p className="mt-3 text-yellow-600 font-medium">
-                Trạng thái: {order.status}
+                {t("status")}: {order.status}
               </p>
 
               {order.note && (
@@ -185,7 +178,6 @@ export default function PendingOrdersPage() {
         </div>
       )}
 
-      {/* ===== Đệm tránh che phần chân ===== */}
       <div className="h-20"></div>
     </main>
   );
