@@ -19,7 +19,6 @@ export const availableLanguages = {
 };
 
 const languages: Record<string, () => Promise<{ default: Record<string, string> }>> = {
-  const languages = {
   vi: () => import("@/messages/vi.json"),
   en: () => import("@/messages/en.json"),
   zh: () => import("@/messages/zh.json"),
