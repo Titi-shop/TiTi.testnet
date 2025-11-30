@@ -10,10 +10,9 @@ export default function Navbar() {
   const router = useRouter();
 
   const changeLang = (newLang: string) => {
-    setLang(newLang);                            // cập nhật state hiện tại
+    setLang(newLang);                           // Cập nhật ngôn ngữ
     if (typeof window !== "undefined") {
-      localStorage.setItem("lang", newLang);     // lưu lại cho toàn app
-      window.location.reload();                  // 🔥 reload để các component khác đọc lang mới
+      localStorage.setItem("lang", newLang);   // Lưu lại, nhưng ❌ không reload
     }
   };
 
@@ -21,17 +20,15 @@ export default function Navbar() {
     <header className="bg-orange-500 p-3 text-white flex justify-between">
 
       {/* Cart */}
-      <Link href="/cart">
-        {t.cart || "Cart"}
-      </Link>
+      <Link href="/cart">{t.cart}</Link>
 
       {/* Search + Language dropdown */}
       <div className="flex items-center gap-3">
         <button onClick={() => router.push("/search")}>
-          {t.search || "Search"}
+          {t.search}
         </button>
 
-        {/* 🌐 Dropdown chọn ngôn ngữ */}
+        {/* 🌐 Language dropdown */}
         <select
           value={lang}
           onChange={(e) => changeLang(e.target.value)}
