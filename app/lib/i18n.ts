@@ -8,7 +8,6 @@ export const availableLanguages = {
   zh: "🇨🇳 中文",
 };
 
-// Import động từng file ngôn ngữ
 const languages: Record<string, () => Promise<{ default: Record<string, string> }>> = {
   vi: () => import("@/messages/vi.json"),
   en: () => import("@/messages/en.json"),
@@ -19,23 +18,30 @@ export function useTranslation() {
   const [lang, setLang] = useState("vi");
   const [t, setT] = useState<Record<string, string>>({});
 
-  // Lấy lang từ localStorage (chỉ khi client mount)
+  // Load language initially
   useEffect(() => {
-    if (typeof window === "undefined") return;
     const savedLang = localStorage.getItem("lang") || "vi";
     setLang(savedLang);
   }, []);
 
-  // Khi ngôn ngữ thay đổi -> load JSON tương ứng
+  // Load translation file
   useEffect(() => {
-    if (!languages[lang]) return;
-    languages[lang]().then((mod) => {
-      setT(mod.default || {});
-      if (typeof window !== "undefined") {
-        localStorage.setItem("lang", lang);
-      }
-    });
+    languages[lang]?.().then((mod) => setT(mod.default));
   }, [lang]);
 
-  return { t, lang, setLang };
+  // Listen for language-change events to update all components
+  useEffect(() => {
+    const handler = (e: any) => setLang(e.detail);
+    window.addEventListener("language-change", handler);
+    return () => window.removeEventListener("language-change", handler);
+  }, []);
+
+  // Hàm đổi ngôn ngữ toàn app
+  const setLanguage = (newLang: string) => {
+    localStorage.setItem("lang", newLang);
+    setLang(newLang);
+    window.dispatchEvent(new CustomEvent("language-change", { detail: newLang }));
+  };
+
+  return { t, lang, setLang: setLanguage };
 }
