@@ -10,11 +10,11 @@ export default function BottomNav() {
   const { t } = useTranslation();
 
   const navItems = [
-    { href: "/", label: t.home || "Trang chủ", icon: Home },
-    { href: "/shop", label: t.categories || "Danh mục", icon: Grid },
-    { href: "/seller", label: t.seller_center || "Bán hàng", icon: PlusCircle },
-    { href: "/notifications", label: t.notifications || "Thông báo", icon: Bell },
-    { href: "/account", label: t.me || "Tôi", icon: User },
+    { href: "/", label: t.home || "Home", icon: Home },
+    { href: "/shop", label: t.categories || "Categories", icon: Grid },
+    { href: "/seller", label: t.seller_center || "Seller", icon: PlusCircle },
+    { href: "/notifications", label: t.notifications || "Notifications", icon: Bell },
+    { href: "/account", label: t.me || "Me", icon: User },
   ];
 
   return (
@@ -26,7 +26,7 @@ export default function BottomNav() {
             key={href}
             href={href}
             className={`flex flex-col items-center w-1/5 text-xs ${
-              active ? "text-black font-semibold" : "text-gray-500 hover:text-black"
+              active ? "text-black font-semibold" : "text-gray-500"
             }`}
           >
             <Icon className="w-6 h-6 mb-1" />
