@@ -1,6 +1,5 @@
 "use client";
 import PiProvider from "@/app/pi/PiProvider";
-import PiStatus from "@/components/PiStatus";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import { AuthProvider } from "@/context/AuthContext";
@@ -12,7 +11,6 @@ export default function PiLayoutClient({ children }: { children: React.ReactNode
     <LanguageProvider>
       <AuthProvider>
         <CartProvider>
-          <PiProvider />
 
           <Navbar />
 
