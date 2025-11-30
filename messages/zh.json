@@ -1,5 +1,14 @@
 {
   
+  "pending_orders": "等待确认的订单",
+  "no_pending_orders": "没有等待确认的订单。",
+  "cancel_order": "取消订单",
+  "canceling": "正在取消...",
+  "confirm_cancel": "你确定要取消这个订单吗？",
+  "cancel_success": "订单已成功取消！",
+  "cancel_failed": "取消失败",
+  "error_load_orders": "无法加载订单！",
+  
   "return_orders": "订单退货",
   "no_return_orders": "没有退货订单。",
   "loading": "加载中...",
