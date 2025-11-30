@@ -1,0 +1,22 @@
+{
+  "shipping_orders": "🚚 Pedidos em entrega",
+  "no_shipping_orders": "Nenhum pedido em entrega.",
+  "loading_orders": "Carregando pedidos...",
+  "confirm_received": "Confirmar recebimento",
+  "confirm_received_message": "Você recebeu seu pedido?",
+  "thanks_receive": "Obrigado pela confirmação!",
+  "cancel_order": "Cancelar pedido",
+
+  "total_pi": "Total Pi",
+  "total_orders": "Total de pedidos",
+  "status": "Status",
+  "buyer": "Comprador",
+  "created_at": "Data de criação",
+  
+  "pending_orders": "⏳ Pedidos pendentes",
+  "status_pending": "Pendente",
+  "status_shipping": "Em entrega",
+  "status_completed": "Concluído",
+  "status_cancelled": "Cancelado",
+  "status_returned": "Devolvido"
+}
