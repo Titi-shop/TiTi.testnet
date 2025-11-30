@@ -176,4 +176,5 @@ export default function CustomerShippingPage() {
               </div>
 
               <p>👤 <b>{t["buyer"]}:</b> {order.buyer}</p>
-              <p>💰 <b>{t["total"]}:</b> {order.total} Pi</p
+<p>💰 <b>{t["total"]}:</b> {order.total} Pi</p>
+<p>📅 <b>{t["created_at"]}:</b> {new Date(order.createdAt).toLocaleString()}</p>
