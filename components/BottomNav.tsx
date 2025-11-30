@@ -2,21 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Grid, Bell, User, PlusCircle } from "lucide-react";
+import { Home, Grid, Bell, User, Search } from "lucide-react";
 import { useTranslation } from "@/app/lib/i18n";
 
 export default function BottomNav() {
   const pathname = usePathname();
   const { t } = useTranslation();
 
-   const navItems = [
+  const navItems = [
     { href: "/", label: t.home || "Home", icon: Home },
     { href: "/shop", label: t.categories || "Categories", icon: Grid },
     { href: "/search", label: t.search || "Tìm kiếm", icon: Search },
     { href: "/notifications", label: t.notifications || "Notifications", icon: Bell },
     { href: "/account", label: t.me || "Me", icon: User },
   ];
-
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-1 z-50">
