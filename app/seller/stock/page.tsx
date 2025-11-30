@@ -4,17 +4,35 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useTranslation } from "@/app/lib/i18n";
+
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+  salePrice?: number | null;
+  saleStart?: string | null;
+  saleEnd?: string | null;
+  images?: string[];
+  seller: string;
+}
+
+interface Message {
+  text: string;
+  type: "success" | "error" | "";
+}
 
 export default function SellerStockPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { user, loading, piReady } = useAuth();
 
   const [role, setRole] = useState<string>("");
   const [sellerUser, setSellerUser] = useState<string>("");
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
 
-  const [message, setMessage] = useState({
+  const [message, setMessage] = useState<Message>({
     text: "",
     type: "",
   });
@@ -52,14 +70,14 @@ export default function SellerStockPage() {
   async function loadProducts(username: string) {
     try {
       const res = await fetch(`/api/products`, { cache: "no-store" });
-      let data = await res.json();
+      let data: Product[] = await res.json();
 
       // LỌC THEO SELLER
-      data = data.filter((p: any) => p.seller === username);
+      data = data.filter((p) => p.seller === username);
 
       setProducts(data);
     } catch {
-      setMessage({ text: "Không thể tải sản phẩm!", type: "error" });
+      setMessage({ text: t.load_products_error, type: "error" });
     } finally {
       setPageLoading(false);
     }
@@ -69,10 +87,10 @@ export default function SellerStockPage() {
      ❌ Xóa sản phẩm
   ============================================ */
   const handleDelete = async (id: number) => {
-    const product = products.find((p) => p.id == id);
+    const product = products.find((p) => p.id === id);
     if (!product) return;
 
-    if (!confirm(`Bạn có chắc muốn xóa "${product.name}"?`)) return;
+    if (!confirm(`${t.confirm_delete} "${product.name}"?`)) return;
 
     try {
       const res = await fetch(`/api/products?id=${id}`, {
@@ -84,13 +102,13 @@ export default function SellerStockPage() {
       const data = await res.json();
 
       if (data.success) {
-        setMessage({ text: "🗑 Xóa thành công!", type: "success" });
+        setMessage({ text: t.delete_success, type: "success" });
         loadProducts(sellerUser);
       } else {
         setMessage({ text: data.message, type: "error" });
       }
     } catch {
-      setMessage({ text: "Không thể xóa!", type: "error" });
+      setMessage({ text: t.delete_failed, type: "error" });
     }
   };
 
@@ -98,7 +116,7 @@ export default function SellerStockPage() {
      ⏳ LOADING
   ============================================ */
   if (loading || pageLoading || !piReady || !user || role !== "seller") {
-    return <main className="text-center p-8">⏳ Đang tải...</main>;
+    return <main className="text-center p-8">⏳ {t.loading}</main>;
   }
 
   /* ============================================
@@ -110,15 +128,15 @@ export default function SellerStockPage() {
         className="mb-4 text-blue-600 underline"
         onClick={() => router.push("/seller")}
       >
-        ← Quay lại
+        ← {t.back}
       </button>
 
       <h1 className="text-2xl font-bold text-center mb-2 text-[#ff6600]">
-        📦 Kho hàng của tôi
+        📦 {t.my_stock}
       </h1>
 
       <p className="text-center text-gray-500 mb-4">
-        👤 Người bán: <b>{sellerUser}</b>
+        👤 {t.seller}: <b>{sellerUser}</b>
       </p>
 
       {message.text && (
@@ -134,7 +152,7 @@ export default function SellerStockPage() {
       )}
 
       {products.length === 0 ? (
-        <p className="text-center text-gray-400">Bạn chưa đăng sản phẩm nào.</p>
+        <p className="text-center text-gray-400">{t.no_products}</p>
       ) : (
         <div className="space-y-4">
           {products.map((product) => {
@@ -146,8 +164,8 @@ export default function SellerStockPage() {
               product.salePrice &&
               start &&
               end &&
-              now.getTime() >= start.getTime() &&
-              now.getTime() <= end.getTime();
+              now >= start &&
+              now <= end;
 
             const salePercent =
               isSale && product.price && product.salePrice
@@ -182,7 +200,7 @@ export default function SellerStockPage() {
                     />
                   ) : (
                     <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500 text-sm">
-                      No Img
+                      {t.no_image}
                     </div>
                   )}
                 </div>
@@ -211,14 +229,14 @@ export default function SellerStockPage() {
                       }
                       className="text-green-600 underline"
                     >
-                      Sửa
+                      {t.edit}
                     </button>
 
                     <button
                       onClick={() => handleDelete(product.id)}
                       className="text-red-600 underline"
                     >
-                      Xóa
+                      {t.delete}
                     </button>
                   </div>
                 </div>
