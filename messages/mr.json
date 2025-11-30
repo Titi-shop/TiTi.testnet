@@ -1,0 +1,19 @@
+{
+  "shipping_orders": "🚚 वितरणातील आदेश",
+  "no_shipping_orders": "सध्या कोणतेही वितरण आदेश नाहीत.",
+  "loading_orders": "ऑर्डर लोड होत आहेत...",
+  "confirm_received": "प्राप्तीची पुष्टी करा",
+  "thanks_receive": "धन्यवाद!",
+  
+  "pending_orders": "⏳ प्रलंबित आदेश",
+  "cancel_order": "ऑर्डर रद्द करा",
+
+  "total_pi": "एकूण Pi",
+  "total_orders": "एकूण आदेश",
+  
+  "status_pending": "प्रलंबित",
+  "status_shipping": "वितरणात",
+  "status_completed": "पूर्ण",
+  "status_cancelled": "रद्द",
+  "status_returned": "परत केले"
+}
