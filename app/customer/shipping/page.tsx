@@ -81,7 +81,7 @@ export default function CustomerShippingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id,
-          status: t("completed_orders_status") || "Hoàn tất",
+          status: t("status_completed") || "Hoàn tất",
           buyer: currentUser,
         }),
       });
