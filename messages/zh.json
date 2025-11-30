@@ -1,4 +1,16 @@
 {
+
+  "orders_summary": "📦 订单汇总",
+  "total_orders": "订单总数",
+  "total_pi": "Pi 总额",
+  "order_id": "订单编号",
+  "buyer": "买家",
+  "total": "总金额",
+  "created_at": "创建日期",
+  "status": "订单状态",
+  "loading_data": "正在加载数据...",
+  "error_load_orders": "❌ 无法加载订单列表！",
+  
   "language": "中文",
   "welcome": "欢迎来到 TiTi 商城",
   "login": "登录",
