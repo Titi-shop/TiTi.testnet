@@ -10,11 +10,11 @@ export default function BottomNav() {
   const { t } = useTranslation();
 
   const navItems = [
-    { href: "/",            label: t.home || "Trang chủ",     icon: Home },
-    { href: "/shop",        label: t.category || "Danh mục",  icon: Grid },
-    { href: "/seller",      label: t.seller_center || "",     icon: PlusCircle },
+    { href: "/", label: t.home || "Trang chủ", icon: Home },
+    { href: "/shop", label: t.categories || "Danh mục", icon: Grid },
+    { href: "/seller", label: t.seller_center || "Bán hàng", icon: PlusCircle },
     { href: "/notifications", label: t.notifications || "Thông báo", icon: Bell },
-    { href: "/account",     label: t.me || "Tôi",             icon: User },
+    { href: "/account", label: t.me || "Tôi", icon: User },
   ];
 
   return (
@@ -25,12 +25,12 @@ export default function BottomNav() {
           <Link
             key={href}
             href={href}
-            className={`flex flex-col items-center w-1/5 text-xs transition-all ${
+            className={`flex flex-col items-center w-1/5 text-xs ${
               active ? "text-black font-semibold" : "text-gray-500 hover:text-black"
             }`}
           >
             <Icon className="w-6 h-6 mb-1" />
-            <span className="truncate">{label}</span>
+            <span>{label}</span>
           </Link>
         );
       })}
