@@ -51,4 +51,17 @@
   "category": "分类",
   "me": "我的",
   "seller_center": "卖家中心"
+
+  "profile": "个人资料",
+  "my_orders": "我的订单",
+  "pi_wallet": "Pi 钱包",
+  "messages": "消息",
+  "language": "语言",
+  "shipping_address": "收货地址",
+  "support": "客服支持",
+  "seller_channel": "🛒 卖家中心",
+  "post_product": "发布商品",
+  "stock": "库存管理",
+  "seller_orders": "卖家订单",
+  "logout": "退出登录"
 }
