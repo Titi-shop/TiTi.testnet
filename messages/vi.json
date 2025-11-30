@@ -52,18 +52,16 @@
   "me": "Tôi",
   "seller_center": "Kênh người bán"
 
-  {
-  "profile": "Profile",
-  "my_orders": "My Orders",
-  "pi_wallet": "Pi Wallet",
-  "messages": "Messages",
-  "language": "Language",
-  "shipping_address": "Shipping Address",
-  "support": "Support",
-  "seller_channel": "🛒 Seller Channel",
-  "post_product": "Post Product",
-  "stock": "Stock",
-  "seller_orders": "Seller Orders",
-  "logout": "Logout"
-}
+  "profile": "Hồ sơ cá nhân",
+  "my_orders": "Đơn hàng của tôi",
+  "pi_wallet": "Ví Pi",
+  "messages": "Tin nhắn",
+  "language": "Ngôn ngữ",
+  "shipping_address": "Địa chỉ giao hàng",
+  "support": "Hỗ trợ",
+  "seller_channel": "🛒 Kênh Người Bán",
+  "post_product": "Đăng hàng",
+  "stock": "Kho hàng",
+  "seller_orders": "Đơn hàng bán",
+  "logout": "Đăng xuất"
 }
