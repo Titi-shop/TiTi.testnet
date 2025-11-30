@@ -52,7 +52,7 @@
   "home": "Home",
   "category": "Categories",
   "me": "Me",
-  "seller_center": "Seller Center"
+  "seller_center": "Seller Center",
 
   "profile": "Profile",
   "my_orders": "My Orders",
@@ -64,7 +64,5 @@
   "seller_channel": "🛒 Seller Channel",
   "post_product": "Post Product",
   "stock": "Stock",
-  "seller_orders": "Seller Orders",
-  "logout": "Logout"
-
+  "seller_orders": "Seller Orders"
 }
