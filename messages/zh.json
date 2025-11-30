@@ -1,5 +1,16 @@
 {
   
+  "return_orders": "订单退货",
+  "no_return_orders": "没有退货订单。",
+  "loading": "加载中...",
+  "total_orders": "订单总数",
+  "total_pi": "Pi 总额",
+  "order_id": "订单编号",
+  "buyer": "买家",
+  "total": "总金额",
+  "status": "状态",
+  "error_load_orders": "❌ 无法加载订单！",
+  
   "shipping_orders": "运输中订单",
   "no_shipping_orders": "没有运输中的订单。",
   "error_load_orders": "❌ 无法加载订单！",
