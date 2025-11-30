@@ -1,0 +1,27 @@
+{
+  "shipping_orders": "🚚 Bestellungen in Lieferung",
+  "no_shipping_orders": "Keine Bestellungen in Lieferung.",
+  "loading_orders": "Bestellungen werden geladen...",
+  "confirm_received": "Empfang bestätigen",
+  "confirm_received_message": "Haben Sie die Lieferung erhalten?",
+  "thanks_receive": "Danke für die Bestätigung!",
+  "total_orders": "Gesamtbestellungen",
+  "total_pi": "Gesamt Pi",
+  "status": "Status",
+  "buyer": "Käufer",
+  "created_at": "Erstellungsdatum",
+  "items": "Artikel",
+  "pending_orders": "⏳ Ausstehende Bestellungen",
+
+  "login_required": "Bitte mit Pi Network anmelden",
+  "go_to_login": "Zum Login",
+  
+  "orders_summary": "📦 Bestellübersicht",
+  "cancel_order": "Bestellung stornieren",
+  
+  "status_pending": "Ausstehend",
+  "status_shipping": "Versand",
+  "status_completed": "Abgeschlossen",
+  "status_cancelled": "Storniert",
+  "status_returned": "Zurückgesendet"
+}
