@@ -176,5 +176,19 @@ export default function CustomerShippingPage() {
               </div>
 
               <p>👤 <b>{t["buyer"]}:</b> {order.buyer}</p>
-<p>💰 <b>{t["total"]}:</b> {order.total} Pi</p>
-<p>📅 <b>{t["created_at"]}:</b> {new Date(order.createdAt).toLocaleString()}</p>
+              <p>💰 <b>{t["total"]}:</b> {order.total} Pi</p>
+              <p>📅 <b>{t["created_at"]}:</b> {new Date(order.createdAt).toLocaleString()}</p>
+
+              <button
+                onClick={() => confirmReceived(order.id)}
+                className="mt-3 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+              >
+                {t["confirm_received"]}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </main>
+  );
+}
