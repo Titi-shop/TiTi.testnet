@@ -53,4 +53,19 @@
   "category": "Categories",
   "me": "Me",
   "seller_center": "Seller Center"
+
+  {
+  "profile": "Hồ sơ cá nhân",
+  "my_orders": "Đơn hàng của tôi",
+  "pi_wallet": "Ví Pi",
+  "messages": "Tin nhắn",
+  "language": "Ngôn ngữ",
+  "shipping_address": "Địa chỉ giao hàng",
+  "support": "Hỗ trợ",
+  "seller_channel": "🛒 Kênh Người Bán",
+  "post_product": "Đăng hàng",
+  "stock": "Kho hàng",
+  "seller_orders": "Đơn hàng bán",
+  "logout": "Đăng xuất"
+}
 }
