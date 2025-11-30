@@ -1,4 +1,21 @@
 {
+  
+  "shipping_orders": "配送中的订单",
+  "no_shipping_orders": "您当前没有正在配送的订单。",
+  "loading_orders": "正在加载订单...",
+  "confirm_received": "确认收货",
+  "confirm_received_message": "您确定已经收到货物了吗？",
+  "thanks_receive": "感谢确认！",
+  "error_confirm": "确认订单时发生错误。",
+  "total_pi": "总 Pi",
+  "total_orders": "总订单",
+  "buyer": "买家",
+  "items": "商品列表",
+  "created_at": "创建时间",
+  "current_user": "当前用户",
+  "login_required": "请使用 Pi Network 登录",
+  "go_to_login": "去登录",
+  
   "pickup_orders": "待取货订单",
   "no_pickup_orders": "您当前没有正在配送或等待取货的订单。",
   "total_orders": "总订单",
