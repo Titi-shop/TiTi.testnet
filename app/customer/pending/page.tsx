@@ -1,10 +1,7 @@
 "use client";
-export const dynamic = "force-dynamic";
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
-import { useTranslation } from "@/app/lib/i18n";
+import { useLanguage } from "../../context/LanguageContext";
 
 interface OrderItem {
   name: string;
@@ -17,103 +14,93 @@ interface Order {
   buyer: string;
   total: number;
   status: string;
+  note?: string;
   createdAt: string;
-  items?: OrderItem[];
+  items: OrderItem[];
 }
 
-export default function CustomerPendingPage() {
+export default function PendingOrdersPage() {
   const router = useRouter();
-  const { user, piReady } = useAuth();
-  const { t, lang } = useTranslation();
-
+  const { translate, language } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [currentUser, setCurrentUser] = useState<string>("");
+  const [processing, setProcessing] = useState<number | null>(null);
 
-  const currentUser = user?.username || "guest_user";
-  const isLoggedIn = !!user;
-
-  // 🔐 Redirect nếu chưa đăng nhập
+  // ✅ Lấy username hiện tại từ Pi login
   useEffect(() => {
-    if (piReady && !user) {
-      router.replace("/pilogin");
-    }
-  }, [piReady, user, router]);
-
-  // 📦 Load đơn hàng Pending
-  useEffect(() => {
-    if (!isLoggedIn) {
-      setLoading(false);
-      return;
-    }
-    fetchOrders();
-  }, [lang, isLoggedIn]);
-
-  const fetchOrders = async () => {
     try {
-      const res = await fetch("/api/orders", { cache: "no-store" });
-      if (!res.ok) throw new Error(t("error_loading_orders"));
-
-      const data: Order[] = await res.json();
-
-      // 🔹 Lọc trạng thái đơn hàng theo ngôn ngữ
-      const filterByLang = {
-        vi: ["Chờ xác nhận", "Đã thanh toán", "Chờ xác minh"],
-        en: ["Pending", "Paid", "Waiting for verification"],
-        zh: ["待确认", "已付款", "待核实"],
-      }[lang];
-
-      const filtered = data.filter(
-        (o) =>
-          filterByLang.includes(o.status) &&
-          o.buyer?.toLowerCase() === currentUser.toLowerCase()
-      );
-
-      setOrders(filtered);
+      const info = localStorage.getItem("pi_user");
+      const parsed = info ? JSON.parse(info) : null;
+      const username = parsed?.user?.username || parsed?.username || "guest_user";
+      setCurrentUser(username);
     } catch (err) {
-      console.error("❌ Lỗi tải đơn hàng:", err);
-    } finally {
-      setLoading(false);
+      console.error("❌ Lỗi đọc pi_user:", err);
     }
-  };
+  }, []);
 
-  // 🗑 Hủy đơn
-  const handleCancel = async (id: number) => {
-    if (!confirm(t("confirm_cancel_message"))) return;
+  // ✅ Lấy danh sách đơn hàng chờ xác nhận
+  useEffect(() => {
+    const fetchOrders = async () => {
+      if (!currentUser) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const res = await fetch("/api/orders", { method: "GET", cache: "no-store" });
+        const data: Order[] = await res.json();
 
+        const filterByLang = {
+          vi: ["Chờ xác nhận", "Đã thanh toán", "Chờ xác minh"],
+          en: ["Pending", "Paid", "Waiting for verification"],
+          zh: ["待确认", "已付款", "待核实"],
+        }[language];
+
+        const filtered = data.filter(
+          (o) =>
+            o.buyer?.toLowerCase() === currentUser.toLowerCase() &&
+            filterByLang.includes(o.status)
+        );
+        setOrders(filtered);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrders();
+  }, [currentUser, language]);
+
+  // ✅ Hủy đơn hàng
+  const handleCancel = async (orderId: number) => {
+    if (!confirm("❓ Bạn có chắc muốn hủy đơn hàng này không?")) return;
     try {
-      await fetch(`/api/orders/cancel?id=${id}`, { method: "POST" });
-      alert(t("cancel_success"));
-      setOrders((prev) => prev.filter((o) => o.id !== id));
-    } catch {
-      alert(t("cancel_failed"));
+      setProcessing(orderId);
+      const res = await fetch(`/api/orders/cancel?id=${orderId}`, { method: "POST" });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Hủy thất bại");
+      alert("✅ Đã hủy đơn hàng thành công!");
+      setOrders((prev) => prev.filter((o) => o.id !== orderId));
+    } catch (err: any) {
+      alert("❌ " + err.message);
+    } finally {
+      setProcessing(null);
     }
   };
 
-  // 🕓 Loading UI
-  if (loading)
-    return <p className="text-center mt-6 text-gray-500">{t("loading_orders")}</p>;
+  // 🕓 Giao diện tải
+  if (loading) return <p className="text-center mt-10">⏳ Đang tải đơn hàng...</p>;
+  if (error) return <p className="text-center text-red-500">❌ {error}</p>;
 
-  // 🔒 Chưa đăng nhập
-  if (!isLoggedIn)
-    return (
-      <main className="flex flex-col items-center justify-center min-h-screen p-6 text-center bg-gray-50">
-        <h2 className="text-xl text-red-600 mb-3">{t("login_required")}</h2>
-        <button
-          onClick={() => router.push("/pilogin")}
-          className="mt-3 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded"
-        >
-          👉 {t("go_to_login")}
-        </button>
-      </main>
-    );
-
-  // 📊 Tổng đơn & Pi
+  // ✅ Tính tổng đơn và tổng Pi
   const totalOrders = orders.length;
-  const totalPi = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+  const totalPi = orders.reduce((sum, o) => sum + (parseFloat(String(o.total)) || 0), 0);
 
+  // ✅ Hiển thị giao diện
   return (
     <main className="p-4 max-w-4xl mx-auto bg-gray-50 min-h-screen pb-24">
-      {/* Giữ nguyên UI */}
+      {/* ===== Nút quay lại + Tiêu đề ===== */}
       <div className="flex items-center mb-4">
         <button
           onClick={() => router.back()}
@@ -121,26 +108,31 @@ export default function CustomerPendingPage() {
         >
           ←
         </button>
-        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-          ⏳ {t("pending_orders")}
+        <h1 className="text-2xl font-bold text-yellow-600 flex items-center gap-2">
+          ⏳ Đơn hàng chờ xác nhận
         </h1>
       </div>
 
+      {/* ===== Tổng đơn & Tổng Pi ===== */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-white border rounded-lg p-4 text-center shadow">
-          <p className="text-gray-500 text-sm">{t("total_orders")}</p>
+          <p className="text-gray-500 text-sm">Tổng đơn</p>
           <p className="text-2xl font-bold text-gray-800">{totalOrders}</p>
         </div>
         <div className="bg-white border rounded-lg p-4 text-center shadow">
-          <p className="text-gray-500 text-sm">{t("total_pi")}</p>
-          <p className="text-2xl font-bold text-gray-800">{totalPi.toFixed(2)} Pi</p>
+          <p className="text-gray-500 text-sm">Tổng Pi</p>
+          <p className="text-2xl font-bold text-gray-800">
+            {totalPi.toFixed(2)} Pi
+          </p>
         </div>
       </div>
 
+      {/* ===== Danh sách đơn ===== */}
       {!orders.length ? (
         <p className="text-center text-gray-500">
-          {t("no_pending_orders")}
-          <br />👤 {t("current_user")}: <b>{currentUser}</b>
+          Không có đơn hàng chờ xác nhận.
+          <br />
+          👤 Người dùng: <b>{currentUser}</b>
         </p>
       ) : (
         <div className="space-y-5">
@@ -150,33 +142,50 @@ export default function CustomerPendingPage() {
               className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition"
             >
               <div className="flex justify-between items-center mb-2">
-                <h2 className="font-semibold text-lg">🧾 #{order.id}</h2>
+                <h2 className="font-semibold text-lg">
+                  🧾 Mã đơn: #{order.id}
+                </h2>
                 <button
                   onClick={() => handleCancel(order.id)}
-                  className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm"
+                  disabled={processing === order.id}
+                  className={`px-3 py-1 text-white rounded-md text-sm ${
+                    processing === order.id
+                      ? "bg-gray-400"
+                      : "bg-red-500 hover:bg-red-600"
+                  }`}
                 >
-                  ❌ {t("cancel_order")}
+                  {processing === order.id ? "Đang hủy..." : "❌ Hủy đơn"}
                 </button>
               </div>
 
-              <p>👤 <b>{t("buyer")}:</b> {order.buyer}</p>
-              <p>💰 <b>{t("total")}:</b> {order.total} Pi</p>
-              <p>📅 <b>{t("created_at")}:</b> {new Date(order.createdAt).toLocaleString()}</p>
+              <p>💰 Tổng tiền: <b>{order.total}</b> Pi</p>
+              <p>📅 Ngày tạo: {new Date(order.createdAt).toLocaleString()}</p>
 
-              {order.items?.length ? (
-                <ul className="ml-6 list-disc text-gray-700 mt-2">
-                  {order.items.map((item, idx) => (
-                    <li key={idx}>
+              {order.items?.length > 0 && (
+                <ul className="list-disc ml-6 mt-2 text-gray-700">
+                  {order.items.map((item, i) => (
+                    <li key={i}>
                       {item.name} — {item.price} Pi × {item.quantity}
                     </li>
                   ))}
                 </ul>
-              ) : null}
+              )}
+
+              <p className="mt-3 text-yellow-600 font-medium">
+                Trạng thái: {order.status}
+              </p>
+
+              {order.note && (
+                <p className="text-gray-500 italic text-sm mt-1">
+                  📝 {order.note}
+                </p>
+              )}
             </div>
           ))}
         </div>
       )}
 
+      {/* ===== Đệm tránh che phần chân ===== */}
       <div className="h-20"></div>
     </main>
   );
