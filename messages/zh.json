@@ -16,6 +16,7 @@
   "recent_transactions": "最近交易",
   "back": "返回",
   "loading": "加载中...",
+
   "order": "订单",
   "orders": "订单",
   "pending_orders": "待处理订单",
@@ -29,12 +30,14 @@
   "cancel_order": "取消订单",
   "no_orders": "你还没有订单。",
   "total": "总金额",
+
   "buy_now": "立即购买",
   "add_to_cart": "加入购物车",
   "cart": "购物车",
   "checkout": "结算",
   "payment_success": "支付成功",
   "payment_failed": "支付失败",
+
   "notifications": "通知",
   "no_notifications": "暂无通知。",
   "language_switch": "切换语言",
@@ -64,5 +67,20 @@
   "seller_channel": "🛒 卖家平台",
   "post_product": "发布商品",
   "stock": "库存",
-  "seller_orders": "卖家订单"
+  "seller_orders": "卖家订单",
+
+  "seller": "卖家",
+  "product_name": "商品名称",
+  "price": "价格",
+  "sale_price": "折扣价",
+  "start_date": "开始日期",
+  "end_date": "结束日期",
+  "product_images": "商品图片",
+  "description": "商品描述",
+  "select_category": "-- 选择分类 --",
+
+  "enter_valid_name_price": "⚠️ 请输入有效的商品名称和价格！",
+  "post_success": "🎉 商品发布成功！",
+  "post_failed": "❌ 商品发布失败！",
+  "posting": "正在发布..."
 }
