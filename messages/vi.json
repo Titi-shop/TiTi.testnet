@@ -51,4 +51,19 @@
   "category": "Danh mục",
   "me": "Tôi",
   "seller_center": "Kênh người bán"
+
+  {
+  "profile": "Profile",
+  "my_orders": "My Orders",
+  "pi_wallet": "Pi Wallet",
+  "messages": "Messages",
+  "language": "Language",
+  "shipping_address": "Shipping Address",
+  "support": "Support",
+  "seller_channel": "🛒 Seller Channel",
+  "post_product": "Post Product",
+  "stock": "Stock",
+  "seller_orders": "Seller Orders",
+  "logout": "Logout"
+}
 }
