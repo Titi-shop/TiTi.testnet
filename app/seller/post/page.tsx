@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 
 function toISO(dateString: string | null) {
@@ -12,7 +11,6 @@ function toISO(dateString: string | null) {
 
 export default function SellerPostPage() {
   const router = useRouter();
-  const { translate } = useLanguage();
   const { user, loading, piReady } = useAuth();
 
   const [role, setRole] = useState<string>("");
