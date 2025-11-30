@@ -1,5 +1,14 @@
 {
 
+  "pending_orders": "⏳ 待确认订单",
+  "no_pending_orders": "没有待确认的订单。",
+  "confirm_order": "确认订单",
+  "error_load_orders": "❌ 无法加载订单！",
+  "order_id": "订单编号",
+  "buyer": "买家",
+  "total_orders": "订单总数",
+  "total_pi": "Pi 总额",
+
   "orders_summary": "📦 订单汇总",
   "total_orders": "订单总数",
   "total_pi": "Pi 总额",
