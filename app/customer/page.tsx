@@ -15,7 +15,7 @@ interface MenuButtonProps {
 
 export default function CustomerDashboard() {
   const { user, piReady } = useAuth();
-  const { t } = useTranslation(); // 👈 Dùng i18n duy nhất
+  const { t } = useTranslation();
   const router = useRouter();
 
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -101,7 +101,7 @@ export default function CustomerDashboard() {
   );
 }
 
-/* 🔹 MenuButton Component chuẩn không dùng any */
+/* 🔹 MenuButton Component (không dùng any, giữ nguyên UI) */
 function MenuButton({ icon, label, path }: MenuButtonProps) {
   const router = useRouter();
   return (
