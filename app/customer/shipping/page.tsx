@@ -1,4 +1,6 @@
 "use client";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -31,14 +33,12 @@ export default function CustomerShippingPage() {
   const currentUser = user?.username || "guest_user";
   const isLoggedIn = !!user;
 
-  // 🔐 Chuyển hướng nếu chưa đăng nhập
   useEffect(() => {
     if (piReady && !user) {
       router.replace("/pilogin");
     }
   }, [piReady, user, router]);
 
-  // 📦 Load đơn hàng
   useEffect(() => {
     if (!isLoggedIn) {
       setLoading(false);
@@ -53,7 +53,6 @@ export default function CustomerShippingPage() {
       if (!res.ok) throw new Error(t("error_loading_orders"));
 
       const data: Order[] = await res.json();
-
       const filterByLang = {
         vi: ["Đang giao"],
         en: ["Delivering"],
@@ -65,7 +64,6 @@ export default function CustomerShippingPage() {
           filterByLang.includes(o.status) &&
           o.buyer?.toLowerCase() === currentUser.toLowerCase()
       );
-
       setOrders(filtered);
     } catch (err) {
       console.error("❌ Lỗi tải đơn hàng:", err);
@@ -74,7 +72,6 @@ export default function CustomerShippingPage() {
     }
   };
 
-  // 🟢 Xác nhận đã nhận hàng
   const confirmReceived = async (id: number) => {
     if (!confirm(t("confirm_received_message"))) return;
 
@@ -96,11 +93,9 @@ export default function CustomerShippingPage() {
     }
   };
 
-  // ⏳ Loading
   if (loading)
     return <p className="text-center mt-6 text-gray-500">{t("loading_orders")}</p>;
 
-  // 🔐 Chưa đăng nhập
   if (!isLoggedIn)
     return (
       <main className="flex flex-col items-center justify-center min-h-screen p-6 text-center bg-gray-50">
@@ -114,13 +109,12 @@ export default function CustomerShippingPage() {
       </main>
     );
 
-  // 📊 Tổng đơn & Pi
   const totalOrders = orders.length;
   const totalPi = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
 
   return (
     <main className="p-4 max-w-4xl mx-auto bg-gray-50 min-h-screen pb-24">
-      {/* 🔹 Giữ nguyên UI gốc */}
+      {/* 🔹 UI giữ nguyên */}
       <div className="flex items-center mb-4">
         <button onClick={() => router.back()} className="text-orange-500 font-semibold text-lg mr-2">
           ←
