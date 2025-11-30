@@ -82,5 +82,6 @@
   "enter_valid_name_price": "⚠️ 请输入有效的商品名称和价格！",
   "post_success": "🎉 商品发布成功！",
   "post_failed": "❌ 商品发布失败！",
+  "no_file_chosen": "未选择文件",
   "posting": "正在发布..."
 }
