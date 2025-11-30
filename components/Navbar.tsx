@@ -8,10 +8,13 @@ import { useTranslation, availableLanguages } from "@/app/lib/i18n";
 
 export default function Navbar() {
   const { t, lang, setLang } = useTranslation();
-  const [piPrice, setPiPrice] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // ⭐ Thêm khai báo cho giá Pi
+  const [piPrice, setPiPrice] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // ⭐ Fetch giá Pi từ API (có khai báo đúng useEffect)
   useEffect(() => {
     const fetchPrice = async () => {
       try {
@@ -24,7 +27,6 @@ export default function Navbar() {
         setLoading(false);
       }
     };
-
     fetchPrice();
 
     const interval = setInterval(fetchPrice, 5 * 60 * 1000);
@@ -32,25 +34,23 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className="bg-orange-500 p-3 text-white flex justify-between items-center relative">
+    <header className="bg-orange-500 p-3 text-white flex justify-between items-center">
 
       {/* Giỏ hàng (trái) */}
-      <Link href="/cart" aria-label="Giỏ hàng" className="hover:text-yellow-300 transition">
+      <Link href="/cart" aria-label="Giỏ hàng">
         <ShoppingCart size={22} />
       </Link>
 
-      {/* Hiển thị giá Pi (giữa) */}
-      <div className="absolute left-1/2 -translate-x-1/2">
-        <div className="text-xs sm:text-sm font-semibold bg-white text-orange-600 px-3 py-1 rounded-md shadow-sm">
-          {loading
-            ? `⏳ ${t("loading")}`
-            : piPrice
-            ? `π1 ≈ ${piPrice.toFixed(2)} USDT`
-            : `⚠️ ${t("no_data")}`}
-        </div>
+      {/* 💰 Giá Pi (giữa) */}
+      <div className="text-xs font-semibold bg-white text-orange-600 px-3 py-1 rounded-md shadow-sm">
+        {loading
+          ? `⏳ ${t("loading")}`
+          : piPrice
+          ? `π1 ≈ ${piPrice.toFixed(2)} USDT`
+          : `⚠️ ${t("no_data")}`}
       </div>
 
-      {/* Chọn ngôn ngữ (phải) */}
+      {/* 🌐 Dropdown (phải) */}
       <select
         value={lang}
         onChange={(e) => setLang(e.target.value)}
