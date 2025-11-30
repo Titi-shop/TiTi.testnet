@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext"; // 🔹 Thêm dòng này để lấy user từ AuthContext
 
 interface Order {
   id: string;
@@ -10,12 +11,20 @@ interface Order {
 
 export default function OrdersTabs() {
   const router = useRouter();
+  const { user, loading, piReady } = useAuth(); // 🔹 Lấy từ AuthContext
   const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+
+  // 🔹 Nếu chưa đăng nhập → chuyển về PiLogin
+  useEffect(() => {
+    if (piReady && !user) {
+      router.replace("/pilogin");
+    }
+  }, [piReady, user, router]);
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    if (user) fetchOrders();
+  }, [user]);
 
   const fetchOrders = async () => {
     try {
@@ -26,17 +35,18 @@ export default function OrdersTabs() {
       console.error("Lỗi tải đơn hàng:", err);
       alert("❌ Không thể tải dữ liệu đơn hàng!");
     } finally {
-      setLoading(false);
+      setLoadingOrders(false);
     }
   };
 
   const calcStats = (status?: string) => {
     const filtered = status ? orders.filter((o) => o.status === status) : orders;
-    const totalPi = filtered.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
+    const totalPi = filtered.reduce((sum, o) => sum + (parseFloat(String(o.total)) || 0), 0);
     return { count: filtered.length, totalPi: totalPi.toFixed(2) };
   };
 
-  if (loading)
+  // ⏳ Loading
+  if (!piReady || loading || loadingOrders || !user)
     return <p className="text-center mt-10 text-gray-500">⏳ Đang tải...</p>;
 
   return (
