@@ -1,0 +1,21 @@
+{
+  "shipping_orders": "🚚 डिलीवरी में आदेश",
+  "no_shipping_orders": "कोई डिलीवरी आदेश नहीं है.",
+  "loading_orders": "ऑर्डर लोड हो रहा है...",
+  "confirm_received": "प्राप्ति की पुष्टि करें",
+  "confirm_received_message": "क्या आपने ऑर्डर प्राप्त कर लिया?",
+  "thanks_receive": "धन्यवाद!",
+
+  "pending_orders": "⏳ लंबित आदेश",
+  "no_pending_orders": "कोई लंबित आदेश नहीं है.",
+  "cancel_order": "ऑर्डर रद्द करें",
+
+  "total_pi": "कुल Pi",
+  "total_orders": "कुल आदेश",
+  
+  "status_pending": "लंबित",
+  "status_shipping": "डिलीवरी में",
+  "status_completed": "पूर्ण",
+  "status_cancelled": "रद्द",
+  "status_returned": "वापस किया गया"
+}
