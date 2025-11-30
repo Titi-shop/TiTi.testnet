@@ -83,5 +83,18 @@
   "enter_valid_name_price": "⚠️ 请输入有效的商品名称和价格！",
   "post_success": "🎉 商品发布成功！",
   "no_file_chosen": "未选择文件",
-  "posting": "正在发布..."
+  "posting": "正在发布...",
+
+  "my_stock": "📦 我的商品库存",
+  "seller": "卖家",
+  "no_products": "你还没有发布任何商品。",
+  "edit": "编辑",
+  "delete": "删除",
+  "confirm_delete": "你确定要删除",
+  "delete_success": "🗑 删除成功！",
+  "delete_failed": "❌ 删除失败！",
+  "load_products_error": "无法加载商品列表！",
+  "no_image": "无图片",
+  "back": "返回",
+  "loading": "加载中..."
 }
