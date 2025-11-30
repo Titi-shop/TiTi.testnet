@@ -18,29 +18,30 @@ export function useTranslation() {
   const [lang, setLang] = useState("vi");
   const [t, setT] = useState<Record<string, string>>({});
 
-  // Load language initially
   useEffect(() => {
-    const savedLang = localStorage.getItem("lang") || "vi";
-    setLang(savedLang);
+    if (typeof window !== "undefined") {
+      const savedLang = localStorage.getItem("lang") || "vi";
+      setLang(savedLang);
+    }
   }, []);
 
-  // Load translation file
   useEffect(() => {
     languages[lang]?.().then((mod) => setT(mod.default));
   }, [lang]);
 
-  // Listen for language-change events to update all components
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const handler = (e: any) => setLang(e.detail);
     window.addEventListener("language-change", handler);
     return () => window.removeEventListener("language-change", handler);
   }, []);
 
-  // Hàm đổi ngôn ngữ toàn app
   const setLanguage = (newLang: string) => {
-    localStorage.setItem("lang", newLang);
-    setLang(newLang);
-    window.dispatchEvent(new CustomEvent("language-change", { detail: newLang }));
+    if (typeof window !== "undefined") {
+      localStorage.setItem("lang", newLang);
+      setLang(newLang);
+      window.dispatchEvent(new CustomEvent("language-change", { detail: newLang }));
+    }
   };
 
   return { t, lang, setLang: setLanguage };
