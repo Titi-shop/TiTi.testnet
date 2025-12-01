@@ -1,6 +1,8 @@
 {
 
   
+  "pay_now": "立即支付",
+  "processing": "处理中...",
   "pi_not_ready": "⚠️ Pi SDK 尚未准备好，请在 Pi 浏览器中打开！",
   "must_login_before_pay": "🔑 请先登录 Pi 再继续付款！",
   "cart_empty": "🛒 购物车为空！",
