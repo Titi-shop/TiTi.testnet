@@ -31,21 +31,6 @@ interface Category {
 
 type SortOption = "popular" | "newest" | "priceAsc" | "priceDesc";
 
-function getTimeLeftLabel(end?: string | null, t?: Record<string, string>): string {
-  if (!end || !t) return "";
-  const endTime = new Date(end).getTime();
-  if (isNaN(endTime)) return "";
-  const now = Date.now();
-  const diff = endTime - now;
-  if (diff <= 0) return t.sale_ending_soon;
-
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const minutes = Math.floor((diff / (1000 * 60)) % 60);
-
-  if (hours <= 0) return `${t.remaining} ${minutes} ${t.minutes}`;
-  return `${t.remaining} ${hours}h ${minutes}p`;
-}
-
 export default function HomePage() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -54,7 +39,6 @@ export default function HomePage() {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [visibleCount, setVisibleCount] = useState(20);
-  const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<number | "all">("all");
   const [sortOption, setSortOption] = useState<SortOption>("popular");
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -96,7 +80,7 @@ export default function HomePage() {
       .finally(() => setLoadingProducts(false));
   }, [t]);
 
-  // 🔍 Filter & Sort
+  // 🧮 Filter & Sort (đã bỏ tìm kiếm)
   useEffect(() => {
     let list = [...products];
 
@@ -104,15 +88,12 @@ export default function HomePage() {
       list = list.filter((p) => Number(p.categoryId) === selectedCategory);
     }
 
-    if (searchTerm.trim()) {
-      const keyword = searchTerm.trim().toLowerCase();
-      list = list.filter((p) => p.name.toLowerCase().includes(keyword));
-    }
-
     switch (sortOption) {
       case "newest":
         list.sort(
-          (a, b) => new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime()
+          (a, b) =>
+            new Date(b.createdAt || "").getTime() -
+            new Date(a.createdAt || "").getTime()
         );
         break;
       case "priceAsc":
@@ -128,9 +109,9 @@ export default function HomePage() {
 
     setFilteredProducts(list);
     setVisibleCount(20);
-  }, [products, selectedCategory, searchTerm, sortOption]);
+  }, [products, selectedCategory, sortOption]);
 
-  // ⏳ Loading state
+  // ⏳ Loading
   if (loadingProducts)
     return <p className="text-center mt-10 text-gray-500">⏳ {t.loading_products}</p>;
 
@@ -149,20 +130,6 @@ export default function HomePage() {
       </div>
 
       <div className="px-3 space-y-4 max-w-6xl mx-auto">
-        
-        {/* 🔍 Search */}
-        <div className="flex items-center gap-2">
-          <div className="flex-1 flex items-center bg-white rounded-full shadow px-3 py-2 border">
-            <span className="text-gray-400 mr-2">🔍</span>
-            <input
-              type="text"
-              placeholder={t.search_products}
-              className="flex-1 outline-none text-sm bg-transparent"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
 
         {/* 🧭 Categories */}
         <section>
@@ -173,17 +140,25 @@ export default function HomePage() {
             <div className="flex overflow-x-auto space-x-4 scrollbar-hide">
               <button
                 onClick={() => setSelectedCategory("all")}
-                className={`min-w-[70px] text-xs ${selectedCategory === "all" ? "font-bold text-orange-600" : ""}`}
+                className={`min-w-[70px] text-xs ${
+                  selectedCategory === "all" ? "font-bold text-orange-600" : ""
+                }`}
               >
                 🛍 {t.all}
               </button>
+
               {categories.map((c) => (
                 <button
                   key={c.id}
                   onClick={() => setSelectedCategory(c.id)}
-                  className={`min-w-[70px] text-xs ${selectedCategory === c.id ? "font-bold text-orange-600" : ""}`}
+                  className={`min-w-[70px] text-xs ${
+                    selectedCategory === c.id ? "font-bold text-orange-600" : ""
+                  }`}
                 >
-                  <img src={c.icon || "/placeholder.png"} className="w-14 h-14 rounded-full" />
+                  <img
+                    src={c.icon || "/placeholder.png"}
+                    className="w-14 h-14 rounded-full"
+                  />
                   {c.name}
                 </button>
               ))}
@@ -194,6 +169,7 @@ export default function HomePage() {
         {/* 📦 All Products */}
         <section>
           <h2 className="text-base font-bold">{t.all_products}</h2>
+
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {filteredProducts.slice(0, visibleCount).map((p) => (
               <div
@@ -201,12 +177,18 @@ export default function HomePage() {
                 onClick={() => router.push(`/product/${p.id}`)}
                 className="bg-white rounded-xl shadow border hover:shadow-md duration-200 cursor-pointer"
               >
-                <img src={p.images?.[0] || "/placeholder.png"} className="w-full h-32 object-cover rounded" />
+                <img
+                  src={p.images?.[0] || "/placeholder.png"}
+                  className="w-full h-32 object-cover rounded"
+                />
                 <div className="p-2">
                   <p className="text-sm font-medium">{p.name}</p>
                   <p className="text-orange-600 font-bold">{p.finalPrice} π</p>
+
                   {p.isSale && (
-                    <p className="text-xs line-through text-gray-400">{p.price} π</p>
+                    <p className="text-xs line-through text-gray-400">
+                      {p.price} π
+                    </p>
                   )}
                 </div>
               </div>
