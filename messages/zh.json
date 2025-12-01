@@ -1,5 +1,21 @@
 {
 
+
+  "shipping_address": "收货地址",
+  "country": "国家",
+  "full_name": "姓名",
+  "phone_number": "电话号码",
+  "enter_phone": "输入电话号码",
+  "address": "地址",
+  "save_address": "保存地址",
+  "saving": "保存中...",
+  "fill_all_fields": "请填写所有信息！",
+  "must_login_first": "请先登录！",
+  "address_saved": "地址已保存！",
+  "save_failed": "保存失败！",
+  "loading": "加载中...",
+  "login_required": "您需要登录后才能继续",
+  "login_with_pi": "使用 Pi 登录",
   
   "cart_title": "购物车",
   "empty_cart": "购物车为空。",
