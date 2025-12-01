@@ -1,5 +1,7 @@
 {
 
+  "checking_account": "正在检查账户...",
+  
   "loading": "加载中",
   "no_permission": "您没有权限编辑该商品！",
   "product_not_found": "未找到商品！",
