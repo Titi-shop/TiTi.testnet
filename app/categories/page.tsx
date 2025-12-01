@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useTranslation } from "@/lib/i18n";
+import { useTranslation } from "@/app/lib/i18n";
 
 export default function CategoryPage() {
   const { t } = useTranslation();
