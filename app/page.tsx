@@ -133,38 +133,42 @@ export default function HomePage() {
 
         {/* 🧭 Categories */}
         <section>
-          <h2 className="text-base font-semibold">{t.featured_categories}</h2>
-          {loadingCategories ? (
-            <p>{t.loading_categories}</p>
-          ) : (
-            <div className="flex overflow-x-auto space-x-4 scrollbar-hide">
-              <button
-                onClick={() => setSelectedCategory("all")}
-                className={`min-w-[70px] text-xs ${
-                  selectedCategory === "all" ? "font-bold text-orange-600" : ""
-                }`}
-              >
-                🛍 {t.all}
-              </button>
+  <h2 className="text-base font-semibold">{t.featured_categories}</h2>
+  {loadingCategories ? (
+    <p>{t.loading_categories}</p>
+  ) : (
+    <div className="flex overflow-x-auto space-x-4 scrollbar-hide">
+      <button
+        onClick={() => setSelectedCategory("all")}
+        className={`min-w-[70px] text-xs ${
+          selectedCategory === "all" ? "font-bold text-orange-600" : ""
+        }`}
+      >
+        🛍 {t.all}
+      </button>
 
-              {categories.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setSelectedCategory(c.id)}
-                  className={`min-w-[70px] text-xs ${
-                    selectedCategory === c.id ? "font-bold text-orange-600" : ""
-                  }`}
-                >
-                  <img
-                    src={c.icon || "/placeholder.png"}
-                    className="w-14 h-14 rounded-full"
-                  />
-                  {c.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
+      {categories.map((c) => (
+        <button
+          key={c.id}
+          onClick={() => setSelectedCategory(c.id)}
+          className={`min-w-[70px] text-xs ${
+            selectedCategory === c.id ? "font-bold text-orange-600" : ""
+          }`}
+        >
+          <img
+            src={c.icon || "/placeholder.png"}
+            className="w-14 h-14 rounded-full"
+            alt={t["category_" + c.id] || c.name}
+          />
+
+          <span>
+            {t["category_" + c.id] || c.name}
+          </span>
+        </button>
+      ))}
+    </div>
+  )}
+</section>
 
         {/* 📦 All Products */}
         <section>
