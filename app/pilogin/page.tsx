@@ -3,42 +3,46 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useTranslation } from "@/app/lib/i18n";
 
 export default function PiLoginPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { user, piReady, pilogin, loading } = useAuth();
-  const [status, setStatus] = useState("⏳ Đang tải...");
+
+  const [status, setStatus] = useState(t.loading_initial);
   const [agreed, setAgreed] = useState(false);
 
-  // ✅ Nếu đã đăng nhập → redirect
+  // ✅ Redirect nếu đã đăng nhập
   useEffect(() => {
     if (user) {
-      setStatus(`🎉 Xin chào ${user.username}`);
+      setStatus(`${t.welcome} ${user.username}`);
       setTimeout(() => router.push("/customer"), 1200);
     } else if (!loading) {
       setStatus("");
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, t]);
 
   // ✅ Xử lý đăng nhập
   const handleLogin = async () => {
     if (!agreed) {
-      setStatus("⚠️ Vui lòng đồng ý với điều khoản trước khi đăng nhập.");
-      return;
-    }
-    if (!piReady) {
-      setStatus("⚙️ Pi SDK chưa sẵn sàng. Vui lòng chờ...");
+      setStatus(t.must_agree_terms);
       return;
     }
 
-    setStatus("🔑 Đang xác thực...");
+    if (!piReady) {
+      setStatus(t.pi_not_ready);
+      return;
+    }
+
+    setStatus(t.authenticating);
     await pilogin();
   };
 
   if (loading) {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen text-gray-500">
-        ⏳ Đang kiểm tra phiên đăng nhập...
+        ⏳ {t.checking_session}
       </main>
     );
   }
@@ -61,7 +65,7 @@ export default function PiLoginPage() {
               : "bg-gray-300 cursor-not-allowed"
           } text-white font-semibold py-3 px-10 rounded-full text-lg shadow-md transition-all duration-200`}
         >
-          Đăng nhập với Pi
+          {t.login_with_pi}
         </button>
 
         <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
@@ -73,30 +77,30 @@ export default function PiLoginPage() {
             className="w-4 h-4 accent-orange-500 cursor-pointer"
           />
           <label htmlFor="agree" className="select-none">
-            Tôi đồng ý{" "}
+            {t.i_agree}{" "}
             <a
               href="https://www.termsfeed.com/live/7eae894b-14dd-431c-99da-0f94cab5b9ac"
               target="_blank"
               rel="noopener noreferrer"
               className="text-orange-500 underline"
             >
-              《Điều khoản sử dụng》
+              《{t.terms_of_use}》
             </a>{" "}
-            và{" "}
+            {t.and}{" "}
             <a
               href="https://www.termsfeed.com/live/32e8bf86-ceaf-4eb6-990e-cd1fa0b0775e"
               target="_blank"
               rel="noopener noreferrer"
               className="text-orange-500 underline"
             >
-              《Chính sách bảo mật》
+              《{t.privacy_policy}》
             </a>
           </label>
         </div>
       </div>
 
       <footer className="absolute bottom-6 text-gray-400 text-xs">
-        © 1Pi.app 2023 — All rights reserved
+        © 1Pi.app 2023 — {t.all_rights_reserved}
       </footer>
     </main>
   );
