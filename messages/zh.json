@@ -1,5 +1,19 @@
 {
+  
+  "loading_initial": "⏳ 正在加载...",
+  "welcome": "🎉 欢迎",
+  "must_agree_terms": "⚠️ 请先同意使用条款再登录。",
+  "pi_not_ready": "⚙️ Pi SDK 尚未准备好，请稍候...",
+  "authenticating": "🔑 正在验证...",
+  "checking_session": "正在检查登录状态...",
+  "login_with_pi": "使用 Pi 登录",
+  "i_agree": "我同意",
+  "terms_of_use": "使用条款",
+  "privacy_policy": "隐私政策",
+  "and": "和",
+  "all_rights_reserved": "版权所有",
 
+  
   "category_1": "手机和笔记本电脑",
   "category_2": "男装",
   "category_3": "女装",
