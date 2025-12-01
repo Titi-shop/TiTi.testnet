@@ -1,5 +1,30 @@
 {
+
   
+  "pi_not_ready": "⚠️ Pi SDK 尚未准备好，请在 Pi 浏览器中打开！",
+  "must_login_before_pay": "🔑 请先登录 Pi 再继续付款！",
+  "cart_empty": "🛒 购物车为空！",
+  "must_fill_shipping": "📦 请填写完整收货地址！",
+  "verify_failed": "❌ 账号验证失败，请重新登录。",
+  "payment_for_order": "订单付款",
+  "paid": "已支付",
+  "payment_success": "🎉 付款成功！",
+  "payment_canceled": "❌ 交易已取消。",
+  "payment_error": "💥 支付错误：",
+  "transaction_failed": "💥 交易失败或已取消。",
+  
+  "back": "返回",
+  "checkout": "结算",
+  "add_shipping": "添加收货地址",
+  "edit": "编辑",
+  "products": "商品",
+  "no_products": "没有商品。",
+  "total_label": "总计：",
+  "processing": "处理中...",
+  "pay_now": "立即付款"
+
+  
+
   "loading_initial": "⏳ 正在加载...",
   "welcome": "🎉 欢迎",
   "must_agree_terms": "⚠️ 请先同意使用条款再登录。",
