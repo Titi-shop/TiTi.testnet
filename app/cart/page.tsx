@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCart } from "../context/CartContext";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useTranslation } from "@/app/lib/i18n"; // ⭐ Dùng i18n mới
 
 declare global {
   interface Window {
@@ -36,6 +37,7 @@ export default function CartPage() {
   const { cart, removeFromCart, updateQty, clearCart } = useCart();
   const { user, piReady } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation(); // ⭐ Thay translate() bằng t.key
 
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -51,20 +53,22 @@ export default function CartPage() {
     else setSelectedItems(cart.map((i) => i.id));
   };
 
-  // ✅ Thanh toán nhiều sản phẩm
+  // ===========================
+  // 🔥 THANH TOÁN ĐA SẢN PHẨM
+  // ===========================
   const handlePaySelected = async () => {
     try {
       if (!piReady || !window.Pi) {
-        alert("⚠️ " + translate("pi_not_ready"));
+        alert("⚠️ " + t.pi_not_ready);
         return;
       }
       if (!user) {
-        alert("🔑 " + translate("must_login_first"));
+        alert("🔑 " + t.must_login_first);
         router.push("/pilogin");
         return;
       }
       if (selectedItems.length === 0) {
-        alert("⚠️ " + translate("please_select_item"));
+        alert("⚠️ " + t.please_select_item);
         return;
       }
 
@@ -87,13 +91,13 @@ export default function CartPage() {
       const verifyRes = await fetch("/api/pi/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessToken }),
+        body: JSON.stringify({ accessToken })
       });
 
       const verifyData = await verifyRes.json();
 
       if (!verifyData.success) {
-        alert("❌ " + translate("verify_failed"));
+        alert("❌ " + t.verify_failed);
         localStorage.removeItem("pi_user");
         return router.push("/pilogin");
       }
@@ -101,7 +105,7 @@ export default function CartPage() {
       const payment = await window.Pi.createPayment(
         {
           amount: total,
-          memo: `${translate("paying_order")} (${selectedProducts.length} items)`,
+          memo: `${t.paying_order} (${selectedProducts.length} items)`,
           metadata: { orderId, buyer: verifyData.user.username, items: selectedProducts }
         },
         {
@@ -112,28 +116,26 @@ export default function CartPage() {
               body: JSON.stringify({ paymentId, orderId })
             });
           },
-          onReadyForServerCompletion: async (
-            paymentId: string,
-            txid: string
-          ) => {
+          onReadyForServerCompletion: async (paymentId: string, txid: string) => {
             await fetch("/api/pi/complete", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ paymentId, txid, metadata: { orderId } })
             });
+
             clearCart();
-            alert("🎉 " + translate("payment_success"));
+            alert("🎉 " + t.payment_success);
             router.push("/customer/pending");
           },
-          onCancel: () => alert("❌ " + translate("payment_cancelled")),
+          onCancel: () => alert("❌ " + t.payment_cancelled),
           onError: (err: Error) =>
-            alert("💥 " + translate("payment_error") + ": " + err.message)
+            alert("💥 " + t.payment_error + ": " + err.message)
         }
       );
 
       console.log("💰 Payment:", payment);
     } catch (error) {
-      alert("💥 " + translate("payment_failed"));
+      alert("💥 " + t.payment_failed);
     } finally {
       setLoading(false);
     }
@@ -147,14 +149,15 @@ export default function CartPage() {
     <main className="min-h-screen bg-gray-50 p-4 flex flex-col items-center">
       <div className="w-full max-w-2xl bg-white rounded-xl shadow p-4">
         <h1 className="text-xl font-bold mb-4 text-center text-[#ff6600]">
-          🛒 {translate("cart_title")}
+          🛒 {t.cart_title}
         </h1>
 
+        {/* Empty cart */}
         {cart.length === 0 ? (
           <div className="text-center py-10">
-            <p className="mb-2 text-gray-600">{translate("empty_cart")}</p>
+            <p className="mb-2 text-gray-600">{t.empty_cart}</p>
             <Link href="/" className="text-[#ff6600] hover:underline font-medium">
-              {translate("back_to_shop")}
+              {t.back_to_shop}
             </Link>
           </div>
         ) : (
@@ -171,14 +174,10 @@ export default function CartPage() {
 
                   <div className="w-20 h-20 bg-gray-100 rounded overflow-hidden">
                     {it.images?.[0] ? (
-                      <img
-                        src={it.images[0]}
-                        alt={it.name}
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={it.images[0]} alt={it.name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
-                        {translate("no_image")}
+                        {t.no_image}
                       </div>
                     )}
                   </div>
@@ -191,9 +190,7 @@ export default function CartPage() {
                   <div className="flex flex-col items-end gap-2">
                     <div className="flex items-center border rounded overflow-hidden">
                       <button
-                        onClick={() =>
-                          updateQty(it.id, Math.max(1, (it.quantity || 1) - 1))
-                        }
+                        onClick={() => updateQty(it.id, Math.max(1, it.quantity - 1))}
                         className="px-2 py-1 text-gray-600 hover:text-[#ff6600]"
                       >
                         −
@@ -203,9 +200,7 @@ export default function CartPage() {
                         type="number"
                         min={1}
                         value={it.quantity}
-                        onChange={(e) =>
-                          updateQty(it.id, Math.max(1, Number(e.target.value)))
-                        }
+                        onChange={(e) => updateQty(it.id, Math.max(1, Number(e.target.value)))}
                         className="w-10 text-center outline-none border-x border-gray-200"
                       />
 
@@ -221,13 +216,14 @@ export default function CartPage() {
                       onClick={() => removeFromCart(it.id)}
                       className="text-xs text-red-500 hover:text-red-700"
                     >
-                      {translate("delete")}
+                      {t.delete}
                     </button>
                   </div>
                 </div>
               ))}
             </div>
 
+            {/* Total + Payment */}
             <div className="mt-5 border-t pt-4 flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <input
@@ -240,15 +236,13 @@ export default function CartPage() {
                   onClick={selectAll}
                   className="text-gray-700 text-sm cursor-pointer select-none"
                 >
-                  {selectedItems.length === cart.length
-                    ? translate("unselect_all")
-                    : translate("select_all")}
+                  {selectedItems.length === cart.length ? t.unselect_all : t.select_all}
                 </span>
               </div>
 
               <div className="text-right">
                 <p className="text-sm">
-                  {translate("total")}:{" "}
+                  {t.total}:{" "}
                   <span className="font-bold text-[#ff6600]">
                     {total.toFixed(2)} π
                   </span>
@@ -263,7 +257,7 @@ export default function CartPage() {
                       : "bg-[#ff6600] hover:bg-[#e65500]"
                   }`}
                 >
-                  💳 {loading ? translate("processing") : translate("order_now")}
+                  💳 {loading ? t.processing : t.order_now}
                 </button>
               </div>
             </div>
