@@ -1,9 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "@/app/lib/i18n";
+
+interface OrderItem {
+  id: string | number;
+  buyer: string;
+  total: number;
+  createdAt: string;
+  status: string;
+}
 
 export default function OrdersSummaryPage() {
-  const [orders, setOrders] = useState<any[]>([]);
+  const { t } = useTranslation();
+
+  const [orders, setOrders] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,21 +25,25 @@ export default function OrdersSummaryPage() {
     try {
       const res = await fetch("/api/orders", { cache: "no-store" });
       const data = await res.json();
-      setOrders(data || []);
+      setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("❌ Lỗi tải đơn hàng:", err);
+      console.error("❌ Load orders error:", err);
     } finally {
       setLoading(false);
     }
   };
 
   if (loading)
-    return <p className="text-center mt-10 text-gray-500">⏳ Đang tải...</p>;
+    return (
+      <p className="text-center mt-10 text-gray-500">
+        ⏳ {t.loading}...
+      </p>
+    );
 
-  // ✅ Tính tổng đơn & tổng Pi
+  // Tính tổng
   const totalOrders = orders.length;
   const totalPi = orders.reduce(
-    (sum, o) => sum + (parseFloat(o.total) || 0),
+    (sum, o) => sum + (parseFloat(String(o.total)) || 0),
     0
   );
 
@@ -43,18 +58,18 @@ export default function OrdersSummaryPage() {
           ←
         </button>
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-          📦 Tổng đơn hàng
+          📦 {t.order_summary}
         </h1>
       </div>
 
       {/* ===== Khối tổng hợp ===== */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-white border rounded-lg p-4 text-center shadow">
-          <p className="text-gray-500 text-sm">Tổng đơn</p>
+          <p className="text-gray-500 text-sm">{t.total_orders}</p>
           <p className="text-2xl font-bold text-gray-800">{totalOrders}</p>
         </div>
         <div className="bg-white border rounded-lg p-4 text-center shadow">
-          <p className="text-gray-500 text-sm">Tổng Pi</p>
+          <p className="text-gray-500 text-sm">{t.total_pi}</p>
           <p className="text-2xl font-bold text-gray-800">
             {totalPi.toFixed(2)} Pi
           </p>
@@ -63,7 +78,7 @@ export default function OrdersSummaryPage() {
 
       {/* ===== Danh sách đơn ===== */}
       {orders.length === 0 ? (
-        <p className="text-center text-gray-500">Không có đơn hàng nào.</p>
+        <p className="text-center text-gray-500">{t.no_orders}</p>
       ) : (
         <div className="space-y-4">
           {orders.map((o) => (
@@ -71,17 +86,16 @@ export default function OrdersSummaryPage() {
               key={o.id}
               className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition"
             >
-              <p>🧾 <b>Mã đơn:</b> #{o.id}</p>
-              <p>👤 <b>Người mua:</b> {o.buyer}</p>
-              <p>💰 <b>Tổng:</b> {o.total} Pi</p>
-              <p>📅 <b>Ngày tạo:</b> {o.createdAt}</p>
-              <p>📊 <b>Trạng thái:</b> {o.status}</p>
+              <p>🧾 <b>{t.order_code}:</b> #{o.id}</p>
+              <p>👤 <b>{t.buyer}:</b> {o.buyer}</p>
+              <p>💰 <b>{t.total}:</b> {o.total} Pi</p>
+              <p>📅 <b>{t.created_at}:</b> {o.createdAt}</p>
+              <p>📊 <b>{t.status}:</b> {o.status}</p>
             </div>
           ))}
         </div>
       )}
 
-      {/* ===== Đệm tránh che chân ===== */}
       <div className="h-20"></div>
     </main>
   );
