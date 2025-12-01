@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, ChangeEvent, FormEvent } from "react";
+import { useEffect, useState, useRef, ChangeEvent } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useTranslation } from "@/app/lib/i18n";
@@ -9,28 +9,9 @@ function formatDateToInput(dateString: string | null) {
   if (!dateString) return "";
   const d = new Date(dateString);
   if (isNaN(d.getTime())) return "";
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
-    2,
-    "0"
-  )}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-interface ProductData {
-  id: string | number;
-  name: string;
-  price: number;
-  description: string;
-  categoryId: number | null;
-  salePrice?: number | null;
-  saleStart?: string | null;
-  saleEnd?: string | null;
-  seller: string;
-  images: string[];
-}
-
-interface Category {
-  id: number;
-  name: string;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
 }
 
 export default function EditProductPage() {
@@ -39,15 +20,12 @@ export default function EditProductPage() {
   const router = useRouter();
   const { user, loading, piReady } = useAuth();
 
-  const [product, setProduct] = useState<ProductData | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [product, setProduct] = useState<any>(null);
+  const [categories, setCategories] = useState<any[]>([]);
   const [loadingPage, setLoadingPage] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [message, setMessage] = useState<{ text: string; type: string }>({
-    text: "",
-    type: "",
-  });
+  const [message, setMessage] = useState({ text: "", type: "" });
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [images, setImages] = useState<File[]>([]);
@@ -73,12 +51,12 @@ export default function EditProductPage() {
 
     fetch(`/api/products`, { cache: "no-store" })
       .then((r) => r.json())
-      .then((list: ProductData[]) => {
-        const p = list.find((x) => x.id == id);
+      .then((list) => {
+        const p = list.find((x: any) => x.id == id);
 
         if (!p || p.seller !== user.username.toLowerCase()) {
           setMessage({
-            text: t.no_permission,
+            text: t("no_permission_edit"),
             type: "error",
           });
           setTimeout(() => router.push("/seller/stock"), 2000);
@@ -112,54 +90,38 @@ export default function EditProductPage() {
 
   /* ADD IMAGE */
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files);
+
     setImages((prev) => [...prev, ...files]);
-    setPreviews((prev) => [
-      ...prev,
-      ...files.map((f) => URL.createObjectURL(f)),
-    ]);
+    setPreviews((prev) => [...prev, ...files.map((f) => URL.createObjectURL(f))]);
   };
 
   const removeImage = (i: number) => {
     setPreviews((prev) => prev.filter((_, idx) => idx !== i));
-    setProduct((prev) =>
-      prev
-        ? {
-            ...prev,
-            images: prev.images.filter((_, idx) => idx !== i),
-          }
-        : prev
-    );
+    setProduct((prev: any) => ({
+      ...prev,
+      images: prev?.images?.filter((_: any, idx: number) => idx !== i) || [],
+    }));
   };
 
   /* SAVE PRODUCT */
-  async function handleSave(e: FormEvent<HTMLFormElement>) {
+  async function handleSave(e: any) {
     e.preventDefault();
-    if (!product || !user) return;
-
     setSaving(true);
 
-    const form = e.currentTarget as HTMLFormElement;
-    const payload: ProductData = {
+    const form = e.target;
+
+    const payload: any = {
       id: product.id,
-      name: (form.elements.namedItem("name") as HTMLInputElement).value.trim(),
-      price: Number((form.elements.namedItem("price") as HTMLInputElement).value),
-      description: (form.elements.namedItem("description") as HTMLTextAreaElement)
-        .value,
-      categoryId: Number(
-        (form.elements.namedItem("categoryId") as HTMLSelectElement).value
-      ),
-      salePrice:
-        Number(
-          (form.elements.namedItem("salePrice") as HTMLInputElement).value
-        ) || null,
-      saleStart:
-        (form.elements.namedItem("saleStart") as HTMLInputElement).value ||
-        null,
-      saleEnd:
-        (form.elements.namedItem("saleEnd") as HTMLInputElement).value || null,
+      name: form.name.value.trim(),
+      price: Number(form.price.value),
+      description: form.description.value,
+      categoryId: Number(form.categoryId.value),
+      salePrice: Number(form.salePrice.value) || null,
+      saleStart: form.saleStart.value || null,
+      saleEnd: form.saleEnd.value || null,
       seller: user.username,
-      images: [],
     };
 
     const newUrls: string[] = [];
@@ -168,7 +130,7 @@ export default function EditProductPage() {
       if (url) newUrls.push(url);
     }
 
-    payload.images = [...(product.images || []), ...newUrls];
+    payload["images"] = [...(product.images || []), ...newUrls];
 
     const res = await fetch("/api/products", {
       method: "PUT",
@@ -179,10 +141,10 @@ export default function EditProductPage() {
     const result = await res.json();
 
     if (result.success) {
-      setMessage({ text: t.save_success, type: "success" });
+      setMessage({ text: t("save_success"), type: "success" });
       setTimeout(() => router.push("/seller/stock"), 1000);
     } else {
-      setMessage({ text: t.save_failed, type: "error" });
+      setMessage({ text: t("save_failed"), type: "error" });
     }
 
     setSaving(false);
@@ -190,12 +152,12 @@ export default function EditProductPage() {
 
   /* UI */
   if (loadingPage || loading || !piReady)
-    return <p className="text-center mt-10">⏳ {t.loading}...</p>;
+    return <p className="text-center mt-10">⏳ {t("loading")}...</p>;
 
   if (!product)
     return (
       <p className="text-center mt-10 text-red-500">
-        ❌ {t.product_not_found}
+        ❌ {t("product_not_found")}
       </p>
     );
 
@@ -205,15 +167,15 @@ export default function EditProductPage() {
         className="mb-3 text-orange-600 font-bold text-lg"
         onClick={() => router.back()}
       >
-        ← {t.back}
+        ← {t("back")}
       </button>
 
       <h1 className="text-2xl font-bold text-center text-[#ff6600] mb-3">
-        ✏️ {t.edit_product}
+        ✏️ {t("edit_product")}
       </h1>
 
       <p className="text-center text-gray-500 mb-3">
-        👤 {t.seller}: <b>{user.username}</b>
+        👤 {t("seller")}: <b>{user.username}</b>
       </p>
 
       {message.text && (
@@ -228,7 +190,7 @@ export default function EditProductPage() {
 
       <form onSubmit={handleSave} className="space-y-4">
         <div>
-          <label>{t.product_name}</label>
+          <label>{t("product_name")}</label>
           <input
             name="name"
             defaultValue={product.name}
@@ -237,7 +199,7 @@ export default function EditProductPage() {
         </div>
 
         <div>
-          <label>{t.price_pi}</label>
+          <label>{t("price")}</label>
           <input
             name="price"
             type="number"
@@ -247,16 +209,16 @@ export default function EditProductPage() {
         </div>
 
         <div>
-          <label>{t.category}</label>
+          <label>{t("category")}</label>
           <select
             name="categoryId"
             defaultValue={product.categoryId || ""}
             className="w-full border p-2 rounded"
           >
-            <option value="">{t.select_category}</option>
+            <option value="">{t("select_category")}</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name}
+                {t("category_" + c.id)}
               </option>
             ))}
           </select>
@@ -264,9 +226,9 @@ export default function EditProductPage() {
 
         {/* SALE */}
         <div className="p-3 bg-orange-50 border rounded">
-          <h3 className="font-bold text-orange-600 mb-2">🔥 {t.sale}</h3>
+          <h3 className="font-bold text-orange-600 mb-2">🔥 {t("sale")}</h3>
 
-          <label>{t.sale_price}</label>
+          <label>{t("sale_price")}</label>
           <input
             name="salePrice"
             type="number"
@@ -274,7 +236,7 @@ export default function EditProductPage() {
             className="w-full border p-2 rounded mb-2"
           />
 
-          <label>{t.start_date}</label>
+          <label>{t("start_date")}</label>
           <input
             name="saleStart"
             type="date"
@@ -282,7 +244,7 @@ export default function EditProductPage() {
             className="w-full border p-2 rounded mb-2"
           />
 
-          <label>{t.end_date}</label>
+          <label>{t("end_date")}</label>
           <input
             name="saleEnd"
             type="date"
@@ -292,7 +254,7 @@ export default function EditProductPage() {
         </div>
 
         <div>
-          <label>{t.description}</label>
+          <label>{t("description")}</label>
           <textarea
             name="description"
             defaultValue={product.description}
@@ -300,10 +262,12 @@ export default function EditProductPage() {
           />
         </div>
 
-        {/* Hình ảnh */}
+        {/* FILE UPLOAD */}
         <div>
-          <label>{t.product_images}</label>
+          <label>{t("product_images")}</label>
           <input type="file" multiple ref={fileInputRef} onChange={handleFileChange} />
+
+          <p className="text-gray-500 text-sm mt-1">{t("choose_file")}</p>
 
           <div className="mt-3 space-y-2">
             {previews.map((url, idx) => (
@@ -328,7 +292,7 @@ export default function EditProductPage() {
           disabled={saving}
           className="w-full bg-[#ff6600] text-white p-3 rounded-lg mt-3"
         >
-          {saving ? t.saving : "💾 " + t.save_changes}
+          {saving ? t("saving") : t("save_changes")}
         </button>
       </form>
     </main>
