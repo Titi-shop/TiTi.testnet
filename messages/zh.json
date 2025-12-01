@@ -1,6 +1,28 @@
 {
 
   
+  "cart_title": "购物车",
+  "empty_cart": "购物车为空。",
+  "back_to_shop": "返回商店",
+  "no_image": "无图片",
+  "delete": "删除",
+  "select_all": "全选",
+  "unselect_all": "取消全选",
+  "total": "合计",
+  "order_now": "立即下单",
+  "processing": "处理中...",
+  
+  "please_select_item": "请选择商品！",
+  "payment_success": "付款成功！",
+  "payment_cancelled": "交易已取消。",
+  "payment_error": "支付错误",
+  "payment_failed": "付款失败！",
+  "paying_order": "正在支付订单",
+  "must_login_first": "请先登录 Pi 再进行付款！",
+  "pi_not_ready": "请在 Pi 浏览器中打开并等待 SDK 加载！",
+  "verify_failed": "账号验证失败，请重新登录。",
+
+  
   "pay_now": "立即支付",
   "processing": "处理中...",
   "pi_not_ready": "⚠️ Pi SDK 尚未准备好，请在 Pi 浏览器中打开！",
