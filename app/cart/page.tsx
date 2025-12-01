@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useCart } from "../context/CartContext";
 import { useRouter } from "next/navigation";
-import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 
 declare global {
@@ -37,7 +36,6 @@ export default function CartPage() {
   const { cart, removeFromCart, updateQty, clearCart } = useCart();
   const { user, piReady } = useAuth();
   const router = useRouter();
-  const { translate } = useLanguage();
 
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
