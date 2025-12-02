@@ -80,7 +80,7 @@ export default function CustomerDashboard() {
           <MenuButton icon={<Clock size={28} />} label={t.pending_orders || "Chờ xác nhận"} path="/customer/pending" />
           <MenuButton icon={<Package size={28} />} label={t.pickup_orders || "Chờ lấy hàng"} path="/customer/pickup" />
           <MenuButton icon={<Truck size={28} />} label={t.shipping_orders || "Đang giao"} path="/customer/shipping" />
-          <MenuButton icon={<Star size={28} />} label={t.review_orders || "Đánh giá"} path="/customer/review" />
+          <MenuButton icon={<Star size={28} />} label={t.reviews || "Đánh giá"} path="/customer/review" />
           <MenuButton icon={<RotateCcw size={28} />} label={t.return_orders || "Trả hàng"} path="/customer/returns" />
         </div>
       </div>
