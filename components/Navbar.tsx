@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
+import { availableLanguages } from "@/app/lib/i18n";
 
 export default function Navbar() {
   const { t, lang, setLang } = useTranslation();
@@ -28,7 +29,7 @@ export default function Navbar() {
           </option>
         ))}
       </select>
-      
+
     </header>
   );
 }
