@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCart } from "../context/CartContext";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { useTranslation } from "@/app/lib/i18n"; // ⭐ Dùng i18n mới
+import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 declare global {
   interface Window {
