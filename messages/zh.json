@@ -1,4 +1,14 @@
 {
+
+  
+  "back": "返回",
+  "order_details": "订单详情",
+  "buyer": "买家",
+  "address": "地址",
+  "province": "省 / 城市",
+  "download": "下载",
+  "print": "打印",
+
   "checking_account": "正在检查账户...",
   "loading": "加载中",
   "no_permission": "您没有权限编辑该商品！",
