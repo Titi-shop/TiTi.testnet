@@ -25,7 +25,7 @@ export default function ReviewPage() {
   const router = useRouter();
   const { user, piReady } = useAuth();
 
-  const translate = (key: string) => key;
+  const { t } = useTranslation();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
