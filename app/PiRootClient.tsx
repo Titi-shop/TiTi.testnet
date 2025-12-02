@@ -16,7 +16,7 @@ export default function PiRootClient({ children }: { children: React.ReactNode }
       <Navbar />
 
       {/* ⭐ ĐẨY NỘI DUNG XUỐNG DƯỚI NAVBAR */}
-      <main className="pt-16 bg-white">
+      <main className="pt-[72px] bg-white">
         {children}
       </main>
 
