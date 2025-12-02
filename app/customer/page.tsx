@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { useTranslation } from "@/app/lib/i18n";
+import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
+
 import { Clock, Package, Truck, Star, RotateCcw } from "lucide-react";
 import CustomerMenu from "@/components/customerMenu";
 
