@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
-import { useTranslation, availableLanguages } from "@/app/lib/i18n";
+import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 export default function Navbar() {
   const { t, lang, setLang } = useTranslation();
