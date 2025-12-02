@@ -12,6 +12,7 @@ export default function SellerDashboard() {
   const router = useRouter();
   const { user, loading, piReady } = useAuth();
 
+  const { t } = useTranslation();
   const [role, setRole] = useState("");
   const [checking, setChecking] = useState(true);
 
