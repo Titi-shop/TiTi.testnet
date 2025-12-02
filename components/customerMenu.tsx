@@ -15,7 +15,7 @@ import {
   Store
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useTranslation } from "@/app/lib/i18n";
+import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 export default function CustomerMenu() {
   const router = useRouter();
