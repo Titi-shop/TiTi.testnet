@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import "@/app/lib/i18n";
+import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 import {
   Wallet as WalletIcon,
   ArrowUpCircle,
@@ -23,7 +23,7 @@ export default function SellerWalletPage() {
   const router = useRouter();
   const { user } = useAuth();
 
-  const translate = (key: string) => key; // Giữ nguyên chức năng dịch cơ bản
+  const { t } = useTranslation();
   const username = user?.username || "";
   const [role, setRole] = useState<string>("buyer");
   const [balance, setBalance] = useState<number>(0);
