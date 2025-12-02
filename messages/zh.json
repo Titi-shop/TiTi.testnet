@@ -1,19 +1,16 @@
 {
-
-  
   "back": "返回",
   "order_details": "订单详情",
   "buyer": "买家",
   "address": "地址",
   "province": "省 / 城市",
   "download": "下载",
-  "print": "打印",
+  "print": "打印订单",
 
   "checking_account": "正在检查账户...",
   "loading": "加载中",
   "no_permission": "您没有权限编辑该商品！",
   "product_not_found": "未找到商品！",
-  "back": "返回",
   "edit_product": "编辑商品",
   "seller": "卖家",
   "product_name": "商品名称",
@@ -36,7 +33,6 @@
   "full_name": "姓名",
   "phone_number": "电话号码",
   "enter_phone": "输入电话号码",
-  "address": "地址",
   "save_address": "保存地址",
   "fill_all_fields": "请填写所有信息！",
   "must_login_first": "请先登录！",
@@ -45,7 +41,7 @@
   "loading_address": "加载地址中...",
   "login_required": "您需要登录后才能继续",
   "login_with_pi": "使用 Pi 登录",
-  
+
   "cart_title": "购物车",
   "empty_cart": "购物车为空。",
   "back_to_shop": "返回商店",
@@ -56,7 +52,7 @@
   "total": "合计",
   "order_now": "立即下单",
   "processing": "处理中...",
-  
+
   "please_select_item": "请选择商品！",
   "payment_success": "付款成功！",
   "payment_cancelled": "交易已取消。",
@@ -167,14 +163,9 @@
   "send_request": "提交申请",
   "sending": "正在提交...",
 
-  "order_details": "订单详情",
-  "buyer": "买家",
   "email": "电子邮件",
-  "province": "省 / 城市",
   "status": "状态",
   "created_at": "创建时间",
-  "download": "下载",
-  "print": "打印订单",
 
   "profile_error_not_logged_in": "❌ 无法加载个人资料。您尚未登录。",
   "invalid_email": "⚠️ 邮箱格式无效！",
