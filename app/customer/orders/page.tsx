@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslation } from "@/app/lib/i18n";
+import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 interface OrderItem {
   id: string | number;
