@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
 import { useTranslation } from "@/app/lib/i18n";
 
+// 🔥 Kiểu dữ liệu Order rõ ràng hơn
 interface Order {
   id: number;
   buyerName: string;
@@ -18,21 +18,28 @@ interface Order {
   createdAt: string;
 }
 
-export default function OrderDetailPage({ params }: { params: { id: string } }) {
+interface OrderDetailProps {
+  params: { id: string };
+}
+
+export default function OrderDetailPage({ params }: OrderDetailProps) {
   const router = useRouter();
-  const { id } = params; // ✅ SỬA ĐÚNG CÁCH
-  const { user } = useAuth();
+  const { id } = params;
+
   const { t } = useTranslation();
 
   const [order, setOrder] = useState<Order | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     fetch(`/api/orders/${id}`)
       .then((res) => res.json())
-      .then((data) => {
-        if (data?.error) setOrder(null);
-        else setOrder(data);
+      .then((data: Order | { error?: string }) => {
+        if ("error" in data) {
+          setOrder(null);
+        } else {
+          setOrder(data);
+        }
         setLoading(false);
       })
       .catch(() => {
@@ -45,9 +52,11 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
 
   const downloadJSON = () => {
     if (!order) return;
+
     const blob = new Blob([JSON.stringify(order, null, 2)], {
       type: "application/json",
     });
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -57,7 +66,9 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
 
   if (loading)
     return (
-      <p className="text-center mt-10 text-gray-500">⏳ {t("loading_initial")}</p>
+      <p className="text-center mt-10 text-gray-500">
+        ⏳ {t("loading_initial")}
+      </p>
     );
 
   if (!order)
@@ -69,6 +80,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
 
   return (
     <main className="min-h-screen p-5 max-w-2xl mx-auto bg-white print:bg-white">
+      {/* Nút quay lại */}
       <button
         onClick={() => router.back()}
         className="text-orange-500 text-lg mb-4"
@@ -76,10 +88,12 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
         ← {t("back")}
       </button>
 
+      {/* Tiêu đề */}
       <h1 className="text-2xl font-bold text-gray-800 mb-3">
         🧾 {t("order_details")} #{id}
       </h1>
 
+      {/* Thông tin đơn hàng */}
       <div className="border p-4 rounded-lg shadow-sm space-y-2">
         <p><b>👤 {t("buyer")}:</b> {order.buyerName}</p>
         <p><b>📧 {t("email")}:</b> {order.email}</p>
@@ -95,6 +109,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
         <p><b>📅 {t("created_at")}:</b> {order.createdAt}</p>
       </div>
 
+      {/* Nút chức năng */}
       <div className="mt-6 flex gap-3">
         <button
           onClick={downloadJSON}
