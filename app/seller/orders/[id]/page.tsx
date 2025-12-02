@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useTranslation } from "@/app/lib/i18n";
 
 interface Order {
   id: number;
@@ -23,8 +24,11 @@ export default function OrderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const router = useRouter();
-  const { id } = use(params); // 👈 FIX lỗi ở đây
+  const { id } = use(params);
   const { user } = useAuth();
+
+  // 🔥 Thêm i18n
+  const { t } = useTranslation();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,57 +68,82 @@ export default function OrderDetailPage({
 
   if (loading)
     return (
-      <p className="text-center mt-10 text-gray-500">⏳ Đang tải...</p>
+      <p className="text-center mt-10 text-gray-500">
+        ⏳ {t("loading_initial")}
+      </p>
     );
 
   if (!order)
     return (
       <p className="text-center mt-10 text-red-500">
-        ❌ Không có dữ liệu.
+        ❌ {t("product_not_found")}
       </p>
     );
 
   return (
     <main className="min-h-screen p-5 max-w-2xl mx-auto bg-white print:bg-white">
+      
+      {/* Nút quay lại */}
       <button
         onClick={() => router.back()}
         className="text-orange-500 text-lg mb-4"
       >
-        ← Quay lại
+        ← {t("back")}
       </button>
 
+      {/* Tiêu đề */}
       <h1 className="text-2xl font-bold text-gray-800 mb-3">
-        🧾 Chi tiết đơn hàng #{id}
+        🧾 {t("order_details")} #{id}
       </h1>
 
       <div className="border p-4 rounded-lg shadow-sm space-y-2">
-        <p><b>👤 Người mua:</b> {order.buyerName}</p>
-        <p><b>📧 Email:</b> {order.email}</p>
-        <p><b>📞 Số điện thoại:</b> {order.phone}</p>
-        <p><b>🏠 Địa chỉ:</b> {order.address}</p>
-        <p><b>🌍 Quốc gia:</b> {order.country}</p>
-        <p><b>🏙 Tỉnh / Thành phố:</b> {order.province}</p>
+
+        <p>
+          <b>👤 {t("buyer")}:</b> {order.buyerName}
+        </p>
+        <p>
+          <b>📧 {t("email")}:</b> {order.email}
+        </p>
+        <p>
+          <b>📞 {t("phone_number")}:</b> {order.phone}
+        </p>
+        <p>
+          <b>🏠 {t("address")}:</b> {order.address}
+        </p>
+        <p>
+          <b>🌍 {t("country")}:</b> {order.country}
+        </p>
+        <p>
+          <b>🏙 {t("province")}:</b> {order.province}
+        </p>
 
         <hr className="my-3" />
 
-        <p><b>💰 Tổng tiền:</b> {order.total} Pi</p>
-        <p><b>📦 Trạng thái:</b> {order.status}</p>
-        <p><b>📅 Ngày tạo:</b> {order.createdAt}</p>
+        <p>
+          <b>💰 {t("total_pi")}:</b> {order.total} Pi
+        </p>
+        <p>
+          <b>📦 {t("status")}:</b> {order.status}
+        </p>
+        <p>
+          <b>📅 {t("created_at")}:</b> {order.createdAt}
+        </p>
       </div>
 
+      {/* Các nút cuối */}
       <div className="mt-6 flex gap-3">
         <button
           onClick={downloadJSON}
           className="px-4 py-2 bg-blue-600 text-white rounded"
         >
-          ⬇ Lưu về máy
+          ⬇ {t("download")}
         </button>
 
         <button
           onClick={printOrder}
           className="px-4 py-2 bg-green-600 text-white rounded"
         >
-          🖨 In đơn
+          🖨 {t("print")}
         </button>
       </div>
     </main>
