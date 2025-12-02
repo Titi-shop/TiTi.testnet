@@ -29,7 +29,7 @@ const [order, setOrder] = useState<Order | null>(null);
 const [loading, setLoading] = useState(true);
 
 useEffect(() => {
-fetch(/api/orders/${id})
+fetch(`/api/orders/${id}`)
 .then((res) => res.json())
 .then((data) => {
 if (data?.error) {
