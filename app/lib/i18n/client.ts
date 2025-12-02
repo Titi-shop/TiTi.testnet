@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { languageFiles } from "./i18n";
+import { languageFiles } from "../i18n";
 
 export function useTranslationClient() {
   const [lang, setLang] = useState("vi");
