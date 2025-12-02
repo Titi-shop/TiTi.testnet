@@ -42,7 +42,7 @@ export default function PiLoginPage() {
   if (loading) {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen text-gray-500">
-        ⏳ {t.checking_session}
+         {t.checking_session}
       </main>
     );
   }
@@ -65,7 +65,7 @@ export default function PiLoginPage() {
               : "bg-gray-300 cursor-not-allowed"
           } text-white font-semibold py-3 px-10 rounded-full text-lg shadow-md transition-all duration-200`}
         >
-          {t.login_with_pi}
+          {t.login}
         </button>
 
         <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
