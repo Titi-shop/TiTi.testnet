@@ -67,11 +67,4 @@ body {
   .card {
     @apply bg-white border rounded-lg p-4 shadow hover:shadow-md transition;
   }
-   :root {
-  --navbar-height: 72px;
-}
-
-main {
-  padding-top: var(--navbar-height);
-}
 }
