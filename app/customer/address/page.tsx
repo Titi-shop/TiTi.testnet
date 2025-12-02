@@ -4,7 +4,7 @@ import { useEffect, useState, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { countries } from "@/data/countries";
 import { useAuth } from "@/context/AuthContext";
-import { useTranslation } from "@/app/lib/i18n"; // ⭐ Thêm i18n
+import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 interface AddressForm {
   name: string;
