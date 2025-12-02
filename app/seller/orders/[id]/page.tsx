@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
 import { useTranslation } from "@/app/lib/i18n";
 
 interface Order {
@@ -21,13 +20,12 @@ interface Order {
 export default function OrderDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: { id: string }; // ✅ FIX loại bỏ Promise
 }) {
   const router = useRouter();
-  const { id } = params; // ✅ FIX crash
-  const { user } = useAuth();
+  const { id } = params; // ✅ FIX lỗi trắng trang
 
-  const { t } = useTranslation(); // ← 🔥 thêm i18n
+  const { t } = useTranslation();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,9 +47,7 @@ export default function OrderDetailPage({
       });
   }, [id]);
 
-  const printOrder = () => {
-    window.print();
-  };
+  const printOrder = () => window.print();
 
   const downloadJSON = () => {
     if (!order) return;
@@ -80,8 +76,7 @@ export default function OrderDetailPage({
     );
 
   return (
-    <main className="min-h-screen p-5 max-w-2xl mx-auto bg-white print:bg-white">
-      {/* Nút quay lại */}
+    <main className="min-h-screen p-5 max-w-2xl mx-auto bg-white">
       <button
         onClick={() => router.back()}
         className="text-orange-500 text-lg mb-4"
@@ -89,12 +84,10 @@ export default function OrderDetailPage({
         ← {t("back")}
       </button>
 
-      {/* Tiêu đề */}
       <h1 className="text-2xl font-bold text-gray-800 mb-3">
         🧾 {t("order_details")} #{id}
       </h1>
 
-      {/* Thông tin đơn hàng */}
       <div className="border p-4 rounded-lg shadow-sm space-y-2">
         <p><b>👤 {t("buyer")}:</b> {order.buyerName}</p>
         <p><b>📧 {t("email")}:</b> {order.email}</p>
@@ -110,7 +103,6 @@ export default function OrderDetailPage({
         <p><b>📅 {t("created_at")}:</b> {order.createdAt}</p>
       </div>
 
-      {/* Nút chức năng */}
       <div className="mt-6 flex gap-3">
         <button
           onClick={downloadJSON}
