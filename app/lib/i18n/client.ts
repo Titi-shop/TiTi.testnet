@@ -4,12 +4,12 @@ import { useState, useEffect } from "react";
 import { languageFiles } from "../i18n";
 
 export function useTranslationClient() {
-  const [lang, setLang] = useState("vi");
+ const [lang, setLang] = useState("en");
   const [t, setT] = useState<Record<string, string>>({});
 
   // Lấy ngôn ngữ đã lưu
   useEffect(() => {
-    const saved = localStorage.getItem("lang") || "vi";
+    const saved = localStorage.getItem("lang") || "en";
     setLang(saved);
   }, []);
 
