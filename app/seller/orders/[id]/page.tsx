@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import { useTranslation } from "@/app/lib/i18n";
 
-// 🔥 Kiểu dữ liệu Order rõ ràng hơn
 interface Order {
   id: number;
   buyerName: string;
@@ -18,24 +18,25 @@ interface Order {
   createdAt: string;
 }
 
-interface OrderDetailProps {
+export default function OrderDetailPage({
+  params,
+}: {
   params: { id: string };
-}
-
-export default function OrderDetailPage({ params }: OrderDetailProps) {
+}) {
   const router = useRouter();
-  const { id } = params;
+  const { id } = params; // ✅ FIX crash
+  const { user } = useAuth();
 
-  const { t } = useTranslation();
+  const { t } = useTranslation(); // ← 🔥 thêm i18n
 
   const [order, setOrder] = useState<Order | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`/api/orders/${id}`)
       .then((res) => res.json())
-      .then((data: Order | { error?: string }) => {
-        if ("error" in data) {
+      .then((data) => {
+        if (data?.error) {
           setOrder(null);
         } else {
           setOrder(data);
@@ -48,15 +49,15 @@ export default function OrderDetailPage({ params }: OrderDetailProps) {
       });
   }, [id]);
 
-  const printOrder = () => window.print();
+  const printOrder = () => {
+    window.print();
+  };
 
   const downloadJSON = () => {
     if (!order) return;
-
     const blob = new Blob([JSON.stringify(order, null, 2)], {
       type: "application/json",
     });
-
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
