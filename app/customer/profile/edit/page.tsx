@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { countries } from "@/data/countries";
 import { provincesByCountry } from "@/data/provinces";
-import { useTranslation } from "@/app/lib/i18n";
+import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 interface ProfileInfo {
   pi_uid: string;
