@@ -3,10 +3,17 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
+type OrderType = {
+  id: string | number;
+  buyer?: string;
+  total: string | number;
+  status: string;
+};
+
 export default function CancelledOrders() {
   const router = useRouter();
   const { user, piReady } = useAuth();
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<OrderType[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,7 +25,7 @@ export default function CancelledOrders() {
     try {
       const res = await fetch("/api/orders", { cache: "no-store" });
       const data = await res.json();
-      const filtered = (data || []).filter((o: any) => o.status === "Đã hủy");
+      const filtered = (data || []).filter((o: OrderType) => o.status === "Đã hủy");
       setOrders(filtered);
     } catch (err) {
       console.error(err);
@@ -28,15 +35,16 @@ export default function CancelledOrders() {
     }
   };
 
-  // 🔹 Tính tổng đơn và tổng Pi
-  const totalPi = orders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
+  const totalPi = orders.reduce(
+    (sum, o) => sum + (parseFloat(o.total as any) || 0),
+    0
+  );
 
   if (loading)
     return <p className="text-center mt-10 text-gray-500">⏳ Đang tải...</p>;
 
   return (
     <main className="min-h-screen max-w-4xl mx-auto p-4 pb-24 bg-gray-50">
-      {/* ===== Thanh tiêu đề ===== */}
       <div className="flex items-center mb-4">
         <button
           onClick={() => router.back()}
@@ -47,7 +55,6 @@ export default function CancelledOrders() {
         <h1 className="text-xl font-semibold text-gray-800">❌ Đơn hàng đã hủy</h1>
       </div>
 
-      {/* ===== Thống kê nhanh ===== */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="card text-center">
           <p className="text-gray-500 text-sm">Tổng đơn</p>
@@ -59,7 +66,6 @@ export default function CancelledOrders() {
         </div>
       </div>
 
-      {/* ===== Danh sách đơn ===== */}
       {orders.length === 0 ? (
         <p className="text-center text-gray-500">Không có đơn đã hủy.</p>
       ) : (
@@ -71,14 +77,13 @@ export default function CancelledOrders() {
             >
               <p>🧾 <b>Mã đơn:</b> #{o.id}</p>
               <p>👤 <b>Người mua:</b> {o.buyer || "guest_user"}</p>
-              <p>💰 <b>Tổng:</b> {parseFloat(o.total).toFixed(2)} Pi</p>
+              <p>💰 <b>Tổng:</b> {parseFloat(o.total as any).toFixed(2)} Pi</p>
               <p>📅 <b>Trạng thái:</b> Đã hủy</p>
             </div>
           ))}
         </div>
       )}
 
-      {/* ===== Khoảng trống để tránh bị che bởi footer ===== */}
       <div className="h-20"></div>
     </main>
   );
