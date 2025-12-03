@@ -1,83 +1,92 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 
 /**
- * ✅ API xác minh Access Token của Pi Network (Tự nhận biết Testnet/Mainnet)
- * - Tránh lỗi verify sai trong môi trường testnet
- * - Trả về user hợp lệ hoặc user giả lập khi testnet
+ * API verify Pi token & quản lý session cookie
+ * GET: kiểm tra session cookie → trả user
+ * POST: verify accessToken Pi → tạo session cookie
+ * DELETE: logout → xóa session cookie
  */
+
+// session lưu trên server memory tạm (dùng DB cho production)
+const sessions = new Map<string, any>();
+
+export async function GET(req: Request) {
+  const cookie = req.headers.get("cookie") || "";
+  const match = cookie.match(/pi_session=([^;]+)/);
+  const sessionId = match?.[1];
+
+  if (sessionId && sessions.has(sessionId)) {
+    return NextResponse.json({ success: true, user: sessions.get(sessionId) });
+  }
+  return NextResponse.json({ success: false, user: null });
+}
+
 export async function POST(req: Request) {
   try {
     const { accessToken } = await req.json();
+    if (!accessToken) return NextResponse.json({ success: false, message: "Thiếu accessToken" }, { status: 400 });
 
-    if (!accessToken) {
-      return NextResponse.json(
-        { success: false, message: "Thiếu accessToken" },
-        { status: 400 }
-      );
-    }
-
-    // ✅ Kiểm tra môi trường (testnet/mainnet)
     const isTestnet =
       process.env.NEXT_PUBLIC_PI_ENV === "testnet" ||
       process.env.PI_API_URL?.includes("/sandbox");
 
-    // ✅ Nếu là TESTNET → bỏ qua xác minh thật, trả về user giả lập
+    let user: any;
+
     if (isTestnet) {
-      console.log("🧪 [Pi VERIFY] Bỏ qua xác minh thật (Testnet Mode)");
-      return NextResponse.json({
-        success: true,
-        user: {
-          username: "test_user",
-          uid: "sandbox-uid",
-          wallet_address: "TST123456789",
-          roles: ["tester"],
-          created_at: new Date().toISOString(),
-        },
-        env: "testnet",
+      user = {
+        username: "test_user",
+        uid: "sandbox-uid",
+        wallet_address: "TST123456789",
+        roles: ["tester"],
+        created_at: new Date().toISOString(),
+      };
+    } else {
+      // Mainnet: verify thật với Pi API
+      const res = await fetch("https://api.minepi.com/v2/me", {
+        method: "GET",
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("❌ Pi verify error:", text);
+        return NextResponse.json({ success: false, message: "Token không hợp lệ" }, { status: 401 });
+      }
+
+      const data = await res.json();
+      user = {
+        username: data.username,
+        uid: data.uid,
+        wallet_address: data.wallet_address,
+        roles: data.roles || [],
+        created_at: data.created_at || new Date().toISOString(),
+      };
     }
 
-    // ✅ Nếu là MAINNET → xác minh thật qua Pi API
-    const API_URL = "https://api.minepi.com/v2/me";
-    console.log("🌐 [Pi VERIFY] Mainnet mode:", API_URL);
+    // Tạo session ID bảo mật
+    const sessionId = crypto.randomBytes(32).toString("hex");
+    sessions.set(sessionId, user);
 
-    const response = await fetch(API_URL, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("❌ [Pi VERIFY ERROR]", errorText);
-      return NextResponse.json(
-        { success: false, message: "Token không hợp lệ hoặc hết hạn" },
-        { status: 401 }
-      );
-    }
-
-    const userData = await response.json();
-    const verifiedUser = {
-      username: userData?.username,
-      uid: userData?.uid,
-      roles: userData?.roles || [],
-      wallet_address: userData?.wallet_address || null,
-      created_at: userData?.created_at || new Date().toISOString(),
-    };
-
-    console.log("✅ [Pi VERIFY SUCCESS]:", verifiedUser);
-
-    return NextResponse.json({
-      success: true,
-      user: verifiedUser,
-      env: "mainnet",
-    });
-  } catch (error: any) {
-    console.error("💥 [API VERIFY EXCEPTION]:", error);
-    return NextResponse.json(
-      { success: false, message: error.message || "Lỗi xác minh Pi Network" },
-      { status: 500 }
+    const res = NextResponse.json({ success: true, user });
+    res.headers.set(
+      "Set-Cookie",
+      `pi_session=${sessionId}; HttpOnly; Path=/; Max-Age=3600; Secure; SameSite=Strict`
     );
+    return res;
+  } catch (err: any) {
+    console.error(err);
+    return NextResponse.json({ success: false, message: err.message || "Lỗi xác minh Pi Network" }, { status: 500 });
   }
+}
+
+export async function DELETE(req: Request) {
+  const cookie = req.headers.get("cookie") || "";
+  const match = cookie.match(/pi_session=([^;]+)/);
+  const sessionId = match?.[1];
+  if (sessionId) sessions.delete(sessionId);
+
+  const res = NextResponse.json({ success: true });
+  res.headers.set("Set-Cookie", `pi_session=deleted; HttpOnly; Path=/; Max-Age=0; Secure; SameSite=Strict`);
+  return res;
 }
