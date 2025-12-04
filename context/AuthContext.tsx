@@ -95,14 +95,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Login Pi
   const pilogin = async () => {
-    if (typeof window === "undefined" || !window.Pi) {
-      alert("⚠️ Vui lòng mở trong Pi Browser!");
-      return;
-    }
+  if (typeof window === "undefined" || !window.Pi) {
+    alert("⚠️ Vui lòng mở trong Pi Browser!");
+    return;
+  }
 
-    try {
-      const scopes = ["username"];
-      const authResult: PiAuthResult = await window.Pi.authenticate(scopes);
+  if (!piReady) {
+    alert("⚠️ Pi SDK chưa sẵn sàng, vui lòng thử lại.");
+    return;
+  }
+
+  try {
+    const scopes = ["username"];
+    const authResult: PiAuthResult = await window.Pi.authenticate(scopes);
 
       if (!authResult?.accessToken) throw new Error("Không nhận được accessToken");
 
