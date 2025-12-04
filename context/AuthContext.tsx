@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (typeof window !== "undefined" && window.Pi) {
       if (!window.__pi_inited) {
-       window.Pi.init({ version: "2.0", sandbox: false });
+        window.Pi.init({ version: "2.0", sandbox: true });
         window.__pi_inited = true;
       }
     }
@@ -95,19 +95,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Login Pi
   const pilogin = async () => {
-  if (typeof window === "undefined" || !window.Pi) {
-    alert("⚠️ Vui lòng mở trong Pi Browser!");
-    return;
-  }
+    if (typeof window === "undefined" || !window.Pi) {
+      alert("⚠️ Vui lòng mở trong Pi Browser!");
+      return;
+    }
 
-  if (!piReady) {
-    alert("⚠️ Pi SDK chưa sẵn sàng, vui lòng thử lại.");
-    return;
-  }
-
-  try {
-    const scopes = ["username"];
-    const authResult: PiAuthResult = await window.Pi.authenticate(scopes);
+    try {
+      const scopes = ["username"];
+      const authResult: PiAuthResult = await window.Pi.authenticate(scopes);
 
       if (!authResult?.accessToken) throw new Error("Không nhận được accessToken");
 
