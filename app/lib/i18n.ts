@@ -1,9 +1,10 @@
 // ❗ KHÔNG có "use client" trong file này
 
 export const availableLanguages = {
-  vi: "🇻🇳 Tiếng Việt",
+
   en: "🇬🇧 English",
   zh: "🇨🇳 中文",
+  vi: "🇻🇳 Tiếng Việt",
   ko: "🇰🇷 한국어",
   th: "🇹🇭 ภาษาไทย",
   fr: "🇫🇷 Français",
