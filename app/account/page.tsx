@@ -1,23 +1,23 @@
 "use client";
-
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 export default function AccountRedirect() {
   const router = useRouter();
   const { t } = useTranslation();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
-    const piUser = localStorage.getItem("pi_user");
-    const isLoggedIn = localStorage.getItem("titi_is_logged_in");
-
-    if (piUser && isLoggedIn === "true") {
-      router.replace("/customer");
-    } else {
-      router.replace("/pilogin");
+    if (!loading) {
+      if (user) {
+        router.replace("/customer");
+      } else {
+        router.replace("/pilogin");
+      }
     }
-  }, [router]);
+  }, [user, loading, router]);
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-600">
