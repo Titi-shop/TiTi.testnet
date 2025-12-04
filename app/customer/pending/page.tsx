@@ -1,66 +1,69 @@
 "use client";
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
 
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
+
+interface Order {
+  id: string;
+  buyer: string;
+  total: number;
+  status: string;
+  createdAt: string;
+}
 
 export default function PendingOrdersPage() {
   const router = useRouter();
-  const { t, lang } = useTranslation();
+  const { user, loading } = useAuth();
 
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [error, setError] = useState("");
-  const [currentUser, setCurrentUser] = useState("");
-  const [processing, setProcessing] = useState<number | null>(null);
 
+  // Khi AuthContext loading xong → fetch orders
   useEffect(() => {
-    const info = localStorage.getItem("pi_user");
-    try {
-      const parsed = info ? JSON.parse(info) : null;
-      setCurrentUser(parsed?.user?.username || parsed?.username || "guest_user");
-    } catch {}
-  }, []);
+    if (loading) return;
+    if (!user) return; // chưa login → không fetch
 
-  useEffect(() => {
-    if (!currentUser) {
-      setLoading(false);
-      return;
-    }
     const fetchOrders = async () => {
       try {
-        const res = await fetch("/api/orders", { method: "GET", cache: "no-store" });
-        const data = await res.json();
+        const res = await fetch("/api/orders", {
+          method: "GET",
+          credentials: "include", // dùng session pi_session
+          cache: "no-store"
+        });
 
-        const filterByLang = {
-          vi: ["Chờ xác nhận", "Đã thanh toán", "Chờ xác minh"],
-          en: ["Pending", "Paid", "Waiting for verification"],
-          zh: ["待确认", "已付款", "待核实"],
-        }[lang];
+        if (!res.ok) {
+          throw new Error("Không thể tải đơn hàng");
+        }
 
+        const data: Order[] = await res.json();
+
+        // Lọc đơn thuộc người dùng
         setOrders(
-          data.filter(
-            (o) =>
-              o.buyer?.toLowerCase() === currentUser.toLowerCase() &&
-              filterByLang.includes(o.status)
-          )
+          data.filter(o => o.buyer.toLowerCase() === user.username.toLowerCase())
         );
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+      } catch (err) {
+        if (err instanceof Error) setError(err.message);
       }
     };
-    fetchOrders();
-  }, [currentUser, lang]);
 
-  if (loading) return <p className="text-center mt-10">{t.loading_orders}</p>;
-  if (error) return <p className="text-center text-red-500">❌ {error}</p>;
+    fetchOrders();
+  }, [loading, user]);
+
+  if (loading) return <p className="text-center mt-10">🔄 Đang tải...</p>;
+
+  if (!user)
+    return (
+      <p className="text-center text-red-500 mt-10">
+        ⚠️ Bạn chưa đăng nhập Pi Network
+      </p>
+    );
+
+  if (error)
+    return <p className="text-center text-red-500 mt-10">❌ {error}</p>;
 
   const totalOrders = orders.length;
-  const totalPi = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+  const totalPi = orders.reduce((sum, o) => sum + o.total, 0);
 
   return (
     <main className="p-4 max-w-4xl mx-auto bg-gray-50 min-h-screen pb-24">
@@ -69,34 +72,36 @@ export default function PendingOrdersPage() {
           ←
         </button>
         <h1 className="text-2xl font-bold text-yellow-600">
-          ⏳ {t.pending_orders}
+          ⏳ Đơn hàng đang chờ
         </h1>
       </div>
 
+      {/* Summary */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-white border rounded-lg p-4 text-center shadow">
-          <p className="text-gray-500 text-sm">{t.total_orders}</p>
+          <p className="text-gray-500 text-sm">Tổng đơn hàng</p>
           <p className="text-2xl font-bold">{totalOrders}</p>
         </div>
         <div className="bg-white border rounded-lg p-4 text-center shadow">
-          <p className="text-gray-500 text-sm">{t.total_pi}</p>
+          <p className="text-gray-500 text-sm">Tổng Pi</p>
           <p className="text-2xl font-bold">{totalPi.toFixed(2)} Pi</p>
         </div>
       </div>
 
+      {/* List */}
       {!orders.length ? (
         <p className="text-center text-gray-500">
-          {t.no_pending_orders}
-          <br />👤 {t.current_user}: <b>{currentUser}</b>
+          Không có đơn hàng nào
+          <br />👤 Người dùng: <b>{user.username}</b>
         </p>
       ) : (
         <div className="space-y-4">
           {orders.map((order) => (
             <div key={order.id} className="bg-white p-4 rounded shadow border">
               <h2 className="font-semibold text-lg">🧾 #{order.id}</h2>
-              <p>💰 {t.total}: <b>{order.total}</b> Pi</p>
-              <p>📅 {t.created_at}: {new Date(order.createdAt).toLocaleString()}</p>
-              <p className="mt-2 text-yellow-600">{t.status}: {order.status}</p>
+              <p>💰 Tổng: <b>{order.total}</b> Pi</p>
+              <p>📅 Ngày tạo: {new Date(order.createdAt).toLocaleString()}</p>
+              <p className="mt-2 text-yellow-600">Trạng thái: {order.status}</p>
             </div>
           ))}
         </div>
