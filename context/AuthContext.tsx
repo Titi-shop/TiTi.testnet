@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (typeof window !== "undefined" && window.Pi) {
       if (!window.__pi_inited) {
-        window.Pi.init({ version: "2.0", sandbox: true });
+       window.Pi.init({ version: "2.0", sandbox: false });
         window.__pi_inited = true;
       }
     }
