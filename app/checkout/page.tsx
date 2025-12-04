@@ -9,7 +9,7 @@ import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 declare global {
   interface Window {
-    Pi?: unknown;
+    Pi?: any;
   }
 }
 
@@ -37,19 +37,20 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [shipping, setShipping] = useState<ShippingInfo | null>(null);
 
-  // ✅ Lấy địa chỉ giao hàng
+  // Lấy địa chỉ giao hàng
   useEffect(() => {
     const saved = localStorage.getItem("shipping_info");
     if (saved) setShipping(JSON.parse(saved));
   }, []);
 
-  // ✅ Thanh toán qua Pi Network
+  // Thanh toán
   const handlePayWithPi = async () => {
     if (!piReady || !window.Pi) {
       alert(t.pi_not_ready);
       return;
     }
 
+    // ❗ Kiểm tra login từ AuthContext
     if (!user?.username) {
       alert(t.must_login_before_pay);
       router.push("/pilogin");
@@ -68,29 +69,25 @@ export default function CheckoutPage() {
     }
 
     setLoading(true);
+
     try {
       const orderId = `ORD-${Date.now()}`;
-      const accessToken =
-        user?.accessToken ||
-        JSON.parse(localStorage.getItem("pi_user") || "{}").accessToken;
 
-      // Xác minh token Pi
+      // ❗ Xác minh login bằng phiên (session cookie)
       const verifyRes = await fetch("/api/pi/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessToken }),
+        method: "GET",
+        credentials: "include",
       });
 
       const verifyData = await verifyRes.json();
 
-      if (!verifyData?.success) {
-        alert(t.verify_failed);
-        localStorage.removeItem("pi_user");
+      if (!verifyData?.success || !verifyData?.user) {
+        alert(t.must_login_before_pay);
         router.push("/pilogin");
         return;
       }
 
-      // Tạo thông tin thanh toán
+      // Dữ liệu thanh toán gửi cho Pi SDK
       const paymentData = {
         amount: Number(total.toFixed(2)),
         memo: `${t.payment_for_order} #${orderId}`,
@@ -138,21 +135,17 @@ export default function CheckoutPage() {
           router.push("/customer/pending");
         },
 
-        onCancel: async () => {
+        onCancel: () => {
           alert(t.payment_canceled);
         },
 
         onError: (error: unknown) => {
           console.error("💥 onError:", error);
-          if (error instanceof Error) {
-            alert(t.payment_error + error.message);
-          } else {
-            alert(t.payment_error + "Unknown error");
-          }
+          alert(t.payment_error + (error instanceof Error ? error.message : ""));
         },
       };
 
-      await (window.Pi as any).createPayment(paymentData, callbacks);
+      await window.Pi.createPayment(paymentData, callbacks);
     } catch (err) {
       alert(t.transaction_failed);
     } finally {
@@ -160,7 +153,7 @@ export default function CheckoutPage() {
     }
   };
 
-  // Xử lý ảnh fallback
+  // Ảnh fallback
   const resolveImageUrl = (img?: string) => {
     if (!img) return "/placeholder.png";
     if (img.startsWith("http")) return img;
@@ -213,15 +206,10 @@ export default function CheckoutPage() {
           ) : (
             <div className="space-y-3">
               {cart.map((item: CartItem, i: number) => {
-                const imageUrl = resolveImageUrl(
-                  item.image || item.images?.[0]
-                );
+                const imageUrl = resolveImageUrl(item.image || item.images?.[0]);
 
                 return (
-                  <div
-                    key={i}
-                    className="flex items-center border-b border-gray-100 pb-2"
-                  >
+                  <div key={i} className="flex items-center border-b border-gray-100 pb-2">
                     <img
                       src={imageUrl}
                       alt={item.name}
@@ -230,16 +218,12 @@ export default function CheckoutPage() {
                         (e.target as HTMLImageElement).src = "/placeholder.png";
                       }}
                     />
-
                     <div className="ml-3 flex-1">
-                      <p className="text-gray-800 font-medium text-sm">
-                        {item.name}
-                      </p>
+                      <p className="text-gray-800 font-medium text-sm">{item.name}</p>
                       <p className="text-gray-500 text-xs">
                         x{item.quantity} × {item.price} π
                       </p>
                     </div>
-
                     <p className="text-orange-600 font-semibold text-sm">
                       {(item.price * item.quantity).toFixed(2)} π
                     </p>
@@ -277,14 +261,7 @@ export default function CheckoutPage() {
                 fill="none"
                 viewBox="0 0 24 24"
               >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path
                   className="opacity-75"
                   fill="currentColor"
