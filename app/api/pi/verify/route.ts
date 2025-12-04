@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
-/**
- * API verify Pi token & quản lý session cookie
- * GET: kiểm tra session cookie → trả user
- * POST: verify accessToken Pi → tạo session cookie
- * DELETE: logout → xóa session cookie
- */
+export interface PiUser {
+  username: string;
+  uid?: string;
+  wallet_address?: string | null;
+  roles: string[];
+  created_at: string;
+}
 
-// session lưu trên server memory tạm (dùng DB cho production)
-const sessions = new Map<string, any>();
+// tạm lưu session trên memory (production nên dùng DB)
+const sessions = new Map<string, PiUser>();
 
 export async function GET(req: Request) {
   const cookie = req.headers.get("cookie") || "";
@@ -24,14 +25,17 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const { accessToken } = await req.json();
-    if (!accessToken) return NextResponse.json({ success: false, message: "Thiếu accessToken" }, { status: 400 });
+    const body: { accessToken?: string } = await req.json();
+    const accessToken = body.accessToken;
+    if (!accessToken) {
+      return NextResponse.json({ success: false, message: "Thiếu accessToken" }, { status: 400 });
+    }
 
     const isTestnet =
       process.env.NEXT_PUBLIC_PI_ENV === "testnet" ||
       process.env.PI_API_URL?.includes("/sandbox");
 
-    let user: any;
+    let user: PiUser;
 
     if (isTestnet) {
       user = {
@@ -42,7 +46,6 @@ export async function POST(req: Request) {
         created_at: new Date().toISOString(),
       };
     } else {
-      // Mainnet: verify thật với Pi API
       const res = await fetch("https://api.minepi.com/v2/me", {
         method: "GET",
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -54,29 +57,31 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "Token không hợp lệ" }, { status: 401 });
       }
 
-      const data = await res.json();
+      const data: any = await res.json(); // Pi API trả dynamic object, TS không kiểm soát được
       user = {
         username: data.username,
         uid: data.uid,
-        wallet_address: data.wallet_address,
+        wallet_address: data.wallet_address || null,
         roles: data.roles || [],
         created_at: data.created_at || new Date().toISOString(),
       };
     }
 
-    // Tạo session ID bảo mật
     const sessionId = crypto.randomBytes(32).toString("hex");
     sessions.set(sessionId, user);
 
-    const res = NextResponse.json({ success: true, user });
-    res.headers.set(
+    const response = NextResponse.json({ success: true, user });
+    response.headers.set(
       "Set-Cookie",
       `pi_session=${sessionId}; HttpOnly; Path=/; Max-Age=3600; Secure; SameSite=Strict`
     );
-    return res;
-  } catch (err: any) {
-    console.error(err);
-    return NextResponse.json({ success: false, message: err.message || "Lỗi xác minh Pi Network" }, { status: 500 });
+    return response;
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      console.error("❌ verify POST error:", err.message);
+      return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+    }
+    return NextResponse.json({ success: false, message: "Lỗi xác minh Pi Network" }, { status: 500 });
   }
 }
 
