@@ -91,17 +91,3 @@ export default function CustomerDashboard({ embedded = false }) {
     </div>
   );
 }
-
-/* MenuButton Component */
-function MenuButton({ icon, label, path }: MenuButtonProps) {
-  const router = useRouter();
-  return (
-    <button
-      onClick={() => router.push(path)}
-      className="flex flex-col items-center text-gray-700 hover:text-orange-500"
-    >
-      {icon}
-      <span className="text-sm mt-1">{label}</span>
-    </button>
-  );
-}
