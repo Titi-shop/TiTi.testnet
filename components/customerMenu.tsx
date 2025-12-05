@@ -12,7 +12,7 @@ import {
   LogOut,
   PackagePlus,
   ClipboardList,
-  Store
+  Store,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
@@ -41,51 +41,47 @@ export default function CustomerMenu() {
   return (
     <div className="bg-white mx-3 mt-6 p-5 rounded-2xl shadow-lg border border-gray-100 mb-6">
 
-      {/* 🟠 Menu khách hàng */}
+      {/* Customer Menu */}
       <div className="grid grid-cols-4 gap-4 text-center">
-        {customerMenuItems.map((item, index) => (
+        {customerMenuItems.map((item, i) => (
           <button
-            key={index}
+            key={i}
             onClick={() => router.push(item.path)}
-            className="flex flex-col items-center text-gray-700 hover:text-orange-500 transition"
+            className="flex flex-col items-center text-gray-700 hover:text-orange-500"
           >
-            <div className="p-3 bg-gray-100 rounded-full shadow-sm mb-1">
-              {item.icon}
-            </div>
+            <div className="p-3 bg-gray-100 rounded-full shadow-sm mb-1">{item.icon}</div>
             <span className="text-xs font-medium">{item.label}</span>
           </button>
         ))}
       </div>
 
-      {/* 🛒 Menu Người Bán */}
+      {/* Seller */}
       <div className="border-t border-gray-200 my-4"></div>
       <p className="text-gray-500 text-sm mb-3 font-semibold">{t.seller_channel}</p>
 
       <div className="grid grid-cols-4 gap-4 text-center">
-        {sellerMenuItems.map((item, index) => (
+        {sellerMenuItems.map((item, i) => (
           <button
-            key={index}
+            key={i}
             onClick={() => router.push(item.path)}
-            className="flex flex-col items-center text-gray-700 hover:text-green-600 transition"
+            className="flex flex-col items-center text-gray-700 hover:text-green-600"
           >
-            <div className="p-3 bg-green-100 rounded-full shadow-sm mb-1">
-              {item.icon}
-            </div>
+            <div className="p-3 bg-green-100 rounded-full shadow-sm mb-1">{item.icon}</div>
             <span className="text-xs font-medium">{item.label}</span>
           </button>
         ))}
       </div>
 
-      {/* 🔻 Logout */}
+      {/* Logout */}
       {user && <div className="border-t border-gray-200 my-4"></div>}
 
       {user && (
         <button
           onClick={logout}
-          className="flex items-center gap-2 py-2 text-white bg-red-500 hover:bg-red-600 
-          rounded-lg justify-center w-full font-medium shadow-md transition"
+          className="w-full py-2 bg-red-500 text-white rounded-lg flex items-center 
+            justify-center gap-2 font-medium shadow-md hover:bg-red-600"
         >
-          <LogOut size={18} /> {t.logout || "Đăng xuất"}
+          <LogOut size={18} /> {t.logout}
         </button>
       )}
     </div>
