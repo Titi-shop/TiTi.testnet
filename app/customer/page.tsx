@@ -20,54 +20,49 @@ export default function CustomerDashboard({ embedded = false }) {
 
   const [avatar, setAvatar] = useState<string | null>(null);
 
-  // 🟢 Load avatar từ API
+  // Load avatar
   useEffect(() => {
     if (!user?.username) return;
 
     fetch(`/api/getAvatar?username=${encodeURIComponent(user.username)}`)
       .then((res) => res.json())
       .then((data) => data?.avatar && setAvatar(data.avatar))
-      .catch(() => console.log("⚠️ Không thể tải avatar"));
+      .catch(() => {});
   }, [user]);
 
-  // 🛑 Nếu chưa đăng nhập → chuyển sang PiLogin
-  // ❗ Chỉ redirect khi KHÔNG phải embedded trong /account
+  // Redirect only if not embedded
   useEffect(() => {
     if (!embedded && piReady && !user) {
       router.replace("/pilogin");
     }
-  }, [embedded, piReady, user, router]);
+  }, [embedded, piReady, user]);
 
-  if (!piReady || !user)
+  if (!piReady || !user) {
     return (
       <main className="min-h-screen flex items-center justify-center text-gray-500">
         ⏳ {t.loading || "Đang tải..."}
       </main>
     );
+  }
 
   return (
     <div className="bg-gray-100 pb-6">
-
-      {/* HEADER */}
+      {/* Header */}
       <div className="bg-orange-500 text-white p-6 text-center shadow">
-        <div
-          className="w-20 h-20 bg-white rounded-full mx-auto mb-3 overflow-hidden
-          flex items-center justify-center text-orange-500 font-bold text-3xl shadow-lg"
-        >
+        <div className="w-20 h-20 bg-white rounded-full mx-auto mb-3 overflow-hidden flex items-center justify-center text-orange-500 font-bold text-3xl shadow-lg">
           {avatar ? (
-            <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+            <img src={avatar} className="w-full h-full object-cover" />
           ) : (
             user.username.charAt(0).toUpperCase()
           )}
         </div>
 
-        {/* Username + Verified */}
         <h1 className="text-xl font-semibold flex items-center justify-center gap-2">
-          @{user.username} <span className="text-blue-500 text-lg">✔️</span>
+          @{user.username} <span className="text-blue-500">✔️</span>
         </h1>
       </div>
 
-      {/* ĐƠN HÀNG */}
+      {/* Orders */}
       <div className="bg-white mt-4 rounded-lg shadow mx-3">
         <div className="px-6 py-3 border-b">
           <h2 className="font-semibold text-gray-800 text-lg">
@@ -84,12 +79,29 @@ export default function CustomerDashboard({ embedded = false }) {
         </div>
       </div>
 
-      {/* VÍ PI */}
+      {/* Wallet */}
       <div className="mx-3 mt-4 p-4 rounded-lg text-center bg-orange-100 border border-orange-300">
         <p className="text-orange-700 font-medium">
-          💰 {t.wallet}:{" "}
+          💰 {t.wallet || "Ví của bạn"}:{" "}
           <span className="font-bold">
             {user?.wallet_address || t.link_wallet || "Chưa liên kết"}
           </span>
         </p>
       </div>
+    </div>
+  );
+}
+
+/* MenuButton Component */
+function MenuButton({ icon, label, path }: MenuButtonProps) {
+  const router = useRouter();
+  return (
+    <button
+      onClick={() => router.push(path)}
+      className="flex flex-col items-center text-gray-700 hover:text-orange-500"
+    >
+      {icon}
+      <span className="text-sm mt-1">{label}</span>
+    </button>
+  );
+}
