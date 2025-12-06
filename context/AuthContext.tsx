@@ -2,52 +2,53 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 
-// 🔹 Interface chứa thông tin người dùng Pi
-interface PiUser {
+// =============================================
+// TYPES
+// =============================================
+
+export interface PiUser {
   username: string;
-  accessToken: string;
-  uid?: string;
+  uid: string;
+  wallet_address?: string | null;
+  roles: string[];
+  created_at: string;
 }
 
-// 🔹 Interface cho payment của PiSDK
-interface PiPayment {
-  identifier: string;
-  paymentId: string;
-  txid?: string;
-  amount: number;
-}
-
-// 🔹 Interface cho Pi SDK trên trình duyệt
-interface PiSDK {
-  init: (config: { version: string; sandbox: boolean }) => void;
-  authenticate: (
-    scopes: string[],
-    onIncompletePaymentFound: (payment: PiPayment) => void
-  ) => Promise<{ user: { username: string }; accessToken: string }>;
-  logout?: () => void;
-}
-
-declare global {
-  interface Window {
-    Pi?: PiSDK;
-  }
-}
-
-// 🔹 Interface Context chính
 interface AuthContextType {
   user: PiUser | null;
   piReady: boolean;
   loading: boolean;
   pilogin: () => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
+
+interface PiAuthResult {
+  accessToken?: string;
+  user?: { username: string; uid?: string };
+}
+
+declare global {
+  interface Window {
+    __pi_inited?: boolean;
+    Pi?: {
+      init: (options: { version: string; sandbox: boolean }) => void;
+      onReady?: (callback: () => void) => void;
+      authenticate: (scopes: string[]) => Promise<PiAuthResult>;
+      logout?: () => void;
+    };
+  }
+}
+
+// =============================================
+// CONTEXT
+// =============================================
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   piReady: false,
   loading: true,
   pilogin: async () => {},
-  logout: () => {},
+  logout: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -55,114 +56,124 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [piReady, setPiReady] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // 🟢 Kiểm tra môi trường Pi SDK thật hay mock
-  const checkPiSDK = () => {
-    return (
-      typeof window !== "undefined" &&
-      navigator.userAgent.includes("PiBrowser") &&
-      window.Pi &&
-      typeof window.Pi.authenticate === "function"
-    );
-  };
-
-  // 🛠 Kiểm tra SDK & khởi tạo
+  // =============================================
+  // INIT PI SDK
+  // =============================================
   useEffect(() => {
-    if (typeof window !== "undefined" && window.Pi && checkPiSDK()) {
-      try {
-        window.Pi.init({ version: "2.0", sandbox: true });
-        console.log("🚀 Pi SDK initialized");
+    if (typeof window !== "undefined" && window.Pi && !window.__pi_inited) {
+      window.Pi.init({
+        version: "2.0",
+        sandbox: process.env.NEXT_PUBLIC_PI_ENV === "testnet",
+      });
+      window.__pi_inited = true;
+    }
+
+    // Pi ready detection
+    const checkReady = () => {
+      if (window.Pi) {
         setPiReady(true);
-      } catch (err) {
-        console.error("❌ Lỗi khởi tạo Pi SDK:", err);
-        setPiReady(true);
+        return true;
       }
-    } else {
-      // Chế độ mock
-      console.warn("⚠️ Pi SDK không có — bật mock mode");
-      setPiReady(true);
+      return false;
+    };
+
+    if (!checkReady()) {
+      const timer = setInterval(() => {
+        if (checkReady()) clearInterval(timer);
+      }, 300);
     }
   }, []);
 
-  // 🔁 Khôi phục session
+  // =============================================
+  // LOAD USER SESSION (COOKIE SESSION)
+  // =============================================
   useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const res = await fetch("/api/pi/verify", {
+          credentials: "include",
+        });
+        const data = await res.json();
+        setUser(data.success ? data.user : null);
+      } catch {
+        setUser(null);
+      }
+      setLoading(false);
+    };
+
+    loadSession();
+  }, []);
+
+  // =============================================
+  // LOGIN (Pi Browser)
+  // =============================================
+  const pilogin = async () => {
+    if (!window.Pi) {
+      alert("⚠️ Vui lòng mở trong Pi Browser!");
+      return;
+    }
+
     try {
-      const saved = localStorage.getItem("pi_user");
-      if (saved) {
-        const parsed: PiUser = JSON.parse(saved);
-        if (parsed?.username && parsed?.accessToken) {
-          setUser(parsed);
-          localStorage.setItem("titi_username", parsed.username);
-          localStorage.setItem("titi_is_logged_in", "true");
-        }
+      const scopes = ["username"];
+
+      // Retry authentication up to 3 times
+      let result: PiAuthResult | null = null;
+      for (let i = 0; i < 3; i++) {
+        result = await window.Pi.authenticate(scopes);
+        if (result?.accessToken) break;
+        await new Promise((r) => setTimeout(r, 400));
+      }
+
+      if (!result?.accessToken) {
+        alert("⚠️ Pi Browser không trả về accessToken. Thử lại.");
+        return;
+      }
+
+      const res = await fetch("/api/pi/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken: result.accessToken }),
+        credentials: "include",
+      });
+
+      const data = await res.json();
+
+      if (data.success && data.user) {
+        setUser(data.user);
+      } else {
+        alert("❌ Đăng nhập thất bại. Vui lòng thử lại.");
       }
     } catch (err) {
-      console.error("❌ Lỗi đọc pi_user:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // 🎭 Mock login
-  const mockLogin = () => {
-    const mockUser: PiUser = {
-      username: "mock_user",
-      accessToken: "mock_token_123",
-    };
-    setUser(mockUser);
-    localStorage.setItem("pi_user", JSON.stringify(mockUser));
-    localStorage.setItem("titi_is_logged_in", "true");
-    localStorage.setItem("titi_username", mockUser.username);
-    alert("🤖 Đăng nhập mock thành công!");
-  };
-
-  // 🔐 Đăng nhập bằng Pi Network hoặc Mock
-  const pilogin = async () => {
-    const hasRealPi = checkPiSDK();
-
-    if (hasRealPi) {
-      try {
-        const auth = await window.Pi!.authenticate(["username", "payments"], (payment) =>
-          console.log("⚠ Payment chưa hoàn tất:", payment)
-        );
-
-        const piUser: PiUser = {
-          username: auth.user.username,
-          accessToken: auth.accessToken,
-        };
-
-        setUser(piUser);
-        localStorage.setItem("pi_user", JSON.stringify(piUser));
-        localStorage.setItem("titi_username", piUser.username);
-        localStorage.setItem("titi_is_logged_in", "true");
-        alert("🔐 Đăng nhập Pi thành công!");
-      } catch (err) {
-        console.error("❌ Lỗi đăng nhập Pi:", err);
-        alert("⚠ Pi Login thất bại — dùng mock login");
-        mockLogin();
-      }
-    } else {
-      mockLogin();
+      console.error("❌ Login error:", err);
+      alert("❌ Có lỗi xảy ra khi đăng nhập.");
     }
   };
 
-  // 🚪 Đăng xuất
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("pi_user");
-    localStorage.removeItem("titi_is_logged_in");
-    localStorage.removeItem("titi_username");
-
-    if (typeof window !== "undefined" && window.Pi?.logout) {
-      try {
-        window.Pi.logout();
-      } catch {
-        console.warn("⚠️ Pi SDK không hỗ trợ logout");
-      }
+  // =============================================
+  // LOGOUT
+  // =============================================
+  const logout = async () => {
+    try {
+      await fetch("/api/pi/verify", {
+        method: "DELETE",
+        credentials: "include",
+      });
+      setUser(null);
+    } catch (err) {
+      console.error("❌ logout error:", err);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, piReady, loading, pilogin, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        piReady,
+        loading,
+        pilogin,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
