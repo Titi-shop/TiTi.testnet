@@ -4,10 +4,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const COOKIE_NAME = "pi_user";
-const MAX_AGE = 60 * 60 * 24 * 30;
+const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 /* ============================================================
-   ENCODE / DECODE
+   ENCODE / DECODE USER
 ============================================================ */
 function encodeUser(user: object) {
   return Buffer.from(JSON.stringify(user), "utf8").toString("base64");
@@ -22,7 +22,7 @@ function decodeUser(raw: string) {
 }
 
 /* ============================================================
-   COOKIE (FULL SAFARI SUPPORT)
+   SAFARI-COMPATIBLE COOKIE
 ============================================================ */
 function buildCookie(value: string, age = MAX_AGE) {
   return [
@@ -30,16 +30,20 @@ function buildCookie(value: string, age = MAX_AGE) {
     "Path=/",
     `Max-Age=${age}`,
     "HttpOnly",
-    "SameSite=None",
     "Secure",
+    "SameSite=None",
   ].join("; ");
 }
 
 /* ============================================================
-   ADD SAFARI CORS HEADERS
+   UNIVERSAL CORS (AUTO DETECT DOMAIN)
 ============================================================ */
-function withCORS(res: NextResponse) {
-  res.headers.set("Access-Control-Allow-Origin", "https://muasam.titi.onl");
+function withCORS(req: NextRequest, res: NextResponse) {
+  const origin =
+    req.headers.get("origin") ||
+    "https://app.titi.onl"; // fallback domain nếu không có origin
+
+  res.headers.set("Access-Control-Allow-Origin", origin);
   res.headers.set("Access-Control-Allow-Credentials", "true");
   res.headers.set("Access-Control-Allow-Headers", "Content-Type");
   res.headers.set("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
@@ -47,20 +51,21 @@ function withCORS(res: NextResponse) {
 }
 
 /* ============================================================
-   OPTIONS (IMPORTANT FOR SAFARI)
+   OPTIONS – REQUIRED FOR SAFARI & PI BROWSER
 ============================================================ */
-export function OPTIONS() {
-  return withCORS(NextResponse.json({ ok: true }));
+export function OPTIONS(req: NextRequest) {
+  return withCORS(req, NextResponse.json({ ok: true }));
 }
 
 /* ============================================================
-   GET — READ SESSION
+   GET – READ SESSION
 ============================================================ */
 export function GET(req: NextRequest) {
-  const cookieRaw = req.cookies.get(COOKIE_NAME)?.value;
-  const user = cookieRaw ? decodeUser(cookieRaw) : null;
+  const raw = req.cookies.get(COOKIE_NAME)?.value;
+  const user = raw ? decodeUser(raw) : null;
 
   return withCORS(
+    req,
     NextResponse.json({
       success: !!user,
       user: user || null,
@@ -69,7 +74,7 @@ export function GET(req: NextRequest) {
 }
 
 /* ============================================================
-   POST — LOGIN
+   POST – LOGIN USING PI ACCESS TOKEN
 ============================================================ */
 export async function POST(req: NextRequest) {
   try {
@@ -77,22 +82,35 @@ export async function POST(req: NextRequest) {
 
     if (!accessToken) {
       return withCORS(
-        NextResponse.json({ success: false, error: "missing_token" }, { status: 400 })
+        req,
+        NextResponse.json(
+          { success: false, error: "missing_access_token" },
+          { status: 400 }
+        )
       );
     }
 
+    // Fetch user from Pi API
     const piRes = await fetch("https://api.minepi.com/v2/me", {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
     });
 
     if (!piRes.ok) {
       return withCORS(
-        NextResponse.json({ success: false, error: "invalid_token" }, { status: 401 })
+        req,
+        NextResponse.json(
+          { success: false, error: "invalid_access_token" },
+          { status: 401 }
+        )
       );
     }
 
     const data = await piRes.json();
 
+    // FIX: Some Pi accounts missing UID → fallback required
     const user = {
       username: data.username,
       uid: data.uid || `uid_${data.username}`,
@@ -101,25 +119,30 @@ export async function POST(req: NextRequest) {
       roles: data.roles ?? [],
     };
 
-    const cookieValue = encodeUser(user);
+    const cookie = encodeUser(user);
 
+    // Create response + set cookie
     const res = NextResponse.json({ success: true, user });
-    res.headers.set("Set-Cookie", buildCookie(cookieValue));
+    res.headers.set("Set-Cookie", buildCookie(cookie));
 
-    return withCORS(res);
+    return withCORS(req, res);
   } catch (err) {
-    console.error("❌ LOGIN ERROR:", err);
+    console.error("❌ LOGIN SERVER ERROR:", err);
     return withCORS(
-      NextResponse.json({ success: false, error: "server_error" }, { status: 500 })
+      req,
+      NextResponse.json(
+        { success: false, error: "server_error" },
+        { status: 500 }
+      )
     );
   }
 }
 
 /* ============================================================
-   DELETE — LOGOUT
+   DELETE – LOGOUT
 ============================================================ */
-export function DELETE() {
+export function DELETE(req: NextRequest) {
   const res = NextResponse.json({ success: true });
   res.headers.set("Set-Cookie", buildCookie("deleted", 0));
-  return withCORS(res);
+  return withCORS(req, res);
 }
