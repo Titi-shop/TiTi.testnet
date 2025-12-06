@@ -1,148 +1,97 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import crypto from "crypto";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-const COOKIE_NAME = "pi_user";
-const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
-
-/* ============================================================
-   ENCODE / DECODE USER
-============================================================ */
-function encodeUser(user: object) {
-  return Buffer.from(JSON.stringify(user), "utf8").toString("base64");
+export interface PiUser {
+  username: string;
+  uid?: string;
+  wallet_address?: string | null;
+  roles: string[];
+  created_at: string;
 }
 
-function decodeUser(raw: string) {
-  try {
-    return JSON.parse(Buffer.from(raw, "base64").toString("utf8"));
-  } catch {
-    return null;
+// tạm lưu session trên memory (production nên dùng DB)
+const sessions = new Map<string, PiUser>();
+
+export async function GET(req: Request) {
+  const cookie = req.headers.get("cookie") || "";
+  const match = cookie.match(/pi_session=([^;]+)/);
+  const sessionId = match?.[1];
+
+  if (sessionId && sessions.has(sessionId)) {
+    return NextResponse.json({ success: true, user: sessions.get(sessionId) });
   }
+  return NextResponse.json({ success: false, user: null });
 }
 
-/* ============================================================
-   SAFARI-COMPATIBLE COOKIE
-============================================================ */
-function buildCookie(value: string, age = MAX_AGE) {
-  return [
-    `${COOKIE_NAME}=${value}`,
-    "Path=/",
-    `Max-Age=${age}`,
-    "HttpOnly",
-    "Secure",
-    "SameSite=None",
-  ].join("; ");
-}
-
-/* ============================================================
-   UNIVERSAL CORS (AUTO DETECT DOMAIN)
-============================================================ */
-function withCORS(req: NextRequest, res: NextResponse) {
-  const origin =
-    req.headers.get("origin") ||
-    "https://app.titi.onl"; // fallback domain nếu không có origin
-
-  res.headers.set("Access-Control-Allow-Origin", origin);
-  res.headers.set("Access-Control-Allow-Credentials", "true");
-  res.headers.set("Access-Control-Allow-Headers", "Content-Type");
-  res.headers.set("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
-  return res;
-}
-
-/* ============================================================
-   OPTIONS – REQUIRED FOR SAFARI & PI BROWSER
-============================================================ */
-export function OPTIONS(req: NextRequest) {
-  return withCORS(req, NextResponse.json({ ok: true }));
-}
-
-/* ============================================================
-   GET – READ SESSION
-============================================================ */
-export function GET(req: NextRequest) {
-  const raw = req.cookies.get(COOKIE_NAME)?.value;
-  const user = raw ? decodeUser(raw) : null;
-
-  return withCORS(
-    req,
-    NextResponse.json({
-      success: !!user,
-      user: user || null,
-    })
-  );
-}
-
-/* ============================================================
-   POST – LOGIN USING PI ACCESS TOKEN
-============================================================ */
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const { accessToken } = await req.json();
-
+    const body: { accessToken?: string } = await req.json();
+    const accessToken = body.accessToken;
     if (!accessToken) {
-      return withCORS(
-        req,
-        NextResponse.json(
-          { success: false, error: "missing_access_token" },
-          { status: 400 }
-        )
-      );
+      return NextResponse.json({ success: false, message: "Thiếu accessToken" }, { status: 400 });
     }
 
-    // Fetch user from Pi API
-    const piRes = await fetch("https://api.minepi.com/v2/me", {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-      },
-    });
+    const isTestnet =
+      process.env.NEXT_PUBLIC_PI_ENV === "testnet" ||
+      process.env.PI_API_URL?.includes("/sandbox");
 
-    if (!piRes.ok) {
-      return withCORS(
-        req,
-        NextResponse.json(
-          { success: false, error: "invalid_access_token" },
-          { status: 401 }
-        )
-      );
+    let user: PiUser;
+
+    if (isTestnet) {
+      user = {
+        username: "test_user",
+        uid: "sandbox-uid",
+        wallet_address: "TST123456789",
+        roles: ["tester"],
+        created_at: new Date().toISOString(),
+      };
+    } else {
+      const res = await fetch("https://api.minepi.com/v2/me", {
+        method: "GET",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("❌ Pi verify error:", text);
+        return NextResponse.json({ success: false, message: "Token không hợp lệ" }, { status: 401 });
+      }
+
+      const data: any = await res.json(); // Pi API trả dynamic object, TS không kiểm soát được
+      user = {
+        username: data.username,
+        uid: data.uid,
+        wallet_address: data.wallet_address || null,
+        roles: data.roles || [],
+        created_at: data.created_at || new Date().toISOString(),
+      };
     }
 
-    const data = await piRes.json();
+    const sessionId = crypto.randomBytes(32).toString("hex");
+    sessions.set(sessionId, user);
 
-    // FIX: Some Pi accounts missing UID → fallback required
-    const user = {
-      username: data.username,
-      uid: data.uid || `uid_${data.username}`,
-      wallet_address: data.wallet_address ?? null,
-      created_at: data.created_at ?? new Date().toISOString(),
-      roles: data.roles ?? [],
-    };
-
-    const cookie = encodeUser(user);
-
-    // Create response + set cookie
-    const res = NextResponse.json({ success: true, user });
-    res.headers.set("Set-Cookie", buildCookie(cookie));
-
-    return withCORS(req, res);
-  } catch (err) {
-    console.error("❌ LOGIN SERVER ERROR:", err);
-    return withCORS(
-      req,
-      NextResponse.json(
-        { success: false, error: "server_error" },
-        { status: 500 }
-      )
+    const response = NextResponse.json({ success: true, user });
+    response.headers.set(
+      "Set-Cookie",
+      `pi_session=${sessionId}; HttpOnly; Path=/; Max-Age=3600; Secure; SameSite=Strict`
     );
+    return response;
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      console.error("❌ verify POST error:", err.message);
+      return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+    }
+    return NextResponse.json({ success: false, message: "Lỗi xác minh Pi Network" }, { status: 500 });
   }
 }
 
-/* ============================================================
-   DELETE – LOGOUT
-============================================================ */
-export function DELETE(req: NextRequest) {
+export async function DELETE(req: Request) {
+  const cookie = req.headers.get("cookie") || "";
+  const match = cookie.match(/pi_session=([^;]+)/);
+  const sessionId = match?.[1];
+  if (sessionId) sessions.delete(sessionId);
+
   const res = NextResponse.json({ success: true });
-  res.headers.set("Set-Cookie", buildCookie("deleted", 0));
-  return withCORS(req, res);
+  res.headers.set("Set-Cookie", `pi_session=deleted; HttpOnly; Path=/; Max-Age=0; Secure; SameSite=Strict`);
+  return res;
 }
