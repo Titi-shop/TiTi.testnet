@@ -2,9 +2,13 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 
+// =============================================
+// TYPES
+// =============================================
+
 export interface PiUser {
   username: string;
-  uid?: string;
+  uid: string;
   wallet_address?: string | null;
   roles: string[];
   created_at: string;
@@ -15,15 +19,12 @@ interface AuthContextType {
   piReady: boolean;
   loading: boolean;
   pilogin: () => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 interface PiAuthResult {
-  user?: {
-    username: string;
-    uid?: string;
-  };
   accessToken?: string;
+  user?: { username: string; uid?: string };
 }
 
 declare global {
@@ -38,12 +39,16 @@ declare global {
   }
 }
 
+// =============================================
+// CONTEXT
+// =============================================
+
 const AuthContext = createContext<AuthContextType>({
   user: null,
   piReady: false,
   loading: true,
   pilogin: async () => {},
-  logout: () => {},
+  logout: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -51,96 +56,124 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [piReady, setPiReady] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Khởi tạo Pi SDK
+  // =============================================
+  // INIT PI SDK
+  // =============================================
   useEffect(() => {
-    if (typeof window !== "undefined" && window.Pi) {
-      if (!window.__pi_inited) {
-        window.Pi.init({ version: "2.0", sandbox: true });
-        window.__pi_inited = true;
-      }
+    if (typeof window !== "undefined" && window.Pi && !window.__pi_inited) {
+      window.Pi.init({
+        version: "2.0",
+        sandbox: process.env.NEXT_PUBLIC_PI_ENV === "testnet",
+      });
+      window.__pi_inited = true;
     }
 
-    if (typeof window !== "undefined" && window.Pi?.onReady) {
-      window.Pi.onReady(() => {
+    // Pi ready detection
+    const checkReady = () => {
+      if (window.Pi) {
         setPiReady(true);
-      });
-    } else {
+        return true;
+      }
+      return false;
+    };
+
+    if (!checkReady()) {
       const timer = setInterval(() => {
-        if (typeof window !== "undefined" && window.Pi) {
-          setPiReady(true);
-          clearInterval(timer);
-        }
-      }, 400);
+        if (checkReady()) clearInterval(timer);
+      }, 300);
     }
   }, []);
 
-  // Lấy user từ server (session cookie)
+  // =============================================
+  // LOAD USER SESSION (COOKIE SESSION)
+  // =============================================
   useEffect(() => {
-    const fetchUser = async () => {
+    const loadSession = async () => {
       try {
         const res = await fetch("/api/pi/verify", {
-          method: "GET",
           credentials: "include",
         });
-        const data: { success: boolean; user?: PiUser } = await res.json();
-        if (data.success && data.user) setUser(data.user);
+        const data = await res.json();
+        setUser(data.success ? data.user : null);
       } catch {
         setUser(null);
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
     };
-    fetchUser();
+
+    loadSession();
   }, []);
 
-  // Login Pi
+  // =============================================
+  // LOGIN (Pi Browser)
+  // =============================================
   const pilogin = async () => {
-    if (typeof window === "undefined" || !window.Pi) {
+    if (!window.Pi) {
       alert("⚠️ Vui lòng mở trong Pi Browser!");
       return;
     }
 
     try {
       const scopes = ["username"];
-      const authResult: PiAuthResult = await window.Pi.authenticate(scopes);
 
-      if (!authResult?.accessToken) throw new Error("Không nhận được accessToken");
+      // Retry authentication up to 3 times
+      let result: PiAuthResult | null = null;
+      for (let i = 0; i < 3; i++) {
+        result = await window.Pi.authenticate(scopes);
+        if (result?.accessToken) break;
+        await new Promise((r) => setTimeout(r, 400));
+      }
+
+      if (!result?.accessToken) {
+        alert("⚠️ Pi Browser không trả về accessToken. Thử lại.");
+        return;
+      }
 
       const res = await fetch("/api/pi/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessToken: authResult.accessToken }),
+        body: JSON.stringify({ accessToken: result.accessToken }),
         credentials: "include",
       });
 
-      const data: { success: boolean; user?: PiUser } = await res.json();
-      if (!data.success || !data.user) throw new Error("Login thất bại");
+      const data = await res.json();
 
-      setUser(data.user);
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        console.error("❌ pilogin error:", err.message);
-        alert(`❌ Đăng nhập thất bại: ${err.message}`);
+      if (data.success && data.user) {
+        setUser(data.user);
       } else {
-        console.error("❌ Unknown login error", err);
-        alert("❌ Đăng nhập thất bại");
+        alert("❌ Đăng nhập thất bại. Vui lòng thử lại.");
       }
+    } catch (err) {
+      console.error("❌ Login error:", err);
+      alert("❌ Có lỗi xảy ra khi đăng nhập.");
     }
   };
 
-  // Logout
+  // =============================================
+  // LOGOUT
+  // =============================================
   const logout = async () => {
     try {
       await fetch("/api/pi/verify", {
         method: "DELETE",
         credentials: "include",
       });
-    } catch {}
-    setUser(null);
+      setUser(null);
+    } catch (err) {
+      console.error("❌ logout error:", err);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, piReady, loading, pilogin, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        piReady,
+        loading,
+        pilogin,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
