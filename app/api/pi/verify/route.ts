@@ -1,60 +1,73 @@
-export async function POST(req: NextRequest) {
+import { NextResponse } from "next/server";
+
+/**
+ * ✅ API xác minh Access Token của Pi Network
+ * - Nhận accessToken từ frontend
+ * - Gọi Pi API /v2/me hoặc /v2/sandbox/me để xác minh
+ */
+export async function POST(req: Request) {
   try {
     const { accessToken } = await req.json();
 
     if (!accessToken) {
       return NextResponse.json(
-        { success: false, error: "missing_access_token" },
+        { success: false, message: "Thiếu accessToken" },
         { status: 400 }
       );
     }
 
-    const piRes = await fetch("https://api.minepi.com/v2/me", {
+    // ✅ Tự nhận biết môi trường Testnet/Mainnet
+    const isSandbox =
+      process.env.NEXT_PUBLIC_PI_ENV === "testnet" ||
+      process.env.PI_API_URL?.includes("/sandbox");
+
+    const API_URL = isSandbox
+      ? "https://api.minepi.com/v2/sandbox/me"
+      : "https://api.minepi.com/v2/me";
+
+    console.log(
+      `🔍 [Pi VERIFY] Xác minh token qua ${isSandbox ? "SANDBOX" : "MAINNET"}:`,
+      API_URL
+    );
+
+    // 🔹 Gọi Pi API để xác minh accessToken
+    const response = await fetch(API_URL, {
+      method: "GET",
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
       },
     });
 
-    if (!piRes.ok) {
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ [Pi VERIFY ERROR]", errorText);
       return NextResponse.json(
-        { success: false, error: "invalid_access_token" },
+        { success: false, message: "Token không hợp lệ hoặc hết hạn" },
         { status: 401 }
       );
     }
 
-    const data = await piRes.json();
+    // ✅ Nhận dữ liệu người dùng thật từ Pi Network
+    const userData = await response.json();
 
-    const user = {
-      username: data.username,
-      uid: data.uid || `user_${data.username}`,
-      wallet_address: data.wallet_address ?? null,
-      created_at: data.created_at ?? new Date().toISOString(),
-      roles: data.roles ?? [],
+    const verifiedUser = {
+      username: userData?.username,
+      uid: userData?.uid,
+      roles: userData?.roles || [],
+      wallet_address: userData?.wallet_address || null,
+      created_at: userData?.created_at || new Date().toISOString(),
     };
 
-    const cookieValue = encodeUser(user);
+    console.log("✅ [Pi VERIFY SUCCESS]:", verifiedUser);
 
-    const res = NextResponse.json({ success: true, user });
-
-    // 🔥 COOKIE CHUẨN PI BROWSER
-    res.cookies.set({
-      name: COOKIE_NAME,
-      value: cookieValue,
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: MAX_AGE,
-      path: "/",
-      // ⭐ THÊM DÒNG NÀY RẤT QUAN TRỌNG
-      domain: "titi.onl"
+    return NextResponse.json({
+      success: true,
+      user: verifiedUser,
     });
-
-    return res;
-  } catch (err) {
-    console.error("❌ PI LOGIN ERROR:", err);
+  } catch (error: any) {
+    console.error("💥 [API VERIFY EXCEPTION]:", error);
     return NextResponse.json(
-      { success: false, error: "server_error" },
+      { success: false, message: error.message || "Lỗi xác minh Pi Network" },
       { status: 500 }
     );
   }
