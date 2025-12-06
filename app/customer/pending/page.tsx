@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 interface Order {
   id: string;
@@ -15,6 +16,7 @@ interface Order {
 export default function PendingOrdersPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const { t } = useTranslation();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [error, setError] = useState("");
@@ -22,25 +24,26 @@ export default function PendingOrdersPage() {
   // Khi AuthContext loading xong → fetch orders
   useEffect(() => {
     if (loading) return;
-    if (!user) return; // chưa login → không fetch
+    if (!user) return;
 
     const fetchOrders = async () => {
       try {
         const res = await fetch("/api/orders", {
           method: "GET",
-          credentials: "include", // dùng session pi_session
+          credentials: "include",
           cache: "no-store"
         });
 
         if (!res.ok) {
-          throw new Error("Không thể tải đơn hàng");
+          throw new Error(t.error_load_orders_general);
         }
 
         const data: Order[] = await res.json();
 
-        // Lọc đơn thuộc người dùng
         setOrders(
-          data.filter(o => o.buyer.toLowerCase() === user.username.toLowerCase())
+          data.filter(o =>
+            o.buyer.toLowerCase() === user.username.toLowerCase()
+          )
         );
       } catch (err) {
         if (err instanceof Error) setError(err.message);
@@ -48,14 +51,15 @@ export default function PendingOrdersPage() {
     };
 
     fetchOrders();
-  }, [loading, user]);
+  }, [loading, user, t]);
 
-  if (loading) return <p className="text-center mt-10">🔄 Đang tải...</p>;
+  if (loading)
+    return <p className="text-center mt-10">🔄 {t.loading}</p>;
 
   if (!user)
     return (
       <p className="text-center text-red-500 mt-10">
-        ⚠️ Bạn chưa đăng nhập Pi Network
+        ⚠️ {t.must_login_first}
       </p>
     );
 
@@ -72,18 +76,18 @@ export default function PendingOrdersPage() {
           ←
         </button>
         <h1 className="text-2xl font-bold text-yellow-600">
-          ⏳ Đơn hàng đang chờ
+          ⏳ {t.pending_orders}
         </h1>
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-white border rounded-lg p-4 text-center shadow">
-          <p className="text-gray-500 text-sm">Tổng đơn hàng</p>
+          <p className="text-gray-500 text-sm">{t.total_orders}</p>
           <p className="text-2xl font-bold">{totalOrders}</p>
         </div>
         <div className="bg-white border rounded-lg p-4 text-center shadow">
-          <p className="text-gray-500 text-sm">Tổng Pi</p>
+          <p className="text-gray-500 text-sm">{t.total_pi}</p>
           <p className="text-2xl font-bold">{totalPi.toFixed(2)} Pi</p>
         </div>
       </div>
@@ -91,17 +95,19 @@ export default function PendingOrdersPage() {
       {/* List */}
       {!orders.length ? (
         <p className="text-center text-gray-500">
-          Không có đơn hàng nào
-          <br />👤 Người dùng: <b>{user.username}</b>
+          {t.no_pending_orders}
+          <br />👤 {t.buyer}: <b>{user.username}</b>
         </p>
       ) : (
         <div className="space-y-4">
           {orders.map((order) => (
             <div key={order.id} className="bg-white p-4 rounded shadow border">
-              <h2 className="font-semibold text-lg">🧾 #{order.id}</h2>
-              <p>💰 Tổng: <b>{order.total}</b> Pi</p>
-              <p>📅 Ngày tạo: {new Date(order.createdAt).toLocaleString()}</p>
-              <p className="mt-2 text-yellow-600">Trạng thái: {order.status}</p>
+              <h2 className="font-semibold text-lg">🧾 {t.order_id}: #{order.id}</h2>
+              <p>💰 {t.total}: <b>{order.total}</b> Pi</p>
+              <p>📅 {t.created_at}: {new Date(order.createdAt).toLocaleString()}</p>
+              <p className="mt-2 text-yellow-600">
+                {t.status}: {t[`status_${order.status.toLowerCase()}`] || order.status}
+              </p>
             </div>
           ))}
         </div>
