@@ -1,27 +1,42 @@
 "use client";
+
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
-export default function AccountRedirect() {
+// 🔼 phần trên
+import CustomerPage from "../customer/page";
+
+// 🔽 phần dưới
+import CustomerMenu from "@/components/customerMenu";
+
+export default function AccountPage() {
   const router = useRouter();
-  const { t } = useTranslation();
-  const { user, loading } = useAuth();
+  const { user, piReady } = useAuth();
 
+  // Nếu chưa login → pilogin
   useEffect(() => {
-    if (!loading) {
-      if (user) {
-        router.replace("/customer");
-      } else {
-        router.replace("/pilogin");
-      }
+    if (piReady && !user) {
+      router.replace("/pilogin");
     }
-  }, [user, loading, router]);
+  }, [piReady, user]);
+
+  if (!user)
+    return (
+      <main className="min-h-screen flex items-center justify-center text-gray-500">
+        Loading...
+      </main>
+    );
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-600">
-      <p>⏳ {t.checking_account}</p>
+    <main className="bg-gray-100 pb-20">
+
+      {/* 🔶 PHẦN TRÊN: Customer UI (từ customer/page.tsx) */}
+      <CustomerPage embedded />
+
+      {/* 🔽 PHẦN DƯỚI: Customer Menu */}
+      <CustomerMenu />
+
     </main>
   );
 }
