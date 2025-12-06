@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
 
+const COOKIE_NAME = "pi_user";
+
 /* ============================================================
-   🟦 Kiểu dữ liệu Order và OrderItem
+   Types
 ============================================================ */
+
 interface OrderItem {
   id: string;
   name: string;
@@ -11,10 +14,12 @@ interface OrderItem {
   qty: number;
 }
 
+type EnvType = "testnet" | "mainnet";
+
 interface Order {
   id: string;
-  buyer: string;
-  buyerUid: string;
+  buyer: string;         // username để hiển thị
+  buyerUid: string;      // UID dùng để phân quyền
   items: OrderItem[];
   total: number;
   status: string;
@@ -22,97 +27,140 @@ interface Order {
   shipping: Record<string, unknown>;
   paymentId: string;
   txid: string;
-  env: "testnet" | "mainnet";
+  env: EnvType;
   createdAt: string;
   updatedAt: string;
   paidAt?: string;
 }
 
 /* ============================================================
-   🟦 Cookie name
+   User from cookie
 ============================================================ */
-const COOKIE_NAME = "pi_user";
 
-/* ============================================================
-   🟦 Giải mã user từ cookie
-============================================================ */
-function decodeUser(raw: string) {
+interface CookieUser {
+  username: string;
+  uid: string;
+  wallet_address?: string | null;
+  created_at?: string;
+  roles?: string[];
+}
+
+function decodeUser(raw: string): CookieUser | null {
   try {
-    return JSON.parse(Buffer.from(raw, "base64").toString("utf8"));
-  } catch (e) {
+    return JSON.parse(Buffer.from(raw, "base64").toString("utf8")) as CookieUser;
+  } catch {
     return null;
   }
 }
 
 /* ============================================================
-   🟦 Đọc danh sách đơn hàng
+   Helpers for KV
 ============================================================ */
+
+function isOrderArray(value: unknown): value is Order[] {
+  return Array.isArray(value);
+}
+
 async function readOrders(): Promise<Order[]> {
   const data = await kv.get("orders");
 
   if (!data) return [];
-  if (Array.isArray(data)) return data as Order[];
 
-  try {
-    return JSON.parse(data as string) as Order[];
-  } catch {
-    console.warn("⚠ KV orders corrupted → reset to empty.");
-    return [];
+  if (isOrderArray(data)) return data;
+
+  if (typeof data === "string") {
+    try {
+      const parsed = JSON.parse(data) as unknown;
+      return isOrderArray(parsed) ? parsed : [];
+    } catch {
+      console.warn("⚠️ KV orders corrupted, reset to empty list.");
+      return [];
+    }
   }
+
+  return [];
 }
 
-/* ============================================================
-   🟦 Ghi danh sách đơn hàng
-============================================================ */
 async function writeOrders(orders: Order[]): Promise<void> {
   await kv.set("orders", JSON.stringify(orders));
 }
 
 /* ============================================================
-   🔹 GET — Lấy đơn hàng theo đúng user đang đăng nhập
+   GET /api/orders
+   → Trả danh sách đơn HỢP LỆ của user hiện tại
+   → Có thể lọc thêm theo ?status=pending, v.v.
 ============================================================ */
+
 export async function GET(req: NextRequest) {
   try {
     const cookie = req.cookies.get(COOKIE_NAME)?.value;
-
     if (!cookie) {
       return NextResponse.json([], { status: 401 });
     }
 
     const user = decodeUser(cookie);
-
     if (!user?.uid) {
       return NextResponse.json([], { status: 401 });
     }
 
+    const { searchParams } = new URL(req.url);
+    const statusFilter = searchParams.get("status"); // optional
+
     const orders = await readOrders();
-    const filtered = orders.filter((o) => o.buyerUid === user.uid);
+
+    const filtered = orders.filter((o) => {
+      if (o.buyerUid !== user.uid) return false;
+      if (statusFilter && o.status !== statusFilter) return false;
+      return true;
+    });
 
     return NextResponse.json(filtered);
-  } catch (e) {
-    console.error("❌ GET /api/orders error:", e);
+  } catch (err) {
+    console.error("❌ GET /api/orders error:", err);
     return NextResponse.json([], { status: 500 });
   }
 }
 
 /* ============================================================
-   🔹 POST — Tạo đơn mới cho user đang đăng nhập
+   POST /api/orders
+   → Tạo đơn mới GẮN CHẶT với user hiện tại
+   → Không cho client tự set buyer / buyerUid
 ============================================================ */
+
 export async function POST(req: NextRequest) {
   try {
     const cookie = req.cookies.get(COOKIE_NAME)?.value;
-
     if (!cookie) {
-      return NextResponse.json({ success: false }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "unauthorized" },
+        { status: 401 }
+      );
     }
 
     const user = decodeUser(cookie);
-
     if (!user?.uid) {
-      return NextResponse.json({ success: false }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "unauthorized" },
+        { status: 401 }
+      );
     }
 
-    const body = await req.json();
+    const body = (await req.json()) as {
+      items?: OrderItem[];
+      total?: number;
+      status?: string;
+      note?: string;
+      shipping?: Record<string, unknown>;
+      paymentId?: string;
+      txid?: string;
+      createdAt?: string;
+      id?: string;
+    };
+
+    const env: EnvType =
+      process.env.NEXT_PUBLIC_PI_ENV === "testnet" ? "testnet" : "mainnet";
+
+    const now = new Date().toISOString();
 
     const newOrder: Order = {
       id: body.id ?? `ORD-${Date.now()}`,
@@ -125,67 +173,110 @@ export async function POST(req: NextRequest) {
       shipping: body.shipping ?? {},
       paymentId: body.paymentId ?? "",
       txid: body.txid ?? "",
-      env: process.env.NEXT_PUBLIC_PI_ENV === "testnet" ? "testnet" : "mainnet",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      env,
+      createdAt: body.createdAt ?? now,
+      updatedAt: now,
     };
 
     const orders = await readOrders();
     orders.unshift(newOrder);
-
     await writeOrders(orders);
 
+    console.log("🧾 [ORDER CREATED]:", {
+      id: newOrder.id,
+      buyerUid: newOrder.buyerUid,
+      total: newOrder.total,
+      env: newOrder.env,
+    });
+
     return NextResponse.json({ success: true, order: newOrder });
-  } catch (e) {
-    console.error("❌ POST /api/orders error:", e);
-    return NextResponse.json({ success: false }, { status: 500 });
+  } catch (err) {
+    console.error("❌ POST /api/orders error:", err);
+    return NextResponse.json(
+      { success: false, error: "server_error" },
+      { status: 500 }
+    );
   }
 }
 
 /* ============================================================
-   🔹 PUT — Chỉ cập nhật đơn nếu user sở hữu đơn đó
+   PUT /api/orders
+   → Chỉ cho phép update đơn thuộc về user hiện tại
+   → Chỉ cho sửa status + txid (+ paidAt)
 ============================================================ */
+
 export async function PUT(req: NextRequest) {
   try {
     const cookie = req.cookies.get(COOKIE_NAME)?.value;
-
     if (!cookie) {
-      return NextResponse.json({ success: false }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "unauthorized" },
+        { status: 401 }
+      );
     }
 
     const user = decodeUser(cookie);
-
     if (!user?.uid) {
-      return NextResponse.json({ success: false }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "unauthorized" },
+        { status: 401 }
+      );
     }
 
-    const { id, status, txid } = await req.json();
+    const body = (await req.json()) as {
+      id: string;
+      status?: string;
+      txid?: string;
+    };
+
+    if (!body.id) {
+      return NextResponse.json(
+        { success: false, error: "missing_order_id" },
+        { status: 400 }
+      );
+    }
 
     const orders = await readOrders();
     const index = orders.findIndex(
-      (o) => o.id === id && o.buyerUid === user.uid
+      (o) => o.id === body.id && o.buyerUid === user.uid
     );
 
     if (index === -1) {
       return NextResponse.json(
-        { success: false, message: "Không tìm thấy đơn hoặc không có quyền." },
+        { success: false, error: "not_found_or_forbidden" },
         { status: 403 }
       );
     }
 
-    // Cập nhật đơn hàng
-    orders[index] = {
-      ...orders[index],
-      status: status ?? orders[index].status,
-      txid: txid ?? orders[index].txid,
+    const existing = orders[index];
+
+    const updated: Order = {
+      ...existing,
+      status: body.status ?? existing.status,
+      txid: body.txid ?? existing.txid,
       updatedAt: new Date().toISOString(),
     };
 
+    // Nếu chuyển sang trạng thái "Đã thanh toán" thì set paidAt
+    if (body.status === "Đã thanh toán" && !existing.paidAt) {
+      updated.paidAt = new Date().toISOString();
+    }
+
+    orders[index] = updated;
     await writeOrders(orders);
 
-    return NextResponse.json({ success: true, order: orders[index] });
-  } catch (e) {
-    console.error("❌ PUT /api/orders error:", e);
-    return NextResponse.json({ success: false }, { status: 500 });
+    console.log("🔄 [ORDER UPDATED]:", {
+      id: updated.id,
+      buyerUid: updated.buyerUid,
+      status: updated.status,
+    });
+
+    return NextResponse.json({ success: true, order: updated });
+  } catch (err) {
+    console.error("❌ PUT /api/orders error:", err);
+    return NextResponse.json(
+      { success: false, error: "server_error" },
+      { status: 500 }
+    );
   }
 }
