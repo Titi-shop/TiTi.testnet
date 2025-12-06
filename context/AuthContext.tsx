@@ -8,7 +8,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 
 export interface PiUser {
   username: string;
-  uid?: string;
+  uid: string;
   wallet_address?: string | null;
   roles: string[];
   created_at: string;
@@ -23,11 +23,8 @@ interface AuthContextType {
 }
 
 interface PiAuthResult {
-  user?: {
-    username: string;
-    uid?: string;
-  };
   accessToken?: string;
+  user?: { username: string; uid?: string };
 }
 
 declare global {
@@ -71,80 +68,84 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       window.__pi_inited = true;
     }
 
-    // Check PI SDK ready
-    if (typeof window !== "undefined" && window.Pi?.onReady) {
-      window.Pi.onReady(() => setPiReady(true));
-    } else {
-      // fallback polling
+    // Pi ready detection
+    const checkReady = () => {
+      if (window.Pi) {
+        setPiReady(true);
+        return true;
+      }
+      return false;
+    };
+
+    if (!checkReady()) {
       const timer = setInterval(() => {
-        if (typeof window !== "undefined" && window.Pi) {
-          setPiReady(true);
-          clearInterval(timer);
-        }
+        if (checkReady()) clearInterval(timer);
       }, 300);
     }
   }, []);
 
   // =============================================
-  // FETCH USER SESSION FROM SERVER
+  // LOAD USER SESSION (COOKIE SESSION)
   // =============================================
   useEffect(() => {
-    const loadUser = async () => {
+    const loadSession = async () => {
       try {
         const res = await fetch("/api/pi/verify", {
-          method: "GET",
-          credentials: "include", // 🔥 Quan trọng
+          credentials: "include",
         });
-
-        const data: { success: boolean; user: PiUser | null } = await res.json();
-
-        if (data.success && data.user) setUser(data.user);
-        else setUser(null);
+        const data = await res.json();
+        setUser(data.success ? data.user : null);
       } catch {
         setUser(null);
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
     };
 
-    loadUser();
+    loadSession();
   }, []);
 
   // =============================================
-  // LOGIN WITH PI BROWSER
+  // LOGIN (Pi Browser)
   // =============================================
   const pilogin = async () => {
-    if (typeof window === "undefined" || !window.Pi) {
+    if (!window.Pi) {
       alert("⚠️ Vui lòng mở trong Pi Browser!");
       return;
     }
 
     try {
       const scopes = ["username"];
-      const result = await window.Pi.authenticate(scopes);
 
-      if (!result.accessToken) {
-        throw new Error("Không nhận được accessToken từ Pi Browser");
+      // Retry authentication up to 3 times
+      let result: PiAuthResult | null = null;
+      for (let i = 0; i < 3; i++) {
+        result = await window.Pi.authenticate(scopes);
+        if (result?.accessToken) break;
+        await new Promise((r) => setTimeout(r, 400));
       }
 
-      // gửi thẳng token lên server để server verify + tạo session HMAC
+      if (!result?.accessToken) {
+        alert("⚠️ Pi Browser không trả về accessToken. Thử lại.");
+        return;
+      }
+
       const res = await fetch("/api/pi/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accessToken: result.accessToken }),
-        credentials: "include", // 🔥 BẮT BUỘC
+        credentials: "include",
       });
 
-      const data: { success: boolean; user: PiUser | null } = await res.json();
+      const data = await res.json();
 
-      if (!data.success || !data.user) {
-        throw new Error("Xác thực Pi thất bại");
+      if (data.success && data.user) {
+        setUser(data.user);
+      } else {
+        alert("❌ Đăng nhập thất bại. Vui lòng thử lại.");
       }
-
-      setUser(data.user);
     } catch (err) {
-      console.error("❌ pilogin error:", err);
-      alert("❌ Đăng nhập thất bại, vui lòng thử lại.");
+      console.error("❌ Login error:", err);
+      alert("❌ Có lỗi xảy ra khi đăng nhập.");
     }
   };
 
@@ -157,10 +158,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         method: "DELETE",
         credentials: "include",
       });
+      setUser(null);
     } catch (err) {
       console.error("❌ logout error:", err);
     }
-    setUser(null);
   };
 
   return (
