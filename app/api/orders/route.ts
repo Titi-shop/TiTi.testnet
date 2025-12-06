@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
 
-const COOKIE_NAME = "pi_user";
-
-/* ------------------------------
-   🟦 Type: Order (không cần file riêng)
------------------------------- */
+/* ============================================================
+   🟦 Kiểu dữ liệu Order và OrderItem
+============================================================ */
 interface OrderItem {
   id: string;
   name: string;
@@ -30,81 +28,89 @@ interface Order {
   paidAt?: string;
 }
 
-/* ------------------------------
-   Decode user từ cookie
------------------------------- */
+/* ============================================================
+   🟦 Cookie name
+============================================================ */
+const COOKIE_NAME = "pi_user";
+
+/* ============================================================
+   🟦 Giải mã user từ cookie
+============================================================ */
 function decodeUser(raw: string) {
   try {
     return JSON.parse(Buffer.from(raw, "base64").toString("utf8"));
-  } catch {
+  } catch (e) {
     return null;
   }
 }
 
-/* ------------------------------
-   Load orders từ KV
------------------------------- */
+/* ============================================================
+   🟦 Đọc danh sách đơn hàng
+============================================================ */
 async function readOrders(): Promise<Order[]> {
   const data = await kv.get("orders");
 
   if (!data) return [];
-
   if (Array.isArray(data)) return data as Order[];
 
   try {
     return JSON.parse(data as string) as Order[];
   } catch {
-    console.warn("⚠ Invalid KV order data");
+    console.warn("⚠ KV orders corrupted → reset to empty.");
     return [];
   }
 }
 
-/* ------------------------------
-   Save orders vào KV
------------------------------- */
+/* ============================================================
+   🟦 Ghi danh sách đơn hàng
+============================================================ */
 async function writeOrders(orders: Order[]): Promise<void> {
   await kv.set("orders", JSON.stringify(orders));
 }
 
-/* =======================================================
-   🔹 GET — chỉ trả đơn của user đăng nhập
-======================================================= */
+/* ============================================================
+   🔹 GET — Lấy đơn hàng theo đúng user đang đăng nhập
+============================================================ */
 export async function GET(req: NextRequest) {
   try {
     const cookie = req.cookies.get(COOKIE_NAME)?.value;
 
-    if (!cookie)
+    if (!cookie) {
       return NextResponse.json([], { status: 401 });
+    }
 
     const user = decodeUser(cookie);
 
-    if (!user?.uid)
+    if (!user?.uid) {
       return NextResponse.json([], { status: 401 });
+    }
 
     const orders = await readOrders();
     const filtered = orders.filter((o) => o.buyerUid === user.uid);
 
     return NextResponse.json(filtered);
-  } catch (err) {
-    console.error("❌ GET /orders:", err);
+  } catch (e) {
+    console.error("❌ GET /api/orders error:", e);
     return NextResponse.json([], { status: 500 });
   }
 }
 
-/* =======================================================
-   🔹 POST — tạo đơn mới cho user đang đăng nhập
-======================================================= */
+/* ============================================================
+   🔹 POST — Tạo đơn mới cho user đang đăng nhập
+============================================================ */
 export async function POST(req: NextRequest) {
   try {
     const cookie = req.cookies.get(COOKIE_NAME)?.value;
 
-    if (!cookie)
+    if (!cookie) {
       return NextResponse.json({ success: false }, { status: 401 });
+    }
 
     const user = decodeUser(cookie);
 
-    if (!user?.uid)
+    if (!user?.uid) {
       return NextResponse.json({ success: false }, { status: 401 });
+    }
 
     const body = await req.json();
 
@@ -126,40 +132,48 @@ export async function POST(req: NextRequest) {
 
     const orders = await readOrders();
     orders.unshift(newOrder);
+
     await writeOrders(orders);
 
     return NextResponse.json({ success: true, order: newOrder });
-  } catch (err) {
-    console.error("❌ POST /orders:", err);
+  } catch (e) {
+    console.error("❌ POST /api/orders error:", e);
     return NextResponse.json({ success: false }, { status: 500 });
   }
 }
 
-/* =======================================================
-   🔹 PUT — chỉ user tạo đơn mới được cập nhật đơn
-======================================================= */
+/* ============================================================
+   🔹 PUT — Chỉ cập nhật đơn nếu user sở hữu đơn đó
+============================================================ */
 export async function PUT(req: NextRequest) {
   try {
     const cookie = req.cookies.get(COOKIE_NAME)?.value;
 
-    if (!cookie)
+    if (!cookie) {
       return NextResponse.json({ success: false }, { status: 401 });
+    }
 
     const user = decodeUser(cookie);
 
-    const { id, status, txid } = await req.json();
-    const orders = await readOrders();
+    if (!user?.uid) {
+      return NextResponse.json({ success: false }, { status: 401 });
+    }
 
+    const { id, status, txid } = await req.json();
+
+    const orders = await readOrders();
     const index = orders.findIndex(
       (o) => o.id === id && o.buyerUid === user.uid
     );
 
-    if (index === -1)
+    if (index === -1) {
       return NextResponse.json(
-        { success: false, message: "Không tìm thấy đơn hoặc không có quyền" },
+        { success: false, message: "Không tìm thấy đơn hoặc không có quyền." },
         { status: 403 }
       );
+    }
 
+    // Cập nhật đơn hàng
     orders[index] = {
       ...orders[index],
       status: status ?? orders[index].status,
@@ -170,8 +184,8 @@ export async function PUT(req: NextRequest) {
     await writeOrders(orders);
 
     return NextResponse.json({ success: true, order: orders[index] });
-  } catch (err) {
-    console.error("❌ PUT /orders:", err);
+  } catch (e) {
+    console.error("❌ PUT /api/orders error:", e);
     return NextResponse.json({ success: false }, { status: 500 });
   }
 }
