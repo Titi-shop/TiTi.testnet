@@ -2,9 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
+import { useAuth } from "@/context/AuthContext";
 
+/* ============================================================
+   🟦 Type cho mỗi đơn hàng
+   (KHÔNG dùng any, định nghĩa rõ ràng 100%)
+============================================================ */
 interface OrderItem {
-  id: string | number;
+  id: string;
   buyer: string;
   total: number;
   createdAt: string;
@@ -13,43 +18,124 @@ interface OrderItem {
 
 export default function OrdersSummaryPage() {
   const { t } = useTranslation();
+  const { user, loading: authLoading } = useAuth();
 
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  /* ============================================================
+     🟩 Chỉ fetch đơn khi user sẵn sàng
+  ============================================================ */
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    if (!authLoading && user) {
+      fetchOrders();
+    }
 
+    if (!authLoading && !user) {
+      setLoading(false);
+    }
+  }, [authLoading, user]);
+
+  /* ============================================================
+     🟧 Hàm fetch đơn hàng — 100% Type-safe
+  ============================================================ */
   const fetchOrders = async () => {
     try {
-      const res = await fetch("/api/orders", { cache: "no-store" });
-      const data = await res.json();
-      setOrders(Array.isArray(data) ? data : []);
+      const res = await fetch("/api/orders", {
+        method: "GET",
+        credentials: "include", // 🔥 rất quan trọng → gửi cookie pi_user
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        console.error("❌ Lỗi fetch orders, mã:", res.status);
+        setOrders([]);
+        return;
+      }
+
+      const data = (await res.json()) as unknown;
+
+      if (Array.isArray(data)) {
+        const parsed: OrderItem[] = data
+          .map((o) => {
+            if (
+              typeof o === "object" &&
+              o !== null &&
+              "id" in o &&
+              "buyer" in o &&
+              "total" in o &&
+              "createdAt" in o &&
+              "status" in o
+            ) {
+              return {
+                id: String(o.id),
+                buyer: String(o.buyer),
+                total: Number(o.total),
+                createdAt: String(o.createdAt),
+                status: String(o.status),
+              };
+            }
+
+            return null;
+          })
+          .filter((x): x is OrderItem => x !== null);
+
+        setOrders(parsed);
+      } else {
+        setOrders([]);
+      }
     } catch (err) {
-      console.error("❌ Load orders error:", err);
+      console.error("❌ Lỗi load orders:", err);
+      setOrders([]);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading)
+  /* ============================================================
+      ⏳ Loading Auth
+  ============================================================ */
+  if (authLoading) {
     return (
       <p className="text-center mt-10 text-gray-500">
         ⏳ {t.loading}...
       </p>
     );
+  }
 
-  // Tính tổng
+  /* ============================================================
+      ⛔ Chưa đăng nhập
+  ============================================================ */
+  if (!user) {
+    return (
+      <main className="max-w-4xl mx-auto p-4">
+        <p className="text-center text-gray-500 text-lg mt-10">
+          ⚠️ {t.please_login_to_continue}
+        </p>
+      </main>
+    );
+  }
+
+  /* ============================================================
+      ⏳ Loading Orders
+  ============================================================ */
+  if (loading) {
+    return (
+      <p className="text-center mt-10 text-gray-500">
+        ⏳ {t.loading_orders}...
+      </p>
+    );
+  }
+
+  /* ============================================================
+      📦 Tính tổng
+  ============================================================ */
   const totalOrders = orders.length;
-  const totalPi = orders.reduce(
-    (sum, o) => sum + (parseFloat(String(o.total)) || 0),
-    0
-  );
+  const totalPi = orders.reduce((sum, o) => sum + o.total, 0);
 
   return (
     <main className="max-w-4xl mx-auto p-4 pb-24 bg-gray-50 min-h-screen">
-      {/* ===== Tiêu đề ===== */}
+      {/* ===== Header ===== */}
       <div className="flex items-center mb-4">
         <button
           onClick={() => history.back()}
@@ -62,7 +148,7 @@ export default function OrdersSummaryPage() {
         </h1>
       </div>
 
-      {/* ===== Khối tổng hợp ===== */}
+      {/* ===== Summary ===== */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-white border rounded-lg p-4 text-center shadow">
           <p className="text-gray-500 text-sm">{t.total_orders}</p>
