@@ -4,10 +4,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const COOKIE_NAME = "pi_user";
-const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+const MAX_AGE = 60 * 60 * 24 * 30;
 
 /* ============================================================
-   ENCODE / DECODE USER
+   ENCODE / DECODE
 ============================================================ */
 function encodeUser(user: object) {
   return Buffer.from(JSON.stringify(user), "utf8").toString("base64");
@@ -22,7 +22,7 @@ function decodeUser(raw: string) {
 }
 
 /* ============================================================
-   COOKIE BUILDER — FULLY COMPATIBLE WITH SAFARI + PI BROWSER
+   COOKIE (FULL SAFARI SUPPORT)
 ============================================================ */
 function buildCookie(value: string, age = MAX_AGE) {
   return [
@@ -31,58 +31,71 @@ function buildCookie(value: string, age = MAX_AGE) {
     `Max-Age=${age}`,
     "HttpOnly",
     "SameSite=None",
-    "Secure" // 🔥 ALWAYS secure for Pi Browser + Safari
+    "Secure",
   ].join("; ");
 }
 
 /* ============================================================
-   🔹 GET — FETCH SESSION
+   ADD SAFARI CORS HEADERS
 ============================================================ */
-export function GET(req: NextRequest) {
-  const raw = req.cookies.get(COOKIE_NAME)?.value;
-  const user = raw ? decodeUser(raw) : null;
-
-  return NextResponse.json({
-    success: !!user,
-    user: user || null,
-  });
+function withCORS(res: NextResponse) {
+  res.headers.set("Access-Control-Allow-Origin", "https://muasam.titi.onl");
+  res.headers.set("Access-Control-Allow-Credentials", "true");
+  res.headers.set("Access-Control-Allow-Headers", "Content-Type");
+  res.headers.set("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
+  return res;
 }
 
 /* ============================================================
-   🔹 POST — LOGIN WITH PI TOKEN
+   OPTIONS (IMPORTANT FOR SAFARI)
+============================================================ */
+export function OPTIONS() {
+  return withCORS(NextResponse.json({ ok: true }));
+}
+
+/* ============================================================
+   GET — READ SESSION
+============================================================ */
+export function GET(req: NextRequest) {
+  const cookieRaw = req.cookies.get(COOKIE_NAME)?.value;
+  const user = cookieRaw ? decodeUser(cookieRaw) : null;
+
+  return withCORS(
+    NextResponse.json({
+      success: !!user,
+      user: user || null,
+    })
+  );
+}
+
+/* ============================================================
+   POST — LOGIN
 ============================================================ */
 export async function POST(req: NextRequest) {
   try {
     const { accessToken } = await req.json();
 
     if (!accessToken) {
-      return NextResponse.json(
-        { success: false, error: "missing_access_token" },
-        { status: 400 }
+      return withCORS(
+        NextResponse.json({ success: false, error: "missing_token" }, { status: 400 })
       );
     }
 
-    // 🔥 Fetch login info from Pi Network
     const piRes = await fetch("https://api.minepi.com/v2/me", {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-      },
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
 
     if (!piRes.ok) {
-      return NextResponse.json(
-        { success: false, error: "invalid_access_token" },
-        { status: 401 }
+      return withCORS(
+        NextResponse.json({ success: false, error: "invalid_token" }, { status: 401 })
       );
     }
 
     const data = await piRes.json();
 
-    // 🔥 FIX: some Pi accounts DO NOT HAVE uid → fallback required
     const user = {
       username: data.username,
-      uid: data.uid || `user_${data.username}`,
+      uid: data.uid || `uid_${data.username}`,
       wallet_address: data.wallet_address ?? null,
       created_at: data.created_at ?? new Date().toISOString(),
       roles: data.roles ?? [],
@@ -90,25 +103,23 @@ export async function POST(req: NextRequest) {
 
     const cookieValue = encodeUser(user);
 
-    // 🔥 MUST return Set-Cookie so Safari accepts
     const res = NextResponse.json({ success: true, user });
     res.headers.set("Set-Cookie", buildCookie(cookieValue));
 
-    return res;
+    return withCORS(res);
   } catch (err) {
-    console.error("❌ PI LOGIN ERROR:", err);
-    return NextResponse.json(
-      { success: false, error: "server_error" },
-      { status: 500 }
+    console.error("❌ LOGIN ERROR:", err);
+    return withCORS(
+      NextResponse.json({ success: false, error: "server_error" }, { status: 500 })
     );
   }
 }
 
 /* ============================================================
-   🔹 DELETE — LOGOUT
+   DELETE — LOGOUT
 ============================================================ */
 export function DELETE() {
   const res = NextResponse.json({ success: true });
   res.headers.set("Set-Cookie", buildCookie("deleted", 0));
-  return res;
+  return withCORS(res);
 }
