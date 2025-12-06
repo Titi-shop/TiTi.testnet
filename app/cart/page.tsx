@@ -7,22 +7,26 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
-declare global {
-  interface Window {
-    Pi?: PiSDK;
-  }
-}
-
 interface PiSDK {
   createPayment: (
-    data: unknown,
+    data: {
+      amount: number;
+      memo: string;
+      metadata: Record<string, unknown>;
+    },
     callbacks: {
       onReadyForServerApproval: (paymentId: string) => void;
       onReadyForServerCompletion: (paymentId: string, txid: string) => void;
       onCancel: () => void;
       onError: (err: Error) => void;
     }
-  ) => Promise<unknown>;
+  ) => Promise<void>;
+}
+
+declare global {
+  interface Window {
+    Pi?: PiSDK;
+  }
 }
 
 interface CartItem {
@@ -37,111 +41,123 @@ export default function CartPage() {
   const { cart, removeFromCart, updateQty, clearCart } = useCart();
   const { user, piReady } = useAuth();
   const router = useRouter();
-  const { t } = useTranslation(); // ⭐ Thay translate() bằng t.key
+  const { t } = useTranslation();
 
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // chọn item
   const toggleSelect = (id: string) => {
     setSelectedItems((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
   };
 
+  // chọn tất cả
   const selectAll = () => {
-    if (selectedItems.length === cart.length) setSelectedItems([]);
-    else setSelectedItems(cart.map((i) => i.id));
+    if (selectedItems.length === cart.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(cart.map((i) => i.id));
+    }
   };
 
-  // ===========================
-  // 🔥 THANH TOÁN ĐA SẢN PHẨM
-  // ===========================
+  // -------------------------------
+  // 🔥 THANH TOÁN SẢN PHẨM ĐƯỢC CHỌN
+  // -------------------------------
   const handlePaySelected = async () => {
+    if (!piReady || !window.Pi) {
+      alert("⚠️ " + t.pi_not_ready);
+      return;
+    }
+
+    if (!user) {
+      alert("🔑 " + t.must_login_first);
+      router.push("/pilogin");
+      return;
+    }
+
+    if (selectedItems.length === 0) {
+      alert("⚠️ " + t.please_select_item);
+      return;
+    }
+
+    const selectedProducts = cart.filter((i) => selectedItems.includes(i.id));
+    const total = selectedProducts.reduce(
+      (sum, i) => sum + i.price * (i.quantity || 1),
+      0
+    );
+
+    setLoading(true);
+
     try {
-      if (!piReady || !window.Pi) {
-        alert("⚠️ " + t.pi_not_ready);
-        return;
-      }
-      if (!user) {
-        alert("🔑 " + t.must_login_first);
-        router.push("/pilogin");
-        return;
-      }
-      if (selectedItems.length === 0) {
-        alert("⚠️ " + t.please_select_item);
-        return;
-      }
+      // ❗ BỎ accessToken trong localStorage — AuthContext đã xử lý session cookie
+      const orderId = `ORD-${Date.now()}`;
 
-      setLoading(true);
-
-      const selectedProducts: CartItem[] = cart.filter((i) =>
-        selectedItems.includes(i.id)
-      );
-
-      const total = selectedProducts.reduce(
-        (sum, i) => sum + i.price * (i.quantity || 1),
-        0
-      );
-
-      const orderId = Date.now();
-      const accessToken =
-        user?.accessToken ||
-        JSON.parse(localStorage.getItem("pi_user") || "{}").accessToken;
-
+      // xác minh phiên từ server (dùng cookie)
       const verifyRes = await fetch("/api/pi/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessToken })
+        method: "GET",
+        credentials: "include",
       });
 
-      const verifyData = await verifyRes.json();
+      const verifyData: {
+        success: boolean;
+        user?: { username: string };
+      } = await verifyRes.json();
 
-      if (!verifyData.success) {
+      if (!verifyData.success || !verifyData.user) {
         alert("❌ " + t.verify_failed);
-        localStorage.removeItem("pi_user");
         return router.push("/pilogin");
       }
 
-      const payment = await window.Pi.createPayment(
+      await window.Pi!.createPayment(
         {
           amount: total,
           memo: `${t.paying_order} (${selectedProducts.length} items)`,
-          metadata: { orderId, buyer: verifyData.user.username, items: selectedProducts }
+          metadata: {
+            orderId,
+            buyer: verifyData.user.username,
+            items: selectedProducts,
+          },
         },
         {
-          onReadyForServerApproval: async (paymentId: string) => {
+          async onReadyForServerApproval(paymentId: string) {
             await fetch("/api/pi/approve", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ paymentId, orderId })
+              body: JSON.stringify({ paymentId, orderId }),
             });
           },
-          onReadyForServerCompletion: async (paymentId: string, txid: string) => {
+
+          async onReadyForServerCompletion(paymentId: string, txid: string) {
             await fetch("/api/pi/complete", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ paymentId, txid, metadata: { orderId } })
+              body: JSON.stringify({ paymentId, txid }),
             });
 
             clearCart();
             alert("🎉 " + t.payment_success);
             router.push("/customer/pending");
           },
-          onCancel: () => alert("❌ " + t.payment_cancelled),
-          onError: (err: Error) =>
-            alert("💥 " + t.payment_error + ": " + err.message)
+
+          onCancel() {
+            alert("❌ " + t.payment_cancelled);
+          },
+
+          onError(err: Error) {
+            alert("💥 " + t.payment_error + ": " + err.message);
+          },
         }
       );
-
-      console.log("💰 Payment:", payment);
-    } catch (error) {
+    } catch {
       alert("💥 " + t.payment_failed);
     } finally {
       setLoading(false);
     }
   };
 
-  const total = cart
+  const totalSelected = cart
     .filter((i) => selectedItems.includes(i.id))
     .reduce((sum, i) => sum + i.price * (i.quantity || 1), 0);
 
@@ -152,7 +168,6 @@ export default function CartPage() {
           🛒 {t.cart_title}
         </h1>
 
-        {/* Empty cart */}
         {cart.length === 0 ? (
           <div className="text-center py-10">
             <p className="mb-2 text-gray-600">{t.empty_cart}</p>
@@ -174,7 +189,11 @@ export default function CartPage() {
 
                   <div className="w-20 h-20 bg-gray-100 rounded overflow-hidden">
                     {it.images?.[0] ? (
-                      <img src={it.images[0]} alt={it.name} className="w-full h-full object-cover" />
+                      <img
+                        src={it.images[0]}
+                        alt={it.name}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
                         {t.no_image}
@@ -200,7 +219,9 @@ export default function CartPage() {
                         type="number"
                         min={1}
                         value={it.quantity}
-                        onChange={(e) => updateQty(it.id, Math.max(1, Number(e.target.value)))}
+                        onChange={(e) =>
+                          updateQty(it.id, Math.max(1, Number(e.target.value)))
+                        }
                         className="w-10 text-center outline-none border-x border-gray-200"
                       />
 
@@ -223,7 +244,6 @@ export default function CartPage() {
               ))}
             </div>
 
-            {/* Total + Payment */}
             <div className="mt-5 border-t pt-4 flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <input
@@ -236,7 +256,9 @@ export default function CartPage() {
                   onClick={selectAll}
                   className="text-gray-700 text-sm cursor-pointer select-none"
                 >
-                  {selectedItems.length === cart.length ? t.unselect_all : t.select_all}
+                  {selectedItems.length === cart.length
+                    ? t.unselect_all
+                    : t.select_all}
                 </span>
               </div>
 
@@ -244,7 +266,7 @@ export default function CartPage() {
                 <p className="text-sm">
                   {t.total}:{" "}
                   <span className="font-bold text-[#ff6600]">
-                    {total.toFixed(2)} π
+                    {totalSelected.toFixed(2)} π
                   </span>
                 </p>
 
@@ -257,7 +279,7 @@ export default function CartPage() {
                       : "bg-[#ff6600] hover:bg-[#e65500]"
                   }`}
                 >
-                  💳 {loading ? t.processing : t.order_now}
+                   {loading ? t.processing : t.order_now}
                 </button>
               </div>
             </div>
