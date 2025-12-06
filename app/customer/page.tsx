@@ -12,14 +12,12 @@ export default function CustomerPage({ embedded = false }) {
   const { t } = useTranslation();
   const [avatar, setAvatar] = useState<string | null>(null);
 
-  // ❗ Chỉ redirect khi KHÔNG chạy trong /account
   useEffect(() => {
     if (!embedded && piReady && !user) {
       router.replace("/pilogin");
     }
   }, [piReady, user]);
 
-  // Avatar
   useEffect(() => {
     if (!user?.username) return;
 
@@ -30,12 +28,12 @@ export default function CustomerPage({ embedded = false }) {
   }, [user]);
 
   if (!user)
-    return <div className="text-center py-10">Loading...</div>;
+    return <div className="text-center py-10">{t.loading}</div>;
 
   return (
     <div className="pb-6 bg-gray-100">
 
-      {/* 🔶 HEADER giống ảnh */}
+      {/* HEADER */}
       <div className="bg-orange-500 text-white p-6 text-center shadow">
         <div className="w-24 h-24 bg-white rounded-full mx-auto text-orange-600 text-4xl overflow-hidden shadow">
           {avatar ? (
@@ -51,22 +49,25 @@ export default function CustomerPage({ embedded = false }) {
       {/* MY ORDERS */}
       <section className="bg-white mx-4 mt-4 rounded-lg shadow">
         <div className="p-4 border-b">
-          <h2 className="text-lg font-semibold">My Orders</h2>
+          <h2 className="text-lg font-semibold">{t.my_orders}</h2>
         </div>
 
         <div className="grid grid-cols-5 text-center py-4">
-          <OrderItem icon={<Clock size={26} />} label="Pending Orders" path="/customer/pending" />
-          <OrderItem icon={<Package size={26} />} label="Pickup Orders" path="/customer/pickup" />
-          <OrderItem icon={<Truck size={26} />} label="Shipping Orders" path="/customer/shipping" />
-          <OrderItem icon={<Star size={26} />} label="Reviews" path="/customer/review" />
-          <OrderItem icon={<RotateCcw size={26} />} label="Return Orders" path="/customer/returns" />
+          <OrderItem icon={<Clock size={26} />} label={t.pending_orders} path="/customer/pending" />
+          <OrderItem icon={<Package size={26} />} label={t.pickup_orders} path="/customer/pickup" />
+          <OrderItem icon={<Truck size={26} />} label={t.shipping_orders} path="/customer/shipping" />
+          <OrderItem icon={<Star size={26} />} label={t.review_orders} path="/customer/review" />
+          <OrderItem icon={<RotateCcw size={26} />} label={t.return_orders} path="/customer/returns" />
         </div>
       </section>
 
-      {/* Pi Wallet */}
+      {/* WALLET */}
       <section className="mx-4 mt-4 p-4 rounded-lg bg-orange-100 border border-orange-300 text-center">
         <p className="text-orange-700 font-medium">
-          Pi Wallet: <span className="font-bold">{user.wallet_address || "Link Wallet"}</span>
+          {t.wallet}:{" "}
+          <span className="font-bold">
+            {user.wallet_address || t.link_wallet}
+          </span>
         </p>
       </section>
 
