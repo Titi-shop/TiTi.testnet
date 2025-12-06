@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       maxAge: MAX_AGE,
       path: "/",
       // ⭐ THÊM DÒNG NÀY RẤT QUAN TRỌNG
-      domain: "muasam.titi.onl"
+      domain: "titi.onl"
     });
 
     return res;
