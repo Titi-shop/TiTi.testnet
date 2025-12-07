@@ -1,14 +1,47 @@
-import { kv } from "@vercel/kv";
+// app/api/pi/create/route.ts
 import { NextResponse } from "next/server";
+import { kv } from "@vercel/kv";
+import crypto from "crypto";
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get("id");
+export async function POST(req: Request) {
+  try {
+    const { amount, orderId, items, shipping, buyer } = await req.json();
 
-  if (!id)
-    return NextResponse.json({ error: "missing id" }, { status: 400 });
+    if (!amount || !orderId) {
+      return NextResponse.json(
+        { success: false, error: "Missing amount or orderId" },
+        { status: 400 }
+      );
+    }
 
-  const payment = await kv.get(`pi:payment:${id}`);
+    // Tạo backendPaymentId (RẤT QUAN TRỌNG)
+    const backendPaymentId = crypto.randomBytes(16).toString("hex");
 
-  return NextResponse.json({ success: true, payment });
+    const payment = {
+      backendPaymentId,
+      amount,
+      orderId,
+      buyer,
+      items,
+      shipping,
+      status: "created",
+      created_at: Date.now(),
+      env: "testnet",
+    };
+
+    await kv.set(`pi:payment:${backendPaymentId}`, payment);
+
+    console.log("🟢 [CREATE] Payment stored:", payment);
+
+    return NextResponse.json({
+      success: true,
+      paymentId: backendPaymentId,
+    });
+  } catch (err: any) {
+    console.error("❌ CREATE ERROR:", err);
+    return NextResponse.json(
+      { success: false, error: err.message },
+      { status: 500 }
+    );
+  }
 }
