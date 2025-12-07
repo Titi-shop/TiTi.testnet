@@ -1,17 +1,25 @@
 import { NextResponse } from "next/server";
+import { kv } from "@vercel/kv";
 
 export async function POST(req: Request) {
   try {
     const { paymentId, txid } = await req.json();
 
-    if (!paymentId) {
+    if (!paymentId)
       return NextResponse.json({ error: "missing paymentId" }, { status: 400 });
-    }
 
-    const API_KEY = process.env.PI_API_KEY;
-    const API_URL = process.env.PI_API_URL || "https://api.minepi.com/v2/sandbox/payments";
+    const payment = await kv.get(`pi:payment:${paymentId}`);
 
-    console.log("⏳ [Pi COMPLETE] ID:", paymentId, txid);
+    if (!payment)
+      return NextResponse.json({ error: "Payment not found" }, { status: 404 });
+
+    if (payment.status !== "approved")
+      return NextResponse.json({ error: "Payment not approved yet" }, { status: 400 });
+
+    const API_KEY = process.env.PI_API_KEY!;
+    const API_URL = process.env.PI_API_URL!;
+
+    console.log("⏳ [TESTNET COMPLETE]:", paymentId, txid);
 
     const res = await fetch(`${API_URL}/${paymentId}/complete`, {
       method: "POST",
@@ -23,14 +31,21 @@ export async function POST(req: Request) {
     });
 
     const text = await res.text();
-    console.log("✅ [Pi COMPLETE RESULT]:", res.status, text);
+    const json = JSON.parse(text);
 
-    return new NextResponse(text, {
-      status: res.status,
-      headers: { "Access-Control-Allow-Origin": "*" },
+    await kv.set(`pi:payment:${paymentId}`, {
+      ...payment,
+      status: "completed",
+      completed_at: Date.now(),
+      txid,
+      server_complete: json
     });
+
+    console.log("✅ COMPLETE RESULT:", json);
+
+    return NextResponse.json(json, { status: res.status });
   } catch (err: any) {
-    console.error("💥 [Pi COMPLETE ERROR]:", err);
-    return NextResponse.json({ error: err.message || "unknown" }, { status: 500 });
+    console.error("❌ COMPLETE ERROR:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
