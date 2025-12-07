@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = "nodejs"; // bắt buộc để Vercel không xoá session
+export const runtime = "nodejs"; // bắt buộc để Vercel giữ cookie
 
 const COOKIE_NAME = "pi_user";
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 ngày
@@ -17,11 +17,8 @@ function decodeUser(value: string) {
   }
 }
 
-/* ===============================================
-   GET — VERIFY (kiểm tra đăng nhập)
-================================================ */
 export async function GET(req: NextRequest) {
-  const raw = req.cookies.get(COOKIE_NAME)?.value;
+  const raw = req.cookies.get(COOKIE_NAME)?.value || null;
   const user = raw ? decodeUser(raw) : null;
 
   return NextResponse.json({
@@ -30,36 +27,27 @@ export async function GET(req: NextRequest) {
   });
 }
 
-/* ===============================================
-   POST — LOGIN (đăng nhập Pi Network)
-================================================ */
 export async function POST(req: NextRequest) {
   try {
     const { accessToken } = await req.json();
-    if (!accessToken) {
-      return NextResponse.json(
-        { success: false, error: "missing_token" },
-        { status: 400 }
-      );
-    }
 
-    // Gọi API Pi
-    const pi = await fetch("https://api.minepi.com/v2/me", {
+    if (!accessToken)
+      return NextResponse.json({ success: false, error: "Missing access token" }, { status: 400 });
+
+    // Gọi API Pi thật — hacker KHÔNG THỂ fake user
+    const response = await fetch("https://api.minepi.com/v2/me", {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
-    if (!pi.ok) {
-      return NextResponse.json(
-        { success: false, error: "invalid_token" },
-        { status: 401 }
-      );
-    }
+    if (!response.ok)
+      return NextResponse.json({ success: false, error: "Invalid access token" }, { status: 401 });
 
-    const data = await pi.json();
+    const data = await response.json();
 
+    // Build thông tin user thật từ Pi
     const user = {
       username: data.username,
-      uid: data.uid || `user_${data.username}`,
+      uid: data.uid,
       wallet_address: data.wallet_address || null,
       roles: data.roles || [],
       created_at: data.created_at || new Date().toISOString(),
@@ -67,10 +55,9 @@ export async function POST(req: NextRequest) {
 
     const encoded = encodeUser(user);
 
-    // Trả kết quả đăng nhập
     const res = NextResponse.json({ success: true, user });
 
-    // COOKIE chuẩn nhất cho Pi Browser
+    // Cookie chuẩn nhất cho Pi Browser + iOS + Android
     res.cookies.set({
       name: COOKIE_NAME,
       value: encoded,
@@ -79,21 +66,15 @@ export async function POST(req: NextRequest) {
       secure: true,
       sameSite: "none",
       path: "/",
-      domain: "muasam.titi.onl", // ✔ domain chính xác
+      domain: "titi.onl", // quan trọng — không dùng subdomain
     });
 
     return res;
   } catch (e) {
-    return NextResponse.json(
-      { success: false, error: "server_error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: "Server error" }, { status: 500 });
   }
 }
 
-/* ===============================================
-   DELETE — LOGOUT (đăng xuất)
-================================================ */
 export async function DELETE() {
   const res = NextResponse.json({ success: true });
 
@@ -101,11 +82,11 @@ export async function DELETE() {
     name: COOKIE_NAME,
     value: "",
     maxAge: 0,
-    path: "/",
-    secure: true,
     httpOnly: true,
+    secure: true,
     sameSite: "none",
-    domain: "muasam.titi.onl",
+    path: "/",
+    domain: "titi.onl",
   });
 
   return res;
