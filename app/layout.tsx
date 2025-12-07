@@ -2,7 +2,7 @@ import "./globals.css";
 import Script from "next/script";
 import PiRootClient from "./PiRootClient";
 import { AuthProvider } from "@/context/AuthContext";
-import PiAuthInit from "@/components/PiAuthInit";
+
 
 export const metadata = {
   title: "🛍️ TiTi Shop",
@@ -18,7 +18,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
       <body>
         <AuthProvider>
-          <PiAuthInit />
           <PiRootClient>{children}</PiRootClient>
         </AuthProvider>
       </body>
