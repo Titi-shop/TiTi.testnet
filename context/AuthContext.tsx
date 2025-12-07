@@ -63,7 +63,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (typeof window !== "undefined" && window.Pi && !window.__pi_inited) {
       window.Pi.init({
         version: "2.0",
-        sandbox: process.env.NEXT_PUBLIC_PI_ENV === "testnet",
+        sandbox: true, // CHẠY TESTNET 100%
       });
       window.__pi_inited = true;
     }
