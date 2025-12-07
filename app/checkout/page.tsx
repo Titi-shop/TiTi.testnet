@@ -103,14 +103,15 @@ export default function CheckoutPage() {
     // ============================
     // 2️⃣ Dữ liệu gửi Pi SDK
     // ============================
-    const paymentData = {
-      amount: Number(total.toFixed(2)),
-      memo: `Payment for order ${orderId}`,
-      metadata: {
-        orderId,
-        buyer: user.username,
-      },
-    };
+const paymentData = {
+  amount: Number(total.toFixed(2)),
+  memo: `Payment for order ${orderId}`,
+  metadata: {
+    orderId,
+    buyer: user.username,
+    paymentId: backendPaymentId, // 🔥 quan trọng nhất
+  },
+};
 
     // ============================
     // 3️⃣ CALLBACKS PI SDK
