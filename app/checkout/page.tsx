@@ -14,6 +14,14 @@ interface ShippingInfo {
   country?: string;
 }
 
+interface CartItem {
+  name: string;
+  price: number;
+  quantity: number;
+  image?: string;
+  images?: string[];
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -23,7 +31,7 @@ export default function CheckoutPage() {
   const [shipping, setShipping] = useState<ShippingInfo | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // BẮT BUỘC: kích hoạt Pi SDK TESTNET
+  // BẮT BUỘC: Kích hoạt Pi SDK TESTNET
   useEffect(() => {
     if (window.Pi) {
       window.Pi.init({
@@ -33,15 +41,15 @@ export default function CheckoutPage() {
     }
   }, []);
 
-  // Lấy địa chỉ giao hàng
+  // Load địa chỉ giao hàng
   useEffect(() => {
     const saved = localStorage.getItem("shipping_info");
     if (saved) setShipping(JSON.parse(saved));
   }, []);
 
-  // ==========================================
+  // ============================
   // XỬ LÝ THANH TOÁN
-  // ==========================================
+  // ============================
   const handlePayWithPi = async () => {
     if (!user) {
       alert(t.must_login_before_pay);
@@ -65,7 +73,9 @@ export default function CheckoutPage() {
 
     const orderId = `ORD-${Date.now()}`;
 
-    // 1️⃣ Gọi CREATE — tạo giao dịch trên server
+    // ============================
+    // 1️⃣ Gọi CREATE trên server
+    // ============================
     const createRes = await fetch("/api/pi/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -73,9 +83,9 @@ export default function CheckoutPage() {
       body: JSON.stringify({
         amount: Number(total.toFixed(2)),
         orderId,
-        buyer: user.username,
         items: cart,
         shipping,
+        buyer: user.username,
       }),
     });
 
@@ -83,46 +93,52 @@ export default function CheckoutPage() {
 
     if (!createData.success) {
       console.error("❌ CREATE ERROR:", createData);
-      alert("Không thể khởi tạo giao dịch Pi.");
+      alert("Không thể tạo giao dịch Pi.");
       setLoading(false);
       return;
     }
 
-    // Lấy paymentId của BACKEND
     const backendPaymentId = createData.paymentId;
 
-    // 2️⃣ Dữ liệu gửi Pi Wallet
+    // ============================
+    // 2️⃣ Dữ liệu gửi Pi SDK
+    // ============================
     const paymentData = {
       amount: Number(total.toFixed(2)),
       memo: `Payment for order ${orderId}`,
-
-      // METADATA BẮT BUỘC PHẢI CÓ backendPaymentId !!!
       metadata: {
         orderId,
-        backendPaymentId, // 🔥 Đây là chìa khóa để server map giao dịch
         buyer: user.username,
       },
     };
 
+    // ============================
     // 3️⃣ CALLBACKS PI SDK
+    // ============================
     const callbacks = {
-      /** Khi ví đã tạo transaction và chờ server APPROVE */
       onReadyForServerApproval: async (piPaymentId: string) => {
-        console.log("📌 onReadyForServerApproval:", piPaymentId);
-
         await fetch("/api/pi/approve", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            paymentId: piPaymentId, // 🔥 DÙNG ID CỦA PI WALLET
+            paymentId: backendPaymentId, // Quan trọng
+            piPaymentId, // ID Pi trả về
           }),
         });
       },
 
-      /** Khi user đã ký giao dịch và chờ server COMPLETE */
       onReadyForServerCompletion: async (piPaymentId: string, txid: string) => {
-        console.log("📌 onReadyForServerCompletion:", piPaymentId, txid);
+        await fetch("/api/pi/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            paymentId: backendPaymentId,
+            piPaymentId,
+            txid,
+          }),
+        });
 
         // Lưu order
         await fetch("/api/orders", {
@@ -140,49 +156,37 @@ export default function CheckoutPage() {
           }),
         });
 
-        // COMPLETE giao dịch trên Pi server
-        await fetch("/api/pi/complete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            paymentId: piPaymentId, // 🔥 PHẢI DÙNG PI PAYMENT ID
-            txid,
-          }),
-        });
-
         clearCart();
         alert(t.payment_success);
         router.push("/customer/pending");
       },
 
-      onCancel: () => {
-        alert(t.payment_canceled);
-      },
+      onCancel: () => alert(t.payment_canceled),
 
       onError: (error: Error) => {
-        console.error("💥 Payment error:", error);
+        console.error(error);
         alert(`Lỗi thanh toán: ${error.message}`);
       },
     };
 
-    // 4️⃣ Gọi Pi SDK để mở ví
+    // ============================
+    // 4️⃣ Gọi PI SDK (Mở ví)
+    // ============================
     try {
       await window.Pi!.createPayment(paymentData, callbacks);
     } catch (e) {
       console.error(e);
-      alert("Giao dịch thất bại hoặc đã bị hủy.");
+      alert("Giao dịch thất bại hoặc bị hủy.");
     }
 
     setLoading(false);
   };
 
-  // ==========================================
-  // GIAO DIỆN
-  // ==========================================
+  // ============================
+  // Giao diện trang checkout
+  // ============================
   return (
     <main className="max-w-md mx-auto min-h-screen bg-gray-50 flex flex-col justify-between">
-      {/* HEADER */}
       <div className="flex items-center justify-between bg-white p-3 border-b sticky top-0">
         <button onClick={() => router.back()} className="flex items-center text-gray-700">
           <ArrowLeft className="w-5 h-5 mr-1" />
@@ -192,9 +196,7 @@ export default function CheckoutPage() {
         <div className="w-5" />
       </div>
 
-      {/* CONTENT */}
       <div className="flex-1 overflow-y-auto pb-32">
-        {/* SHIPPING */}
         <div
           className="bg-white border-b p-4 flex justify-between cursor-pointer"
           onClick={() => router.push("/customer/address")}
@@ -211,11 +213,9 @@ export default function CheckoutPage() {
           ) : (
             <p className="text-gray-500">➕ {t.add_shipping}</p>
           )}
-
           <span className="text-blue-500">{t.edit} ➜</span>
         </div>
 
-        {/* CART */}
         <div className="p-4 bg-white mt-2">
           <h2 className="font-semibold mb-3">{t.products}</h2>
 
@@ -228,14 +228,12 @@ export default function CheckoutPage() {
                   src={item.image || item.images?.[0] || "/placeholder.png"}
                   className="w-16 h-16 rounded border bg-gray-100 object-cover"
                 />
-
                 <div className="ml-3 flex-1">
                   <p className="font-medium">{item.name}</p>
                   <p className="text-gray-500 text-xs">
                     x{item.quantity} × {item.price} π
                   </p>
                 </div>
-
                 <p className="text-orange-600 font-semibold">
                   {(item.price * item.quantity).toFixed(2)} π
                 </p>
@@ -245,7 +243,6 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {/* FOOTER */}
       <div className="fixed bottom-16 left-0 right-0 bg-white border-t p-4 flex justify-between max-w-md mx-auto">
         <div>
           <p className="text-gray-600 text-sm">{t.total_label}</p>
