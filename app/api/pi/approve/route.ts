@@ -1,22 +1,22 @@
 import { NextResponse } from "next/server";
+import { kv } from "@vercel/kv";
 
 export async function POST(req: Request) {
   try {
     const { paymentId } = await req.json();
 
-    if (!paymentId) {
+    if (!paymentId)
       return NextResponse.json({ error: "missing paymentId" }, { status: 400 });
-    }
 
-    const API_KEY = process.env.PI_API_KEY;
-    const API_URL = process.env.PI_API_URL || "https://api.minepi.com/v2/sandbox/payments";
+    const payment = await kv.get(`pi:payment:${paymentId}`);
 
-    if (!API_KEY) {
-      console.error("❌ Missing PI_API_KEY in environment variables");
-      return NextResponse.json({ error: "Missing PI_API_KEY" }, { status: 500 });
-    }
+    if (!payment)
+      return NextResponse.json({ error: "Payment not found" }, { status: 404 });
 
-    console.log("⏳ [Pi APPROVE] Giao dịch:", paymentId);
+    const API_KEY = process.env.PI_API_KEY!;
+    const API_URL = process.env.PI_API_URL!;
+
+    console.log("⏳ [TESTNET APPROVE]:", paymentId);
 
     const res = await fetch(`${API_URL}/${paymentId}/approve`, {
       method: "POST",
@@ -27,20 +27,20 @@ export async function POST(req: Request) {
     });
 
     const text = await res.text();
+    const json = JSON.parse(text);
 
-    console.log("✅ [Pi APPROVE RESULT]:", res.status, text);
-
-    // Nếu lỗi quyền hạn
-    if (res.status === 401) {
-      console.error("❌ Sai API key hoặc app chưa đăng ký domain!");
-    }
-
-    return new NextResponse(text, {
-      status: res.status,
-      headers: { "Access-Control-Allow-Origin": "*" },
+    await kv.set(`pi:payment:${paymentId}`, {
+      ...payment,
+      status: "approved",
+      approved_at: Date.now(),
+      server_approve: json
     });
+
+    console.log("✅ APPROVE RESULT:", json);
+
+    return NextResponse.json(json, { status: res.status });
   } catch (err: any) {
-    console.error("💥 [Pi APPROVE ERROR]:", err);
-    return NextResponse.json({ error: err.message || "unknown" }, { status: 500 });
+    console.error("❌ APPROVE ERROR:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
