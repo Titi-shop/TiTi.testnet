@@ -1,30 +1,48 @@
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
+import crypto from "crypto";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { paymentId, amount, metadata } = body;
+    const { amount, orderId, items, shipping, buyer } = await req.json();
 
-    if (!paymentId)
-      return NextResponse.json({ error: "Missing paymentId" }, { status: 400 });
+    if (!amount || !orderId) {
+      return NextResponse.json(
+        { success: false, error: "Missing amount or orderId" },
+        { status: 400 }
+      );
+    }
 
-    console.log("📌 [PI CREATE - TESTNET] Payment:", body);
+    // Tạo paymentId nội bộ server (rất quan trọng)
+    const paymentId = crypto.randomBytes(16).toString("hex");
 
-    await kv.set(`pi:payment:${paymentId}`, {
-      status: "pending",
+    const payment = {
+      paymentId,
       amount,
-      metadata,
+      orderId,
+      buyer,
+      items,
+      shipping,
+      status: "created",
       created_at: Date.now(),
-      env: "testnet"
-    });
+      env: "testnet",
+    };
+
+    // Lưu vào KV
+    await kv.set(`pi:payment:${paymentId}`, payment);
+
+    console.log("🟢 [CREATE] Payment stored:", payment);
 
     return NextResponse.json({
-      status: "ok",
-      message: "payment initialized (testnet)",
+      success: true,
+      paymentId,
     });
+
   } catch (err: any) {
     console.error("❌ CREATE ERROR:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: err.message },
+      { status: 500 }
+    );
   }
 }
