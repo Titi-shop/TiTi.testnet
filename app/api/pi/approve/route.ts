@@ -1,22 +1,18 @@
+// app/api/pi/approve/route.ts
 import { NextResponse } from "next/server";
-import { kv } from "@vercel/kv";
 
 export async function POST(req: Request) {
   try {
-    const { paymentId } = await req.json();
+    const { paymentId } = await req.json(); // <-- PI PAYMENT ID (Quan trọng)
 
-    if (!paymentId)
+    if (!paymentId) {
       return NextResponse.json({ error: "missing paymentId" }, { status: 400 });
-
-    const payment = await kv.get(`pi:payment:${paymentId}`);
-
-    if (!payment)
-      return NextResponse.json({ error: "Payment not found" }, { status: 404 });
+    }
 
     const API_KEY = process.env.PI_API_KEY!;
-    const API_URL = process.env.PI_API_URL!;
+    const API_URL = process.env.PI_API_URL!; // testnet endpoint
 
-    console.log("⏳ [TESTNET APPROVE]:", paymentId);
+    console.log("⏳ [TESTNET APPROVE] paymentId:", paymentId);
 
     const res = await fetch(`${API_URL}/${paymentId}/approve`, {
       method: "POST",
@@ -27,18 +23,10 @@ export async function POST(req: Request) {
     });
 
     const text = await res.text();
-    const json = JSON.parse(text);
 
-    await kv.set(`pi:payment:${paymentId}`, {
-      ...payment,
-      status: "approved",
-      approved_at: Date.now(),
-      server_approve: json
-    });
+    console.log("✅ APPROVE RESULT:", res.status, text);
 
-    console.log("✅ APPROVE RESULT:", json);
-
-    return NextResponse.json(json, { status: res.status });
+    return new NextResponse(text, { status: res.status });
   } catch (err: any) {
     console.error("❌ APPROVE ERROR:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
