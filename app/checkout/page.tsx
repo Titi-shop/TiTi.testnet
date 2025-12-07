@@ -64,6 +64,16 @@ export default function CheckoutPage() {
   const [shipping, setShipping] = useState<ShippingInfo | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Kích hoạt Pi SDK ở chế độ TESTNET
+useEffect(() => {
+  if (window.Pi) {
+    window.Pi.init({
+      version: "2.0",
+      sandbox: true, // ⚠ BẮT BUỘC ĐỂ THANH TOÁN TESTNET
+    });
+  }
+}, []);
+
   // Lấy địa chỉ từ localStorage
   useEffect(() => {
     const saved = localStorage.getItem("shipping_info");
