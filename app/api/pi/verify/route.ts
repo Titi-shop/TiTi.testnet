@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       secure: true,
       sameSite: "none",
       path: "/",
-      domain: "titi.onl", // quan trọng — không dùng subdomain
+      domain: "muasam.titi.onl", // quan trọng — không dùng subdomain
     });
 
     return res;
