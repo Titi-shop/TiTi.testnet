@@ -1,24 +1,31 @@
 "use client";
 
 import { Toaster } from "react-hot-toast";
-import { CartProvider } from "@/app/context/CartContext";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
+
+import { CartProvider } from "@/app/context/CartContext";
+import { AuthProvider } from "@/context/AuthContext";
+
 import "@/app/lib/i18n";
 
 export default function PiRootClient({ children }: { children: React.ReactNode }) {
   return (
-    <CartProvider>
-      <Toaster position="top-center" reverseOrder={false} />
+    <AuthProvider>
+      <CartProvider>
+        <Toaster position="top-center" reverseOrder={false} />
 
-      <Navbar />
+        {/* HEADER */}
+        <Navbar />
 
-      {/* ⭐ ĐẨY NỘI DUNG XUỐNG DƯỚI NAVBAR */}
-      <main className="pt-[72px] bg-white">
-        {children}
-      </main>
+        {/* ⭐ ĐẨY NỘI DUNG XUỐNG DƯỚI NAVBAR - FULL WIDTH */}
+        <main className="pt-[72px] min-h-screen bg-white">
+          {children}
+        </main>
 
-      <BottomNav />
-    </CartProvider>
+        {/* FOOTER */}
+        <BottomNav />
+      </CartProvider>
+    </AuthProvider>
   );
 }
