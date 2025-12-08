@@ -57,14 +57,15 @@ export async function POST(req: NextRequest) {
 
     // 🔥 COOKIE CHUẨN 100% PI BROWSER
     res.cookies.set({
-      name: COOKIE_NAME,
-      value: encoded,
-      maxAge: MAX_AGE,
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      path: "/",
-    });
+  name: COOKIE_NAME,
+  value: encoded,
+  maxAge: MAX_AGE,
+  httpOnly: true,
+  secure: true,
+  sameSite: "none",
+  path: "/",
+  domain: "muasam.titi.onl",  // ⭐ BẮT BUỘC PHẢI KHỚP 100% DOMAIN APP
+});
 
     return res;
   } catch (e) {
@@ -76,14 +77,15 @@ export async function DELETE() {
   const res = NextResponse.json({ success: true });
 
   res.cookies.set({
-    name: COOKIE_NAME,
-    value: "",
-    maxAge: 0,
-    httpOnly: true,
-    secure: true,
-    sameSite: "none",
-    path: "/",
-  });
+  name: COOKIE_NAME,
+  value: "",
+  maxAge: 0,
+  httpOnly: true,
+  secure: true,
+  sameSite: "none",
+  path: "/",
+  domain: "muasam.titi.onl",
+});
 
   return res;
 }
