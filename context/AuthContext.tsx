@@ -57,37 +57,42 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   // =============================================
-  // INIT PI SDK
+  // INIT PI SDK — CHỈ INIT 1 LẦN
   // =============================================
-  if (typeof window !== "undefined" && !window.__pi_inited) {
-  const timer = setInterval(() => {
-    if (window.Pi) {
-      window.Pi.init({ version: "2.0", sandbox: true });
-      window.__pi_inited = true;
-      setPiReady(true);
-      clearInterval(timer);
-    }
-  }, 300);
-}
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!window.Pi) return;
 
-    // Pi ready detection
-    const checkReady = () => {
-      if (window.Pi) {
-        setPiReady(true);
-        return true;
+    if (!window.__pi_inited) {
+      try {
+        window.Pi.init({
+          version: "2.0",
+          sandbox: true, // Testnet
+        });
+        console.log("✅ Pi SDK initialized");
+        window.__pi_inited = true;
+      } catch (e) {
+        console.error("❌ Pi init error:", e);
       }
-      return false;
-    };
+    }
 
-    if (!checkReady()) {
+    if (window.Pi.onReady) {
+      window.Pi.onReady(() => {
+        console.log("✅ Pi SDK ready");
+        setPiReady(true);
+      });
+    } else {
       const timer = setInterval(() => {
-        if (checkReady()) clearInterval(timer);
+        if (window.Pi) {
+          setPiReady(true);
+          clearInterval(timer);
+        }
       }, 300);
     }
   }, []);
 
   // =============================================
-  // LOAD USER SESSION (COOKIE SESSION)
+  // LOAD USER SESSION
   // =============================================
   useEffect(() => {
     const loadSession = async () => {
@@ -107,19 +112,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   // =============================================
-  // LOGIN (Pi Browser)
+  // LOGIN
   // =============================================
   const pilogin = async () => {
     if (!window.Pi) {
-      alert("⚠️ Vui lòng mở trong Pi Browser!");
+      alert("⚠️ Vui lòng mở ứng dụng bằng Pi Browser!");
       return;
     }
 
     try {
       const scopes = ["username"];
 
-      // Retry authentication up to 3 times
       let result: PiAuthResult | null = null;
+
       for (let i = 0; i < 3; i++) {
         result = await window.Pi.authenticate(scopes);
         if (result?.accessToken) break;
@@ -127,27 +132,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       if (!result?.accessToken) {
-        alert("⚠️ Pi Browser không trả về accessToken. Thử lại.");
+        alert("⚠️ Không nhận được accessToken từ Pi Browser.");
         return;
       }
 
       const res = await fetch("/api/pi/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessToken: result.accessToken }),
         credentials: "include",
+        body: JSON.stringify({ accessToken: result.accessToken }),
       });
 
       const data = await res.json();
-
       if (data.success && data.user) {
         setUser(data.user);
       } else {
-        alert("❌ Đăng nhập thất bại. Vui lòng thử lại.");
+        alert("❌ Đăng nhập thất bại.");
       }
     } catch (err) {
       console.error("❌ Login error:", err);
-      alert("❌ Có lỗi xảy ra khi đăng nhập.");
+      alert("❌ Lỗi đăng nhập.");
     }
   };
 
@@ -162,20 +166,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       setUser(null);
     } catch (err) {
-      console.error("❌ logout error:", err);
+      console.error("❌ Logout error:", err);
     }
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        piReady,
-        loading,
-        pilogin,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={{ user, piReady, loading, pilogin, logout }}>
       {children}
     </AuthContext.Provider>
   );
