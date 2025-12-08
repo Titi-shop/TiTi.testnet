@@ -57,55 +57,42 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   // =============================================
-  // INIT PI SDK — INIT 1 LẦN, POLLING
+  // INIT PI SDK
   // =============================================
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window !== "undefined" && window.Pi && !window.__pi_inited) {
+      window.Pi.init({
+        version: "2.0",
+        sandbox: process.env.NEXT_PUBLIC_PI_ENV === "testnet",
+      });
+      window.__pi_inited = true;
+    }
 
-    const tryInitPi = () => {
-      if (!window.Pi) return false;
-
-      if (!window.__pi_inited) {
-        try {
-          window.Pi.init({
-            version: "2.0",
-            sandbox: true, // Testnet
-          });
-          window.__pi_inited = true;
-          console.log("✅ Pi SDK initialized");
-        } catch (e) {
-          console.error("❌ Pi init error:", e);
-        }
+    // Pi ready detection
+    const checkReady = () => {
+      if (window.Pi) {
+        setPiReady(true);
+        return true;
       }
-
-      setPiReady(true);
-
-      if (window.Pi.onReady) {
-        window.Pi.onReady(() => {
-          console.log("✅ Pi SDK ready (onReady)");
-          setPiReady(true);
-        });
-      }
-
-      return true;
+      return false;
     };
 
-    if (tryInitPi()) return;
-
-    const timer = setInterval(() => {
-      if (tryInitPi()) clearInterval(timer);
-    }, 300);
-
-    return () => clearInterval(timer);
+    if (!checkReady()) {
+      const timer = setInterval(() => {
+        if (checkReady()) clearInterval(timer);
+      }, 300);
+    }
   }, []);
 
   // =============================================
-  // LOAD USER SESSION FROM COOKIE
+  // LOAD USER SESSION (COOKIE SESSION)
   // =============================================
   useEffect(() => {
     const loadSession = async () => {
       try {
-        const res = await fetch("/api/pi/verify", { credentials: "include" });
+        const res = await fetch("/api/pi/verify", {
+          credentials: "include",
+        });
         const data = await res.json();
         setUser(data.success ? data.user : null);
       } catch {
@@ -118,53 +105,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   // =============================================
-  // LOGIN — FIXED VERSION (LOAD SESSION SAU POST)
+  // LOGIN (Pi Browser)
   // =============================================
   const pilogin = async () => {
     if (!window.Pi) {
-      alert("⚠️ Vui lòng mở ứng dụng bằng Pi Browser!");
+      alert("⚠️ Vui lòng mở trong Pi Browser!");
       return;
     }
 
     try {
       const scopes = ["username"];
-      let result: PiAuthResult | null = null;
 
+      // Retry authentication up to 3 times
+      let result: PiAuthResult | null = null;
       for (let i = 0; i < 3; i++) {
         result = await window.Pi.authenticate(scopes);
-        console.log("🔥 AUTH RESULT:", result);
         if (result?.accessToken) break;
         await new Promise((r) => setTimeout(r, 400));
       }
 
       if (!result?.accessToken) {
-        alert("⚠️ Không nhận được accessToken từ Pi Browser.");
+        alert("⚠️ Pi Browser không trả về accessToken. Thử lại.");
         return;
       }
 
-      // Gửi token lên server
-      await fetch("/api/pi/verify", {
+      const res = await fetch("/api/pi/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ accessToken: result.accessToken }),
+        credentials: "include",
       });
 
-      // ⭐ BẮT BUỘC: Load lại cookie session (FIX LOGIN BỊ KẸT)
-      const session = await fetch("/api/pi/verify", {
-        credentials: "include",
-      }).then((r) => r.json());
+      const data = await res.json();
 
-      console.log("🔥 SESSION RESULT:", session);
-
-      if (session.success && session.user) {
-        setUser(session.user);
+      if (data.success && data.user) {
+        setUser(data.user);
       } else {
-        alert("❌ Đăng nhập thất bại.");
+        alert("❌ Đăng nhập thất bại. Vui lòng thử lại.");
       }
     } catch (err) {
       console.error("❌ Login error:", err);
-      alert("❌ Lỗi đăng nhập.");
+      alert("❌ Có lỗi xảy ra khi đăng nhập.");
     }
   };
 
@@ -179,12 +160,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       setUser(null);
     } catch (err) {
-      console.error("❌ Logout error:", err);
+      console.error("❌ logout error:", err);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, piReady, loading, pilogin, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        piReady,
+        loading,
+        pilogin,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
