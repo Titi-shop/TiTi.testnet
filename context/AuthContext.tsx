@@ -59,14 +59,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // =============================================
   // INIT PI SDK
   // =============================================
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.Pi && !window.__pi_inited) {
-      window.Pi.init({
-        version: "2.0",
-        sandbox: true, // CHẠY TESTNET 100%
-      });
+  if (typeof window !== "undefined" && !window.__pi_inited) {
+  const timer = setInterval(() => {
+    if (window.Pi) {
+      window.Pi.init({ version: "2.0", sandbox: true });
       window.__pi_inited = true;
+      setPiReady(true);
+      clearInterval(timer);
     }
+  }, 300);
+}
 
     // Pi ready detection
     const checkReady = () => {
