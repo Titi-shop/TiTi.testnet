@@ -86,7 +86,7 @@ export async function DELETE() {
     secure: true,
     sameSite: "none",
     path: "/",
-    domain: "titi.onl",
+    domain: "muasam.titi.onl",
   });
 
   return res;
