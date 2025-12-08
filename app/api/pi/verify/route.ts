@@ -1,24 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const COOKIE_NAME = "pi_user";
-const MAX_AGE = 60 * 60 * 24 * 30;
+const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
+/* ============================================================
+   ENCODE / DECODE USER
+============================================================ */
 function encodeUser(user: object) {
   return Buffer.from(JSON.stringify(user), "utf8").toString("base64");
 }
 
-function decodeUser(value: string) {
+function decodeUser(raw: string) {
   try {
-    return JSON.parse(Buffer.from(value, "base64").toString("utf8"));
+    return JSON.parse(Buffer.from(raw, "base64").toString("utf8"));
   } catch {
     return null;
   }
 }
 
-export async function GET(req: NextRequest) {
-  const raw = req.cookies.get(COOKIE_NAME)?.value || null;
+/* ============================================================
+   COOKIE BUILDER — FULLY COMPATIBLE WITH SAFARI + PI BROWSER
+============================================================ */
+function buildCookie(value: string, age = MAX_AGE) {
+  return [
+    `${COOKIE_NAME}=${value}`,
+    "Path=/",
+    `Max-Age=${age}`,
+    "HttpOnly",
+    "SameSite=None",
+    "Secure" // 🔥 ALWAYS secure for Pi Browser + Safari
+  ].join("; ");
+}
+
+/* ============================================================
+   🔹 GET — FETCH SESSION
+============================================================ */
+export function GET(req: NextRequest) {
+  const raw = req.cookies.get(COOKIE_NAME)?.value;
   const user = raw ? decodeUser(raw) : null;
 
   return NextResponse.json({
@@ -27,65 +48,67 @@ export async function GET(req: NextRequest) {
   });
 }
 
+/* ============================================================
+   🔹 POST — LOGIN WITH PI TOKEN
+============================================================ */
 export async function POST(req: NextRequest) {
   try {
     const { accessToken } = await req.json();
 
-    if (!accessToken)
-      return NextResponse.json({ success: false, error: "Missing access token" }, { status: 400 });
+    if (!accessToken) {
+      return NextResponse.json(
+        { success: false, error: "missing_access_token" },
+        { status: 400 }
+      );
+    }
 
-    const response = await fetch("https://api.minepi.com/v2/me", {
-      headers: { Authorization: `Bearer ${accessToken}` },
+    // 🔥 Fetch login info from Pi Network
+    const piRes = await fetch("https://api.minepi.com/v2/me", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
     });
 
-    if (!response.ok)
-      return NextResponse.json({ success: false, error: "Invalid access token" }, { status: 401 });
+    if (!piRes.ok) {
+      return NextResponse.json(
+        { success: false, error: "invalid_access_token" },
+        { status: 401 }
+      );
+    }
 
-    const data = await response.json();
+    const data = await piRes.json();
 
+    // 🔥 FIX: some Pi accounts DO NOT HAVE uid → fallback required
     const user = {
       username: data.username,
-      uid: data.uid,
-      wallet_address: data.wallet_address || null,
-      roles: data.roles || [],
-      created_at: data.created_at || new Date().toISOString(),
+      uid: data.uid || `user_${data.username}`,
+      wallet_address: data.wallet_address ?? null,
+      created_at: data.created_at ?? new Date().toISOString(),
+      roles: data.roles ?? [],
     };
 
-    const encoded = encodeUser(user);
+    const cookieValue = encodeUser(user);
 
+    // 🔥 MUST return Set-Cookie so Safari accepts
     const res = NextResponse.json({ success: true, user });
-
-    // 🔥 COOKIE CHUẨN 100% PI BROWSER
-    res.cookies.set({
-  name: COOKIE_NAME,
-  value: encoded,
-  maxAge: MAX_AGE,
-  httpOnly: true,
-  secure: true,
-  sameSite: "none",
-  path: "/",
-  domain: "muasam.titi.onl",  // ⭐ BẮT BUỘC PHẢI KHỚP 100% DOMAIN APP
-});
+    res.headers.set("Set-Cookie", buildCookie(cookieValue));
 
     return res;
-  } catch (e) {
-    return NextResponse.json({ success: false, error: "Server error" }, { status: 500 });
+  } catch (err) {
+    console.error("❌ PI LOGIN ERROR:", err);
+    return NextResponse.json(
+      { success: false, error: "server_error" },
+      { status: 500 }
+    );
   }
 }
 
-export async function DELETE() {
+/* ============================================================
+   🔹 DELETE — LOGOUT
+============================================================ */
+export function DELETE() {
   const res = NextResponse.json({ success: true });
-
-  res.cookies.set({
-  name: COOKIE_NAME,
-  value: "",
-  maxAge: 0,
-  httpOnly: true,
-  secure: true,
-  sameSite: "none",
-  path: "/",
-  domain: "muasam.titi.onl",
-});
-
+  res.headers.set("Set-Cookie", buildCookie("deleted", 0));
   return res;
 }
