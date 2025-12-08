@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = "nodejs"; // bắt buộc để Vercel giữ cookie
+export const runtime = "nodejs";
 
 const COOKIE_NAME = "pi_user";
-const MAX_AGE = 60 * 60 * 24 * 30; // 30 ngày
+const MAX_AGE = 60 * 60 * 24 * 30;
 
 function encodeUser(user: object) {
   return Buffer.from(JSON.stringify(user), "utf8").toString("base64");
@@ -34,7 +34,6 @@ export async function POST(req: NextRequest) {
     if (!accessToken)
       return NextResponse.json({ success: false, error: "Missing access token" }, { status: 400 });
 
-    // Gọi API Pi thật — hacker KHÔNG THỂ fake user
     const response = await fetch("https://api.minepi.com/v2/me", {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -44,7 +43,6 @@ export async function POST(req: NextRequest) {
 
     const data = await response.json();
 
-    // Build thông tin user thật từ Pi
     const user = {
       username: data.username,
       uid: data.uid,
@@ -57,7 +55,7 @@ export async function POST(req: NextRequest) {
 
     const res = NextResponse.json({ success: true, user });
 
-    // Cookie chuẩn nhất cho Pi Browser + iOS + Android
+    // 🔥 COOKIE CHUẨN 100% PI BROWSER
     res.cookies.set({
       name: COOKIE_NAME,
       value: encoded,
@@ -66,7 +64,7 @@ export async function POST(req: NextRequest) {
       secure: true,
       sameSite: "none",
       path: "/",
-      domain: "muasam.titi.onl", // quan trọng — không dùng subdomain
+      domain: "titi.onl", // ⭐ KHÔNG BAO GIỜ ĐỂ SUBDOMAIN
     });
 
     return res;
@@ -86,7 +84,7 @@ export async function DELETE() {
     secure: true,
     sameSite: "none",
     path: "/",
-    domain: "muasam.titi.onl",
+    domain: "titi.onl",
   });
 
   return res;
