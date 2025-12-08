@@ -130,45 +130,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // LOGIN
   // =============================================
   const pilogin = async () => {
-    if (!window.Pi) {
-      alert("⚠️ Vui lòng mở ứng dụng bằng Pi Browser!");
+  if (!window.Pi) {
+    alert("⚠️ Vui lòng mở ứng dụng bằng Pi Browser!");
+    return;
+  }
+
+  try {
+    const scopes = ["username"];
+    let result = null;
+
+    for (let i = 0; i < 3; i++) {
+      result = await window.Pi.authenticate(scopes);
+      console.log("🔥 AUTH RESULT:", result);
+      if (result?.accessToken) break;
+      await new Promise((r) => setTimeout(r, 400));
+    }
+
+    if (!result?.accessToken) {
+      alert("⚠️ Không nhận được accessToken từ Pi Browser.");
       return;
     }
 
-    try {
-      const scopes = ["username"];
+    const res = await fetch("/api/pi/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ accessToken: result.accessToken }),
+    });
 
-      let result: PiAuthResult | null = null;
-      for (let i = 0; i < 3; i++) {
-        result = await window.Pi.authenticate(scopes);
-        if (result?.accessToken) break;
-        await new Promise((r) => setTimeout(r, 400));
-      }
+    const data = await res.json();
+    console.log("🔥 VERIFY RESULT:", data);
 
-      if (!result?.accessToken) {
-        alert("⚠️ Không nhận được accessToken từ Pi Browser.");
-        return;
-      }
-
-      const res = await fetch("/api/pi/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ accessToken: result.accessToken }),
-      });
-
-      const data = await res.json();
-      if (data.success && data.user) {
-        setUser(data.user);
-      } else {
-        alert("❌ Đăng nhập thất bại.");
-      }
-    } catch (err) {
-      console.error("❌ Login error:", err);
-      alert("❌ Lỗi đăng nhập.");
+    if (data.success && data.user) {
+      setUser(data.user);
+    } else {
+      alert("❌ Đăng nhập thất bại.");
     }
-  };
-
+  } catch (err) {
+    console.error("❌ Login error:", err);
+    alert("❌ Lỗi đăng nhập.");
+  }
+};
   // =============================================
   // LOGOUT
   // =============================================
