@@ -64,7 +64,6 @@ export async function POST(req: NextRequest) {
       secure: true,
       sameSite: "none",
       path: "/",
-      domain: "titi.onl", // ⭐ KHÔNG BAO GIỜ ĐỂ SUBDOMAIN
     });
 
     return res;
@@ -84,7 +83,6 @@ export async function DELETE() {
     secure: true,
     sameSite: "none",
     path: "/",
-    domain: "titi.onl",
   });
 
   return res;
