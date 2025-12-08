@@ -57,38 +57,53 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   // =============================================
-  // INIT PI SDK — CHỈ INIT 1 LẦN
+  // INIT PI SDK — CHỈ INIT 1 LẦN, CÓ POLLING
   // =============================================
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!window.Pi) return;
 
-    if (!window.__pi_inited) {
-      try {
-        window.Pi.init({
-          version: "2.0",
-          sandbox: true, // Testnet
-        });
-        console.log("✅ Pi SDK initialized");
-        window.__pi_inited = true;
-      } catch (e) {
-        console.error("❌ Pi init error:", e);
-      }
-    }
+    const tryInitPi = () => {
+      if (!window.Pi) return false;
 
-    if (window.Pi.onReady) {
-      window.Pi.onReady(() => {
-        console.log("✅ Pi SDK ready");
-        setPiReady(true);
-      });
-    } else {
-      const timer = setInterval(() => {
-        if (window.Pi) {
-          setPiReady(true);
-          clearInterval(timer);
+      // Init một lần
+      if (!window.__pi_inited) {
+        try {
+          window.Pi.init({
+            version: "2.0",
+            sandbox: true, // Testnet
+          });
+          window.__pi_inited = true;
+          console.log("✅ Pi SDK initialized");
+        } catch (e) {
+          console.error("❌ Pi init error:", e);
         }
-      }, 300);
-    }
+      }
+
+      // Đánh dấu SDK đã sẵn sàng
+      setPiReady(true);
+
+      // Nếu SDK có onReady thì vẫn đăng ký thêm (an toàn hơn)
+      if (window.Pi.onReady) {
+        window.Pi.onReady(() => {
+          console.log("✅ Pi SDK ready (onReady)");
+          setPiReady(true);
+        });
+      }
+
+      return true;
+    };
+
+    // Thử init ngay
+    if (tryInitPi()) return;
+
+    // Nếu Pi chưa load → polling mỗi 300ms
+    const timer = setInterval(() => {
+      if (tryInitPi()) {
+        clearInterval(timer);
+      }
+    }, 300);
+
+    return () => clearInterval(timer);
   }, []);
 
   // =============================================
@@ -124,7 +139,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const scopes = ["username"];
 
       let result: PiAuthResult | null = null;
-
       for (let i = 0; i < 3; i++) {
         result = await window.Pi.authenticate(scopes);
         if (result?.accessToken) break;
