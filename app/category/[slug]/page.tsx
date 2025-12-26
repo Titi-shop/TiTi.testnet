@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-export default function CategoryDetailPage({ params }: any) {
+export default function CategoryDetailPage({ params }: PageProps) {
   const categoryId = Number(params.slug);
 
-  const [products, setProducts] = useState<any[]>([]);
-  const [category, setCategory] = useState<any>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+const [category, setCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,15 +16,17 @@ export default function CategoryDetailPage({ params }: any) {
         /* ============================
             ⭐ LẤY TẤT CẢ SẢN PHẨM
         ============================ */
-        const resProducts = await fetch("/api/products", {
-          cache: "no-store",
-        });
-        let allProducts = await resProducts.json();
-
-        // ⭐ Lọc theo danh mục
         let filtered = allProducts.filter(
-          (p: any) => Number(p.categoryId) === categoryId
-        );
+  (p) => Number(p.categoryId) === categoryId
+);
+
+filtered = filtered.sort(
+  (a, b) =>
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+);
+
+const categories: Category[] = await resCate.json();
+const cate = categories.find((c) => Number(c.id) === categoryId);
 
         // ⭐ Sắp xếp mới nhất
         filtered = filtered.sort(
