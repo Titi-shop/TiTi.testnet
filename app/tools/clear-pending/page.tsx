@@ -25,8 +25,10 @@ export default function ClearPendingPage() {
 
       const text = await res.text();
       setMessage(`✅ Kết quả: ${text}`);
-    } catch (err: any) {
-      setMessage(`💥 Lỗi: ${err.message}`);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Lỗi không xác định";
+      setMessage(`💥 Lỗi: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -34,37 +36,35 @@ export default function ClearPendingPage() {
 
   return (
     <main className="max-w-md mx-auto p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-xl font-bold text-center text-gray-800 mb-4">
+      <h1 className="text-xl font-bold text-center mb-4">
         🧹 Huỷ giao dịch Pi đang pending
       </h1>
 
       <p className="text-gray-600 text-sm mb-4">
-        Nếu bạn bị lỗi <strong>"A pending payment needs to be handled"</strong>,
-        hãy dán mã <code>paymentId</code> của giao dịch cũ vào ô dưới đây để huỷ.
+        Nếu bạn bị lỗi{" "}
+        <strong>
+          &quot;A pending payment needs to be handled&quot;
+        </strong>
+        , hãy dán mã <code>paymentId</code> vào ô dưới.
       </p>
 
       <input
-        type="text"
-        placeholder="Nhập paymentId..."
         value={paymentId}
         onChange={(e) => setPaymentId(e.target.value)}
-        className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:ring-2 focus:ring-orange-500 outline-none"
+        className="w-full border rounded px-3 py-2 mb-3"
+        placeholder="Nhập paymentId..."
       />
 
       <button
         onClick={handleCancel}
         disabled={loading}
-        className={`w-full py-3 rounded-lg text-white font-semibold ${
-          loading
-            ? "bg-gray-400"
-            : "bg-orange-600 hover:bg-orange-700 active:bg-orange-800"
-        }`}
+        className="w-full py-3 rounded bg-orange-600 text-white"
       >
         {loading ? "Đang huỷ..." : "Huỷ giao dịch"}
       </button>
 
       {message && (
-        <div className="mt-4 p-3 border rounded bg-white text-sm text-gray-700">
+        <div className="mt-4 p-3 border bg-white text-sm">
           {message}
         </div>
       )}
