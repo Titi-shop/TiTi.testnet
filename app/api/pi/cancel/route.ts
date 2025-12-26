@@ -4,7 +4,11 @@ export const dynamic = "force-dynamic"; // 🔥 tránh cache
 
 export async function POST(req: Request) {
   try {
-    const { paymentId } = await req.json();
+    const body = (await req.json()) as {
+      paymentId?: string;
+    };
+
+    const { paymentId } = body;
 
     if (!paymentId) {
       return NextResponse.json({ error: "missing paymentId" }, { status: 400 });
@@ -12,10 +16,9 @@ export async function POST(req: Request) {
 
     const API_KEY = process.env.PI_API_KEY;
     const API_URL =
-  process.env.NEXT_PUBLIC_PI_ENV === "testnet"
-    ? "https://api.minepi.com/v2/sandbox/payments"
-    : "https://api.minepi.com/v2/payments";
-
+      process.env.NEXT_PUBLIC_PI_ENV === "testnet"
+        ? "https://api.minepi.com/v2/sandbox/payments"
+        : "https://api.minepi.com/v2/payments";
 
     console.log("🛑 [Pi CANCEL] Hủy giao dịch:", paymentId);
 
@@ -34,8 +37,12 @@ export async function POST(req: Request) {
       status: res.status,
       headers: { "Access-Control-Allow-Origin": "*" },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("💥 [Pi CANCEL ERROR]:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+
+    const message =
+      err instanceof Error ? err.message : "Internal server error";
+
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
