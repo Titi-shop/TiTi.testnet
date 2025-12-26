@@ -7,7 +7,9 @@ const ALLOWED_USERS = ["titi_shop", "admin_titi", "nguyenminhduc1991111"];
 export async function GET(req: Request) {
   try {
     // 🔒 1. Kiểm tra token từ header hoặc query
-    const token = req.headers.get("x-pi-username") || new URL(req.url).searchParams.get("token");
+    const token =
+      req.headers.get("x-pi-username") ||
+      new URL(req.url).searchParams.get("token");
 
     if (!token || !ALLOWED_USERS.includes(token)) {
       return NextResponse.json(
@@ -28,8 +30,15 @@ export async function GET(req: Request) {
       success: true,
       message: `✅ ${token} đã tạo file orders.json thành công.`,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("❌ Lỗi tạo orders.json:", err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+
+    const message =
+      err instanceof Error ? err.message : "Internal server error";
+
+    return NextResponse.json(
+      { success: false, error: message },
+      { status: 500 }
+    );
   }
 }
