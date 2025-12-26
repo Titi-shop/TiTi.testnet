@@ -2,14 +2,21 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const { paymentId, txid } = await req.json();
+    const body = (await req.json()) as {
+      paymentId?: string;
+      txid?: string;
+    };
+
+    const { paymentId, txid } = body;
 
     if (!paymentId) {
       return NextResponse.json({ error: "missing paymentId" }, { status: 400 });
     }
 
     const API_KEY = process.env.PI_API_KEY;
-    const API_URL = process.env.PI_API_URL || "https://api.minepi.com/v2/sandbox/payments";
+    const API_URL =
+      process.env.PI_API_URL ||
+      "https://api.minepi.com/v2/sandbox/payments";
 
     console.log("⏳ [Pi COMPLETE] ID:", paymentId, txid);
 
@@ -29,8 +36,12 @@ export async function POST(req: Request) {
       status: res.status,
       headers: { "Access-Control-Allow-Origin": "*" },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("💥 [Pi COMPLETE ERROR]:", err);
-    return NextResponse.json({ error: err.message || "unknown" }, { status: 500 });
+
+    const message =
+      err instanceof Error ? err.message : "Internal server error";
+
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
