@@ -22,15 +22,30 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const { username, name, phone, address } = await req.json();
+    const body = (await req.json()) as {
+      username: string;
+      name?: string;
+      phone?: string;
+      address?: string;
+    };
+
+    const { username, name, phone, address } = body;
+
     if (!username) throw new Error("Missing username");
 
     const key = `address:${username.toLowerCase()}`;
     await kv.set(key, { name, phone, address });
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("❌ Lỗi lưu địa chỉ:", err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+
+    const message =
+      err instanceof Error ? err.message : "Internal server error";
+
+    return NextResponse.json(
+      { success: false, error: message },
+      { status: 500 }
+    );
   }
 }
