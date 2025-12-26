@@ -4,11 +4,6 @@ import { kv } from "@vercel/kv";
 /**
  * =======================================
  * 🧾 TiTi Shop - API Đơn hàng (Orders)
- * ---------------------------------------
- * ✅ Hoạt động tốt cho cả Testnet & Mainnet
- * ✅ Tự động phát hiện môi trường Pi
- * ✅ Lưu dữ liệu trên Vercel KV
- * ✅ Dễ debug, log rõ ràng
  * =======================================
  */
 
@@ -20,19 +15,19 @@ const isTestnet =
 // ----------------------------
 // 🔸 Helper: Đọc danh sách đơn hàng
 // ----------------------------
-async function readOrders() {
+async function readOrders(): Promise<unknown[]> {
   try {
     const stored = await kv.get("orders");
     if (!stored) return [];
-    if (Array.isArray(stored)) return stored;
+    if (Array.isArray(stored)) return stored as unknown[];
 
     try {
-      return JSON.parse(stored);
+      return JSON.parse(stored as string) as unknown[];
     } catch {
       console.warn("⚠️ Dữ liệu orders trong KV không hợp lệ, reset lại.");
       return [];
     }
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("❌ Lỗi đọc orders:", err);
     return [];
   }
@@ -41,18 +36,18 @@ async function readOrders() {
 // ----------------------------
 // 🔸 Helper: Ghi danh sách đơn hàng
 // ----------------------------
-async function writeOrders(orders: any[]) {
+async function writeOrders(orders: unknown[]): Promise<boolean> {
   try {
     await kv.set("orders", JSON.stringify(orders));
     return true;
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("❌ Lỗi ghi orders:", err);
     return false;
   }
 }
 
 // ----------------------------
-// 🔹 GET: Lấy danh sách đơn hàng (lọc theo buyer nếu có)
+// 🔹 GET: Lấy danh sách đơn hàng
 // ----------------------------
 export async function GET(req: Request) {
   try {
@@ -61,11 +56,17 @@ export async function GET(req: Request) {
     const orders = await readOrders();
 
     const filtered = buyer
-      ? orders.filter((o) => o.buyer === buyer)
+      ? orders.filter(
+          (o) =>
+            typeof o === "object" &&
+            o !== null &&
+            "buyer" in o &&
+            (o as { buyer?: unknown }).buyer === buyer
+        )
       : orders;
 
     return NextResponse.json(filtered);
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("❌ GET /orders:", err);
     return NextResponse.json([], { status: 500 });
   }
@@ -76,21 +77,25 @@ export async function GET(req: Request) {
 // ----------------------------
 export async function POST(req: Request) {
   try {
-    const order = await req.json();
+    const order: unknown = await req.json();
     const orders = await readOrders();
 
+    const o = (typeof order === "object" && order !== null
+      ? order
+      : {}) as Record<string, unknown>;
+
     const newOrder = {
-      id: order.id ?? `ORD-${Date.now()}`,
-      buyer: order.buyer || "unknown",
-      items: order.items ?? [],
-      total: Number(order.total ?? 0),
-      status: order.status ?? "Chờ xác nhận",
-      note: order.note ?? "",
-      shipping: order.shipping ?? {},
-      paymentId: order.paymentId ?? "",
-      txid: order.txid ?? "",
-      env: isTestnet ? "testnet" : "mainnet", // ✅ môi trường giao dịch
-      createdAt: order.createdAt ?? new Date().toISOString(),
+      id: o.id ?? `ORD-${Date.now()}`,
+      buyer: o.buyer || "unknown",
+      items: o.items ?? [],
+      total: Number(o.total ?? 0),
+      status: o.status ?? "Chờ xác nhận",
+      note: o.note ?? "",
+      shipping: o.shipping ?? {},
+      paymentId: o.paymentId ?? "",
+      txid: o.txid ?? "",
+      env: isTestnet ? "testnet" : "mainnet",
+      createdAt: o.createdAt ?? new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
@@ -100,7 +105,7 @@ export async function POST(req: Request) {
     console.log("🧾 [ORDER CREATED]:", newOrder);
 
     return NextResponse.json({ success: true, order: newOrder });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("❌ POST /orders:", err);
     return NextResponse.json({ success: false }, { status: 500 });
   }
@@ -111,10 +116,24 @@ export async function POST(req: Request) {
 // ----------------------------
 export async function PUT(req: Request) {
   try {
-    const { id, status, txid } = await req.json();
+    const body: unknown = await req.json();
+    const data =
+      typeof body === "object" && body !== null
+        ? (body as Record<string, unknown>)
+        : {};
+
+    const { id, status, txid } = data;
+
     const orders = await readOrders();
 
-    const index = orders.findIndex((o) => String(o.id) === String(id));
+    const index = orders.findIndex(
+      (o) =>
+        typeof o === "object" &&
+        o !== null &&
+        "id" in o &&
+        String((o as { id: unknown }).id) === String(id)
+    );
+
     if (index === -1) {
       return NextResponse.json(
         { success: false, message: "Không tìm thấy đơn hàng" },
@@ -122,23 +141,26 @@ export async function PUT(req: Request) {
       );
     }
 
-    orders[index] = {
-      ...orders[index],
-      status: status || orders[index].status,
-      txid: txid || orders[index].txid,
+    const current = orders[index] as Record<string, unknown>;
+
+    const updated = {
+      ...current,
+      status: status ?? current.status,
+      txid: txid ?? current.txid,
       updatedAt: new Date().toISOString(),
     };
 
     if (status === "Đã thanh toán") {
-      orders[index].paidAt = new Date().toISOString();
+      updated.paidAt = new Date().toISOString();
     }
 
+    orders[index] = updated;
     await writeOrders(orders);
 
-    console.log("🔄 [ORDER UPDATED]:", orders[index]);
+    console.log("🔄 [ORDER UPDATED]:", updated);
 
-    return NextResponse.json({ success: true, order: orders[index] });
-  } catch (err) {
+    return NextResponse.json({ success: true, order: updated });
+  } catch (err: unknown) {
     console.error("❌ PUT /orders:", err);
     return NextResponse.json({ success: false }, { status: 500 });
   }
