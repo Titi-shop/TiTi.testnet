@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
 
+type Product = {
+  views?: number;
+  [key: string]: unknown;
+};
+
 export async function POST(req: Request) {
   try {
     const { id } = await req.json();
@@ -13,7 +18,7 @@ export async function POST(req: Request) {
     }
 
     const key = `product:${id}`;
-    const product = await kv.get<any>(key);
+    const product = await kv.get<Product>(key);
 
     if (!product) {
       return NextResponse.json(
@@ -22,7 +27,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // ⭐ Tăng view ngay trong KV (đúng chuẩn)
+    // ⭐ Tăng view ngay trong KV
     product.views = (product.views ?? 0) + 1;
 
     // Lưu lại
