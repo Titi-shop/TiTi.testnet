@@ -6,66 +6,102 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
+/* =========================
+   TYPES — FIX any
+========================= */
+interface Order {
+  id: string;
+  buyer?: string;
+  total?: number;
+  status: string;
+  createdAt: string;
+}
+
 export default function PendingOrdersPage() {
   const router = useRouter();
   const { t, lang } = useTranslation();
 
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [currentUser, setCurrentUser] = useState("");
-  const [processing, setProcessing] = useState<number | null>(null);
 
+  /* =========================
+     LOAD CURRENT USER
+  ========================= */
   useEffect(() => {
     const info = localStorage.getItem("pi_user");
     try {
       const parsed = info ? JSON.parse(info) : null;
-      setCurrentUser(parsed?.user?.username || parsed?.username || "guest_user");
-    } catch {}
+      setCurrentUser(
+        parsed?.user?.username || parsed?.username || "guest_user"
+      );
+    } catch {
+      setCurrentUser("guest_user");
+    }
   }, []);
 
+  /* =========================
+     FETCH ORDERS
+  ========================= */
   useEffect(() => {
     if (!currentUser) {
       setLoading(false);
       return;
     }
+
     const fetchOrders = async () => {
       try {
-        const res = await fetch("/api/orders", { method: "GET", cache: "no-store" });
-        const data = await res.json();
+        const res = await fetch("/api/orders", {
+          method: "GET",
+          cache: "no-store",
+        });
 
-        const filterByLang = {
+        const data: Order[] = await res.json();
+
+        const filterByLang: Record<string, string[]> = {
           vi: ["Chờ xác nhận", "Đã thanh toán", "Chờ xác minh"],
           en: ["Pending", "Paid", "Waiting for verification"],
           zh: ["待确认", "已付款", "待核实"],
-        }[lang];
+        };
+
+        const allowedStatus = filterByLang[lang] || [];
 
         setOrders(
           data.filter(
             (o) =>
               o.buyer?.toLowerCase() === currentUser.toLowerCase() &&
-              filterByLang.includes(o.status)
+              allowedStatus.includes(o.status)
           )
         );
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Fetch error");
       } finally {
         setLoading(false);
       }
     };
+
     fetchOrders();
   }, [currentUser, lang]);
 
-  if (loading) return <p className="text-center mt-10">{t.loading_orders}</p>;
-  if (error) return <p className="text-center text-red-500">❌ {error}</p>;
+  if (loading)
+    return <p className="text-center mt-10">{t.loading_orders}</p>;
+  if (error)
+    return <p className="text-center text-red-500">❌ {error}</p>;
 
   const totalOrders = orders.length;
-  const totalPi = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+  const totalPi = orders.reduce(
+    (sum, o) => sum + Number(o.total || 0),
+    0
+  );
 
   return (
     <main className="p-4 max-w-4xl mx-auto bg-gray-50 min-h-screen pb-24">
       <div className="flex items-center mb-4">
-        <button className="text-orange-500 text-lg mr-2" onClick={() => router.back()}>
+        <button
+          className="text-orange-500 text-lg mr-2"
+          onClick={() => router.back()}
+        >
           ←
         </button>
         <h1 className="text-2xl font-bold text-yellow-600">
@@ -80,7 +116,9 @@ export default function PendingOrdersPage() {
         </div>
         <div className="bg-white border rounded-lg p-4 text-center shadow">
           <p className="text-gray-500 text-sm">{t.total_pi}</p>
-          <p className="text-2xl font-bold">{totalPi.toFixed(2)} Pi</p>
+          <p className="text-2xl font-bold">
+            {totalPi.toFixed(2)} Pi
+          </p>
         </div>
       </div>
 
@@ -92,11 +130,23 @@ export default function PendingOrdersPage() {
       ) : (
         <div className="space-y-4">
           {orders.map((order) => (
-            <div key={order.id} className="bg-white p-4 rounded shadow border">
-              <h2 className="font-semibold text-lg">🧾 #{order.id}</h2>
-              <p>💰 {t.total}: <b>{order.total}</b> Pi</p>
-              <p>📅 {t.created_at}: {new Date(order.createdAt).toLocaleString()}</p>
-              <p className="mt-2 text-yellow-600">{t.status}: {order.status}</p>
+            <div
+              key={order.id}
+              className="bg-white p-4 rounded shadow border"
+            >
+              <h2 className="font-semibold text-lg">
+                🧾 #{order.id}
+              </h2>
+              <p>
+                💰 {t.total}: <b>{order.total}</b> Pi
+              </p>
+              <p>
+                📅 {t.created_at}:{" "}
+                {new Date(order.createdAt).toLocaleString()}
+              </p>
+              <p className="mt-2 text-yellow-600">
+                {t.status}: {order.status}
+              </p>
             </div>
           ))}
         </div>
