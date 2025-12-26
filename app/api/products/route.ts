@@ -6,7 +6,7 @@ import { toISO } from "@/lib/formatDate";
 /* -------------------------------------------
    CHECK SELLER
 ------------------------------------------- */
-async function isSeller(username: string) {
+async function isSeller(username: string): Promise<boolean> {
   try {
     const host = headers().get("host");
     const protocol =
@@ -14,7 +14,7 @@ async function isSeller(username: string) {
     const base = `${protocol}://${host}`;
 
     const res = await fetch(`${base}/api/users/role?username=${username}`);
-    const data = await res.json();
+    const data = (await res.json()) as { role?: unknown };
 
     return data.role === "seller";
   } catch {
@@ -23,36 +23,36 @@ async function isSeller(username: string) {
 }
 
 /* -------------------------------------------
-   GET ALL PRODUCTS (Đã sửa lỗi lrange)
+   GET ALL PRODUCTS
 ------------------------------------------- */
 export async function GET() {
   try {
-    // LẤY DANH SÁCH ID TỪ LIST
     const ids = await kv.lrange<string>("products:all", 0, -1);
-
     if (!ids || ids.length === 0) return NextResponse.json([]);
 
     const now = new Date();
 
     const products = await Promise.all(
-      ids.map(async (id) => await kv.get(`product:${id}`))
+      ids.map(async (id) => await kv.get<Record<string, unknown>>(`product:${id}`))
     );
 
     const updated = products
-      .filter(Boolean)
-      .map((p: any) => {
-        const start = p.saleStart ? new Date(p.saleStart) : null;
-        const end = p.saleEnd ? new Date(p.saleEnd) : null;
+      .filter((p): p is Record<string, unknown> => typeof p === "object" && p !== null)
+      .map((p) => {
+        const start =
+          typeof p.saleStart === "string" ? new Date(p.saleStart) : null;
+        const end =
+          typeof p.saleEnd === "string" ? new Date(p.saleEnd) : null;
 
         if (start) start.setHours(0, 0, 0, 0);
         if (end) end.setHours(23, 59, 59, 999);
 
         const isSale =
-          p.salePrice &&
+          typeof p.salePrice === "number" &&
           start &&
           end &&
-          now.getTime() >= start.getTime() &&
-          now.getTime() <= end.getTime();
+          now >= start &&
+          now <= end;
 
         return {
           ...p,
@@ -62,7 +62,7 @@ export async function GET() {
       });
 
     return NextResponse.json(updated);
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("GET products error:", err);
     return NextResponse.json([], { status: 500 });
   }
@@ -73,7 +73,12 @@ export async function GET() {
 ------------------------------------------- */
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const body: unknown = await req.json();
+    const data =
+      typeof body === "object" && body !== null
+        ? (body as Record<string, unknown>)
+        : {};
+
     const {
       name,
       price,
@@ -84,18 +89,20 @@ export async function POST(req: Request) {
       salePrice,
       saleStart,
       saleEnd,
-    } = body;
+    } = data;
 
-    if (!name || !price || !seller)
+    if (!name || !price || !seller) {
       return NextResponse.json({ success: false, message: "Thiếu dữ liệu" });
+    }
 
-    const sellerLower = seller.toLowerCase();
+    const sellerLower = String(seller).toLowerCase();
 
-    if (!(await isSeller(sellerLower)))
+    if (!(await isSeller(sellerLower))) {
       return NextResponse.json({
         success: false,
         message: "Không phải seller",
       });
+    }
 
     const id = Date.now().toString();
 
@@ -110,23 +117,17 @@ export async function POST(req: Request) {
       createdAt: new Date().toISOString(),
       views: 0,
       sold: 0,
-
       salePrice: salePrice || null,
-      saleStart: saleStart ? toISO(saleStart) : null,
-      saleEnd: saleEnd ? toISO(saleEnd) : null,
+      saleStart: saleStart ? toISO(String(saleStart)) : null,
+      saleEnd: saleEnd ? toISO(String(saleEnd)) : null,
     };
 
-    // LƯU SẢN PHẨM
     await kv.set(`product:${id}`, newProduct);
-
-    // THÊM VÀO DANH SÁCH CHUNG (LIST)
     await kv.rpush("products:all", id);
-
-    // THÊM VÀO DANH SÁCH SELLER
     await kv.rpush(`products:seller:${sellerLower}`, id);
 
     return NextResponse.json({ success: true, product: newProduct });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("POST error:", err);
     return NextResponse.json({ success: false, message: "Lỗi server" });
   }
@@ -137,7 +138,12 @@ export async function POST(req: Request) {
 ------------------------------------------- */
 export async function PUT(req: Request) {
   try {
-    const body = await req.json();
+    const body: unknown = await req.json();
+    const data =
+      typeof body === "object" && body !== null
+        ? (body as Record<string, unknown>)
+        : {};
+
     const {
       id,
       name,
@@ -149,16 +155,15 @@ export async function PUT(req: Request) {
       salePrice,
       saleStart,
       saleEnd,
-    } = body;
+    } = data;
 
-    if (!id || !seller)
-      return NextResponse.json({ success: false });
+    if (!id || !seller) return NextResponse.json({ success: false });
 
-    const sellerLower = seller.toLowerCase();
+    const sellerLower = String(seller).toLowerCase();
     if (!(await isSeller(sellerLower)))
       return NextResponse.json({ success: false });
 
-    const product: any = await kv.get(`product:${id}`);
+    const product = await kv.get<Record<string, unknown>>(`product:${id}`);
     if (!product) return NextResponse.json({ success: false });
 
     if (product.seller !== sellerLower)
@@ -172,16 +177,14 @@ export async function PUT(req: Request) {
       images,
       categoryId: Number(categoryId) || product.categoryId,
       updatedAt: new Date().toISOString(),
-
       salePrice: salePrice || null,
-      saleStart: saleStart ? toISO(saleStart) : null,
-      saleEnd: saleEnd ? toISO(saleEnd) : null,
+      saleStart: saleStart ? toISO(String(saleStart)) : null,
+      saleEnd: saleEnd ? toISO(String(saleEnd)) : null,
     };
 
     await kv.set(`product:${id}`, updated);
-
     return NextResponse.json({ success: true, product: updated });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("PUT error:", err);
     return NextResponse.json({ success: false });
   }
@@ -195,32 +198,31 @@ export async function DELETE(req: Request) {
     const url = new URL(req.url);
     const id = url.searchParams.get("id");
 
-    const { seller } = await req.json();
-    if (!id || !seller)
-      return NextResponse.json({ success: false });
+    const body: unknown = await req.json();
+    const data =
+      typeof body === "object" && body !== null
+        ? (body as Record<string, unknown>)
+        : {};
 
-    const sellerLower = seller.toLowerCase();
+    const seller = data.seller;
+    if (!id || !seller) return NextResponse.json({ success: false });
 
+    const sellerLower = String(seller).toLowerCase();
     if (!(await isSeller(sellerLower)))
       return NextResponse.json({ success: false });
 
-    const product: any = await kv.get(`product:${id}`);
+    const product = await kv.get<Record<string, unknown>>(`product:${id}`);
     if (!product) return NextResponse.json({ success: false });
 
     if (product.seller !== sellerLower)
       return NextResponse.json({ success: false });
 
-    // XÓA PRODUCT
     await kv.del(`product:${id}`);
-
-    // XÓA TRONG LIST CỦA SELLER
     await kv.lrem(`products:seller:${sellerLower}`, 0, id);
-
-    // XÓA TRONG LIST TẤT CẢ
     await kv.lrem("products:all", 0, id);
 
     return NextResponse.json({ success: true });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("DELETE error:", err);
     return NextResponse.json({ success: false });
   }
