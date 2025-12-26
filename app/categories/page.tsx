@@ -6,7 +6,7 @@ import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 export default function CategoryPage() {
   const { t } = useTranslation();
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,7 +16,9 @@ export default function CategoryPage() {
         if (!res.ok) throw new Error("API lỗi");
 
         const data = await res.json();
-        const sorted = data.sort((a: any, b: any) => Number(a.id) - Number(b.id));
+        const sorted = (data as Category[]).sort(
+  (a, b) => Number(a.id) - Number(b.id)
+);
         setCategories(sorted);
 
       } catch (err) {
