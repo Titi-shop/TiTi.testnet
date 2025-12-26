@@ -7,14 +7,39 @@ import { useAuth } from "@/context/AuthContext";
 import { ArrowLeft } from "lucide-react";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
+/* =========================
+   🔧 FIX ESLINT: REMOVE any
+========================= */
+interface PiPaymentData {
+  amount: number;
+  memo?: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface PiPaymentCallbacks {
+  onReadyForServerApproval?: (paymentId: string) => Promise<void>;
+  onReadyForServerCompletion?: (
+    paymentId: string,
+    txid: string
+  ) => Promise<void>;
+  onCancel?: () => void;
+  onError?: (error: unknown) => void;
+}
+
 declare global {
   interface Window {
     Pi?: {
-      createPayment: (data: any, callbacks: any) => Promise<void>;
+      createPayment: (
+        data: PiPaymentData,
+        callbacks: PiPaymentCallbacks
+      ) => Promise<void>;
     };
   }
 }
 
+/* =========================
+   TYPES
+========================= */
 interface ShippingInfo {
   name: string;
   phone: string;
@@ -31,6 +56,9 @@ interface CartItem {
   images?: string[];
 }
 
+/* =========================
+   PAGE
+========================= */
 export default function CheckoutPage() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -41,7 +69,7 @@ export default function CheckoutPage() {
   const [shipping, setShipping] = useState<ShippingInfo | null>(null);
 
   /* =====================
-     LẤY ĐỊA CHỈ GIAO HÀNG
+     LOAD SHIPPING INFO
   ===================== */
   useEffect(() => {
     try {
@@ -53,7 +81,7 @@ export default function CheckoutPage() {
   }, []);
 
   /* =====================
-     THANH TOÁN PI
+     PI PAYMENT
   ===================== */
   const handlePayWithPi = async () => {
     if (!piReady || !window.Pi) {
@@ -96,7 +124,7 @@ export default function CheckoutPage() {
         return;
       }
 
-      const paymentData = {
+      const paymentData: PiPaymentData = {
         amount: Number(total.toFixed(2)),
         memo: `${t.payment_for_order || "Thanh toán đơn"} #${orderId}`,
         metadata: {
@@ -107,7 +135,7 @@ export default function CheckoutPage() {
         },
       };
 
-      const callbacks = {
+      const callbacks: PiPaymentCallbacks = {
         onReadyForServerApproval: async (paymentId: string) => {
           await fetch("/api/pi/approve", {
             method: "POST",
@@ -116,7 +144,10 @@ export default function CheckoutPage() {
           });
         },
 
-        onReadyForServerCompletion: async (paymentId: string, txid: string) => {
+        onReadyForServerCompletion: async (
+          paymentId: string,
+          txid: string
+        ) => {
           await fetch("/api/orders", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -166,12 +197,12 @@ export default function CheckoutPage() {
   };
 
   /* =====================
-     ẢNH FALLBACK
+     IMAGE FALLBACK
   ===================== */
   const resolveImageUrl = (img?: string) => {
     if (!img) return "/placeholder.png";
     if (img.startsWith("http")) return img;
-    return `/` + img.replace(/^\//, "");
+    return "/" + img.replace(/^\//, "");
   };
 
   return (
@@ -191,8 +222,7 @@ export default function CheckoutPage() {
         <div className="w-5" />
       </div>
 
-      {/* Nội dung & Footer giữ nguyên như bạn */}
-      {/* (phần UI không có lỗi nên mình không động) */}
+      {/* UI phần còn lại giữ nguyên */}
     </main>
   );
 }
