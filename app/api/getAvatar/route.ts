@@ -10,11 +10,16 @@ export async function GET(req: Request) {
   }
 
   // Lấy profile từ KV
-  const profile = await kv.get<Record<string, any>>(`user_profile:${username}`);
+  const profile = await kv.get<Record<string, unknown>>(
+    `user_profile:${username}`
+  );
 
-  const avatar = profile?.avatar || null;
+  const avatar =
+    profile && typeof profile === "object" && "avatar" in profile
+      ? (profile as { avatar?: string }).avatar ?? null
+      : null;
 
   return NextResponse.json({
-    avatar: avatar ?? null,
+    avatar,
   });
 }
