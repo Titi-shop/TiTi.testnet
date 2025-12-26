@@ -10,8 +10,10 @@ import { NextResponse } from "next/server";
  * - POST: body JSON
  */
 
+type UserProfile = Record<string, unknown>;
+
 function normalize(str: string) {
-  return str?.trim().toLowerCase();
+  return str.trim().toLowerCase();
 }
 
 // 🟢 Lấy hồ sơ
@@ -20,15 +22,16 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const username = searchParams.get("username");
 
-    if (!username)
+    if (!username) {
       return NextResponse.json({ error: "Thiếu username" }, { status: 400 });
+    }
 
     const key = `user_profile:${normalize(username)}`;
-    const data = await kv.get<Record<string, any>>(key);
+    const data = await kv.get<UserProfile>(key);
 
     if (!data) {
       // Nếu chưa có dữ liệu, tạo hồ sơ mặc định
-      const newProfile = {
+      const newProfile: UserProfile = {
         username: normalize(username),
         displayName: username,
         avatar: null,
@@ -37,15 +40,16 @@ export async function GET(req: Request) {
         address: "",
         createdAt: Date.now(),
       };
+
       await kv.set(key, newProfile);
       return NextResponse.json(newProfile);
     }
 
     return NextResponse.json(data);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("❌ Lỗi GET profile:", err);
     return NextResponse.json(
-      { success: false, error: err.message },
+      { success: false, error: "Server error" },
       { status: 500 }
     );
   }
@@ -54,16 +58,17 @@ export async function GET(req: Request) {
 // 🟢 Cập nhật hồ sơ
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const username = body?.username;
+    const body = (await req.json()) as UserProfile;
+    const username = body.username as string | undefined;
 
-    if (!username)
+    if (!username) {
       return NextResponse.json({ error: "Thiếu username" }, { status: 400 });
+    }
 
     const key = `user_profile:${normalize(username)}`;
-    const existing = (await kv.get<Record<string, any>>(key)) || {};
+    const existing = (await kv.get<UserProfile>(key)) || {};
 
-    const updatedProfile = {
+    const updatedProfile: UserProfile = {
       ...existing,
       ...body,
       username: normalize(username),
@@ -73,10 +78,10 @@ export async function POST(req: Request) {
     await kv.set(key, updatedProfile);
 
     return NextResponse.json({ success: true, profile: updatedProfile });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("❌ Lỗi POST profile:", err);
     return NextResponse.json(
-      { success: false, error: err.message },
+      { success: false, error: "Server error" },
       { status: 500 }
     );
   }
