@@ -59,10 +59,14 @@ export async function POST(req: Request) {
       success: true,
       message: "🧹 Đã xóa toàn bộ dữ liệu testnet.",
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("❌ Lỗi /api/admin/clear:", err);
+
+    const message =
+      err instanceof Error ? err.message : "Internal server error";
+
     return NextResponse.json(
-      { success: false, error: err.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
