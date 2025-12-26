@@ -12,8 +12,9 @@ export async function POST() {
     // Trong môi trường serverless (Vercel), không có session thật,
     // nên chỉ cần trả tín hiệu để frontend tự xoá localStorage
     return NextResponse.json({ success: true, message: "Đăng xuất thành công!" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Lỗi khi xử lý logout:", error);
+
     return NextResponse.json(
       { success: false, message: "Lỗi đăng xuất." },
       { status: 500 }
