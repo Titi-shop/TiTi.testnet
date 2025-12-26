@@ -11,16 +11,23 @@ export default function AvatarPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // 🔹 Điều hướng nếu chưa login
   useEffect(() => {
-    if (piReady && !user) router.replace("/pilogin");
+    if (piReady && !user) {
+      router.replace("/pilogin");
+    }
   }, [piReady, user, router]);
 
-  if (!piReady || !user) return <div className="min-h-screen bg-gray-100"></div>;
-
-  // ✅ Ghi log user để dễ kiểm tra
+  // 🔹 Log user (KHÔNG đặt sau return)
   useEffect(() => {
-    console.log("👤 User info:", user);
+    if (user) {
+      console.log("👤 User info:", user);
+    }
   }, [user]);
+
+  if (!piReady || !user) {
+    return <div className="min-h-screen bg-gray-100"></div>;
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -36,9 +43,8 @@ export default function AvatarPage() {
       return;
     }
 
-    // ✅ Kiểm tra username
     const username =
-      user?.username || localStorage.getItem("titi_username") || "";
+      user.username || localStorage.getItem("titi_username") || "";
 
     if (!username) {
       alert("⚠️ Không xác định được username. Vui lòng đăng nhập lại.");
@@ -58,31 +64,35 @@ export default function AvatarPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Lỗi tải ảnh lên máy chủ");
+      if (!res.ok) {
+        throw new Error(data?.error || "Lỗi tải ảnh");
+      }
 
-      alert("✅ Ảnh đại diện đã được cập nhật thành công!");
+      alert("✅ Ảnh đại diện đã được cập nhật!");
       router.refresh();
-    } catch (err: any) {
-      console.error("❌ Upload lỗi:", err);
-      alert("❌ Lỗi tải ảnh: " + err.message);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Lỗi không xác định";
+      alert("❌ Lỗi tải ảnh: " + message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6">
+    <main className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
       <div className="bg-white p-6 rounded-xl shadow-lg text-center w-80">
         <div className="relative w-24 h-24 mx-auto mb-4">
           <img
-           src={
-  preview
-    ? preview
-    : `/api/getAvatar?username=${user.username}`
-           }
+            src={
+              preview
+                ? preview
+                : `/api/getAvatar?username=${user.username}`
+            }
+            alt="Avatar"
             className="w-24 h-24 rounded-full object-cover border-4 border-orange-500"
           />
-          <label className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full cursor-pointer hover:bg-orange-600 transition">
+          <label className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full cursor-pointer">
             <input
               type="file"
               accept="image/*"
@@ -93,21 +103,19 @@ export default function AvatarPage() {
           </label>
         </div>
 
-        <h1 className="text-lg font-semibold text-gray-800 mb-2">
-          {user.username || "Chưa đăng nhập"}
-        </h1>
+        <h1 className="text-lg font-semibold mb-2">{user.username}</h1>
 
         <button
           onClick={handleUpload}
           disabled={loading}
-          className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg w-full"
+          className="bg-orange-500 text-white px-4 py-2 rounded-lg w-full"
         >
-          {loading ? "⏳ Đang tải lên..." : "📤 Lưu ảnh đại diện"}
+          {loading ? "⏳ Đang tải..." : "📤 Lưu ảnh"}
         </button>
 
         <button
           onClick={() => router.back()}
-          className="mt-4 text-blue-600 hover:underline text-sm block mx-auto"
+          className="mt-4 text-blue-600 text-sm"
         >
           ← Quay lại
         </button>
