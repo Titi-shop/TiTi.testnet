@@ -5,9 +5,17 @@ import { NextResponse } from "next/server";
  * - Nhận yêu cầu trả hàng từ khách hàng
  * - Lưu thông tin vào DB hoặc file (hiện tạm log ra console)
  */
+
+type ReturnRequest = {
+  username: string;
+  orderId: string;
+  reason: string;
+  images?: unknown[];
+};
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const body = (await req.json()) as Partial<ReturnRequest>;
     const { username, orderId, reason, images } = body;
 
     if (!username || !orderId || !reason) {
@@ -18,14 +26,19 @@ export async function POST(req: Request) {
     }
 
     // 👉 Ở bản thật, bạn sẽ lưu vào DB (ví dụ MongoDB)
-    console.log("📦 [YÊU CẦU TRẢ HÀNG]:", { username, orderId, reason, images });
+    console.log("📦 [YÊU CẦU TRẢ HÀNG]:", {
+      username,
+      orderId,
+      reason,
+      images,
+    });
 
     return NextResponse.json({
       success: true,
       message: "Yêu cầu trả hàng đã được ghi nhận.",
       data: { username, orderId, reason, images },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ [RETURN ERROR]:", error);
     return NextResponse.json(
       { success: false, message: "Lỗi xử lý yêu cầu trả hàng." },
