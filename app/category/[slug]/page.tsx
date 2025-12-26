@@ -47,7 +47,7 @@ export default function CategoryDetailPage({ params }: PageProps) {
         });
         const allProducts: Product[] = await resProducts.json();
 
-        let filtered = allProducts
+        const filtered = allProducts
           .filter((p) => Number(p.categoryId) === categoryId)
           .sort(
             (a, b) =>
@@ -80,7 +80,6 @@ export default function CategoryDetailPage({ params }: PageProps) {
 
   return (
     <main className="p-4 max-w-6xl mx-auto">
-      {/* 🔙 QUAY LẠI */}
       <Link
         href="/categories"
         className="text-orange-600 font-bold text-lg inline-block mb-4"
@@ -88,12 +87,10 @@ export default function CategoryDetailPage({ params }: PageProps) {
         ←
       </Link>
 
-      {/* ⭐ TÊN DANH MỤC */}
       <h1 className="text-2xl font-bold mb-4 text-orange-600">
         {category ? category.name : "Danh mục"}
       </h1>
 
-      {/* Loading */}
       {loading ? (
         <p>Đang tải...</p>
       ) : products.length === 0 ? (
