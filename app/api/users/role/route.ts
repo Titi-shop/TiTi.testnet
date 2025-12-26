@@ -2,26 +2,12 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
 
-/**
- * =========================================
- * 👤 API: /api/users/role
- * -----------------------------------------
- * ✅ Phân quyền người dùng (seller / buyer)
- * ✅ Hoạt động tốt cho cả testnet & mainnet
- * ✅ Dữ liệu tách biệt giữa 2 môi trường
- * ✅ Cho phép testnet auto-seller
- * =========================================
- */
-
-// 🔹 Phát hiện môi trường (testnet hoặc mainnet)
 const isTestnet =
   process.env.NEXT_PUBLIC_PI_ENV === "testnet" ||
   process.env.PI_API_URL?.includes("/sandbox");
 
-// 🔸 Danh sách người bán mặc định
 const DEFAULT_SELLERS = ["nguyenminhduc1991111", "vothao11996611"];
 
-// 🔸 Chuẩn hoá username (xoá khoảng trắng, viết thường)
 function normalize(str: string): string {
   return str.trim().toLowerCase();
 }
@@ -50,11 +36,17 @@ export async function POST(req: Request) {
 
     console.log(`✅ [${envPrefix}] Gán role cho ${normalized}: ${role}`);
 
-    return NextResponse.json({ success: true, username: normalized, role, env: envPrefix });
-  } catch (err: any) {
-    console.error("❌ Lỗi lưu quyền:", err);
+    return NextResponse.json({
+      success: true,
+      username: normalized,
+      role,
+      env: envPrefix,
+    });
+  } catch (err) {
+    const error = err as Error;
+    console.error("❌ Lỗi lưu quyền:", error);
     return NextResponse.json(
-      { success: false, error: err.message },
+      { success: false, error: error.message },
       { status: 500 }
     );
   }
@@ -75,7 +67,6 @@ export async function GET(req: Request) {
     const envPrefix = isTestnet ? "testnet" : "mainnet";
     const key = `user_role:${envPrefix}:${normalized}`;
 
-    // 🔸 Auto seller trong testnet để dễ test
     if (isTestnet) {
       console.log(`🧪 [TESTNET] Auto gán seller cho ${normalized}`);
       await kv.set(key, "seller");
@@ -87,10 +78,8 @@ export async function GET(req: Request) {
       });
     }
 
-    // 🔸 Lấy role từ KV (hoặc mặc định là buyer)
     let role = (await kv.get<string>(key)) || "buyer";
 
-    // 🔸 Nếu user trong danh sách mặc định → ép role seller
     if (DEFAULT_SELLERS.some((u) => normalize(u) === normalized)) {
       role = "seller";
       await kv.set(key, role);
@@ -104,10 +93,11 @@ export async function GET(req: Request) {
       role,
       env: envPrefix,
     });
-  } catch (err: any) {
-    console.error("❌ Lỗi GET role:", err);
+  } catch (err) {
+    const error = err as Error;
+    console.error("❌ Lỗi GET role:", error);
     return NextResponse.json(
-      { success: false, error: err.message },
+      { success: false, error: error.message },
       { status: 500 }
     );
   }
