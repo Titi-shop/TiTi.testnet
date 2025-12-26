@@ -6,9 +6,9 @@ export const dynamic = "force-dynamic";
 const COOKIE_NAME = "pi_user";
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
-/* ============================================================
-   ENCODE / DECODE USER
-============================================================ */
+/* ===============================
+   ENCODE / DECODE
+================================ */
 function encodeUser(user: object) {
   return Buffer.from(JSON.stringify(user), "utf8").toString("base64");
 }
@@ -21,23 +21,28 @@ function decodeUser(raw: string) {
   }
 }
 
-/* ============================================================
-   COOKIE BUILDER — FULLY COMPATIBLE WITH SAFARI + PI BROWSER
-============================================================ */
+/* ===============================
+   COOKIE BUILDER (SAFE)
+================================ */
 function buildCookie(value: string, age = MAX_AGE) {
+  const isProd = process.env.NODE_ENV === "production";
+
+  const expires = new Date(Date.now() + age * 1000).toUTCString();
+
   return [
     `${COOKIE_NAME}=${value}`,
     "Path=/",
     `Max-Age=${age}`,
+    `Expires=${expires}`,
     "HttpOnly",
     "SameSite=None",
-    "Secure" // 🔥 ALWAYS secure for Pi Browser + Safari
+    ...(isProd ? ["Secure"] : []), // ✅ chỉ bật Secure khi production
   ].join("; ");
 }
 
-/* ============================================================
-   🔹 GET — FETCH SESSION
-============================================================ */
+/* ===============================
+   🔹 GET — CHECK SESSION
+================================ */
 export function GET(req: NextRequest) {
   const raw = req.cookies.get(COOKIE_NAME)?.value;
   const user = raw ? decodeUser(raw) : null;
@@ -48,9 +53,9 @@ export function GET(req: NextRequest) {
   });
 }
 
-/* ============================================================
-   🔹 POST — LOGIN WITH PI TOKEN
-============================================================ */
+/* ===============================
+   🔹 POST — LOGIN
+================================ */
 export async function POST(req: NextRequest) {
   try {
     const { accessToken } = await req.json();
@@ -62,8 +67,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 🔥 Fetch login info from Pi Network
-    const piRes = await fetch("https://api.minepi.com/v2/me", {
+    const isTestnet = process.env.NEXT_PUBLIC_PI_ENV === "testnet";
+
+    const PI_API_URL = isTestnet
+      ? "https://api.minepi.com/v2/sandbox/me"
+      : "https://api.minepi.com/v2/me";
+
+    const piRes = await fetch(PI_API_URL, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json",
@@ -79,7 +89,6 @@ export async function POST(req: NextRequest) {
 
     const data = await piRes.json();
 
-    // 🔥 FIX: some Pi accounts DO NOT HAVE uid → fallback required
     const user = {
       username: data.username,
       uid: data.uid || `user_${data.username}`,
@@ -90,7 +99,6 @@ export async function POST(req: NextRequest) {
 
     const cookieValue = encodeUser(user);
 
-    // 🔥 MUST return Set-Cookie so Safari accepts
     const res = NextResponse.json({ success: true, user });
     res.headers.set("Set-Cookie", buildCookie(cookieValue));
 
@@ -104,9 +112,9 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/* ============================================================
+/* ===============================
    🔹 DELETE — LOGOUT
-============================================================ */
+================================ */
 export function DELETE() {
   const res = NextResponse.json({ success: true });
   res.headers.set("Set-Cookie", buildCookie("deleted", 0));
