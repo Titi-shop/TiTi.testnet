@@ -3,45 +3,69 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+/* =====================
+   TYPES
+===================== */
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  finalPrice?: number;
+  images?: string[];
+  categoryId?: number;
+  createdAt: string;
+  isSale?: boolean;
+}
+
+interface Category {
+  id: number | string;
+  name: string;
+  icon?: string;
+}
+
+interface PageProps {
+  params: {
+    slug: string;
+  };
+}
+
 export default function CategoryDetailPage({ params }: PageProps) {
   const categoryId = Number(params.slug);
 
   const [products, setProducts] = useState<Product[]>([]);
-const [category, setCategory] = useState<Category | null>(null);
+  const [category, setCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
         /* ============================
-            ⭐ LẤY TẤT CẢ SẢN PHẨM
+           ⭐ LẤY TẤT CẢ SẢN PHẨM
         ============================ */
-        let filtered = allProducts.filter(
-  (p) => Number(p.categoryId) === categoryId
-);
+        const resProducts = await fetch("/api/products", {
+          cache: "no-store",
+        });
+        const allProducts: Product[] = await resProducts.json();
 
-filtered = filtered.sort(
-  (a, b) =>
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-);
-
-const categories: Category[] = await resCate.json();
-const cate = categories.find((c) => Number(c.id) === categoryId);
-
-        // ⭐ Sắp xếp mới nhất
-        filtered = filtered.sort(
-          (a: any, b: any) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
+        let filtered = allProducts
+          .filter((p) => Number(p.categoryId) === categoryId)
+          .sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() -
+              new Date(a.createdAt).getTime()
+          );
 
         setProducts(filtered);
 
         /* ============================
-            ⭐ LẤY THÔNG TIN DANH MỤC
+           ⭐ LẤY THÔNG TIN DANH MỤC
         ============================ */
         const resCate = await fetch("/api/categories");
-        const categories = await resCate.json();
-        const cate = categories.find((c: any) => Number(c.id) === categoryId);
+        const categories: Category[] = await resCate.json();
+
+        const cate = categories.find(
+          (c) => Number(c.id) === categoryId
+        );
 
         setCategory(cate || null);
       } catch (err) {
@@ -56,7 +80,6 @@ const cate = categories.find((c) => Number(c.id) === categoryId);
 
   return (
     <main className="p-4 max-w-6xl mx-auto">
-
       {/* 🔙 QUAY LẠI */}
       <Link
         href="/categories"
@@ -85,15 +108,18 @@ const cate = categories.find((c) => Number(c.id) === categoryId);
             >
               <img
                 src={p.images?.[0] || "/placeholder.png"}
+                alt={p.name}
                 className="w-full h-32 object-cover rounded"
               />
 
-              <h3 className="font-bold text-sm mt-2 truncate">{p.name}</h3>
+              <h3 className="font-bold text-sm mt-2 truncate">
+                {p.name}
+              </h3>
 
               {p.isSale ? (
                 <>
                   <p className="text-red-600 font-bold">
-                    {p.finalPrice.toLocaleString()} Pi
+                    {p.finalPrice?.toLocaleString()} Pi
                   </p>
                   <p className="text-xs line-through text-gray-400">
                     {p.price.toLocaleString()} Pi
