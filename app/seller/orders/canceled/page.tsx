@@ -3,12 +3,15 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
-type OrderType = {
+/* =====================
+   TYPES
+===================== */
+interface OrderType {
   id: string | number;
   buyer?: string;
-  total: string | number;
+  total: number | string;
   status: string;
-};
+}
 
 export default function CancelledOrders() {
   const router = useRouter();
@@ -19,15 +22,20 @@ export default function CancelledOrders() {
   useEffect(() => {
     if (!piReady || !user) return;
     fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [piReady, user]);
 
   const fetchOrders = async () => {
     try {
       const res = await fetch("/api/orders", { cache: "no-store" });
-      const data = await res.json();
-      const filtered = (data || []).filter((o: OrderType) => o.status === "Đã hủy");
+      const data: OrderType[] = await res.json();
+
+      const filtered = (data || []).filter(
+        (o) => o.status === "Đã hủy"
+      );
+
       setOrders(filtered);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
       alert("Lỗi tải đơn hàng");
     } finally {
@@ -35,13 +43,20 @@ export default function CancelledOrders() {
     }
   };
 
-  const totalPi = orders.reduce(
-    (sum, o) => sum + (parseFloat(o.total as any) || 0),
-    0
-  );
+  const totalPi = orders.reduce((sum, o) => {
+    const value =
+      typeof o.total === "number"
+        ? o.total
+        : parseFloat(o.total);
+    return sum + (isNaN(value) ? 0 : value);
+  }, 0);
 
   if (loading)
-    return <p className="text-center mt-10 text-gray-500">⏳ Đang tải...</p>;
+    return (
+      <p className="text-center mt-10 text-gray-500">
+        ⏳ Đang tải...
+      </p>
+    );
 
   return (
     <main className="min-h-screen max-w-4xl mx-auto p-4 pb-24 bg-gray-50">
@@ -52,7 +67,9 @@ export default function CancelledOrders() {
         >
           ←
         </button>
-        <h1 className="text-xl font-semibold text-gray-800">❌ Đơn hàng đã hủy</h1>
+        <h1 className="text-xl font-semibold text-gray-800">
+          ❌ Đơn hàng đã hủy
+        </h1>
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-4">
@@ -62,12 +79,16 @@ export default function CancelledOrders() {
         </div>
         <div className="card text-center">
           <p className="text-gray-500 text-sm">Tổng Pi</p>
-          <p className="text-xl font-bold">{totalPi.toFixed(2)} Pi</p>
+          <p className="text-xl font-bold">
+            {totalPi.toFixed(2)} Pi
+          </p>
         </div>
       </div>
 
       {orders.length === 0 ? (
-        <p className="text-center text-gray-500">Không có đơn đã hủy.</p>
+        <p className="text-center text-gray-500">
+          Không có đơn đã hủy.
+        </p>
       ) : (
         <div className="space-y-3">
           {orders.map((o) => (
@@ -77,14 +98,22 @@ export default function CancelledOrders() {
             >
               <p>🧾 <b>Mã đơn:</b> #{o.id}</p>
               <p>👤 <b>Người mua:</b> {o.buyer || "guest_user"}</p>
-              <p>💰 <b>Tổng:</b> {parseFloat(o.total as any).toFixed(2)} Pi</p>
+              <p>
+                💰 <b>Tổng:</b>{" "}
+                {(
+                  typeof o.total === "number"
+                    ? o.total
+                    : parseFloat(o.total)
+                ).toFixed(2)}{" "}
+                Pi
+              </p>
               <p>📅 <b>Trạng thái:</b> Đã hủy</p>
             </div>
           ))}
         </div>
       )}
 
-      <div className="h-20"></div>
+      <div className="h-20" />
     </main>
   );
 }
