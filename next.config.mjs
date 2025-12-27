@@ -1,16 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 🔹 Giữ lint trong dev, nhưng không chặn build Vercel
-  eslint: {
-    ignoreDuringBuilds: false,
-  },
+  eslint: { ignoreDuringBuilds: false },
+  typescript: { ignoreBuildErrors: false },
 
-  // 🔹 Cho phép route handlers không bị TS chặn build
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-
-  // 🔹 Tối ưu hình ảnh theo cấu hình thống nhất
   images: {
     unoptimized: true,
     remotePatterns: [
@@ -22,7 +14,6 @@ const nextConfig = {
     ],
   },
 
-  // 🔹 Giữ full bảo mật CSP + headers từ bản mjs
   async headers() {
     return [
       {
@@ -51,7 +42,7 @@ const nextConfig = {
   },
 
   experimental: {
-    serverActions: false,
+    serverActions: {}, // <-- sửa chuẩn
   },
 };
 
