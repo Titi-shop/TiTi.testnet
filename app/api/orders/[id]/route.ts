@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
 
 /* ===========================
@@ -6,10 +6,10 @@ import { kv } from "@vercel/kv";
    /api/orders/[id]
 =========================== */
 export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  context: { params: { id: string } }
 ) {
-  const { id } = params;
+  const { id } = context.params;
 
   try {
     const stored = await kv.get("orders");
@@ -51,11 +51,12 @@ export async function GET(
    🟡 PATCH — Cập nhật trạng thái
 =========================== */
 export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  context: { params: { id: string } }
 ) {
+  const { id } = context.params;
+
   try {
-    const { id } = params;
     const body = (await req.json()) as { status?: string };
     const status = body.status;
 
