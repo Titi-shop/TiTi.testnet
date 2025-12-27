@@ -2,15 +2,18 @@ import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
 
 type OrderRecord = Record<string, unknown>;
+type OrderRouteContext = Readonly<{
+  params: { id: string };
+}>;
 
 /* ===========================
    🟢 GET — Lấy chi tiết đơn
 =========================== */
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } }
+  context: OrderRouteContext
 ) {
-  const id = params.id;
+  const id = context.params.id;
 
   try {
     const stored = await kv.get("orders");
@@ -53,10 +56,10 @@ export async function GET(
 =========================== */
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  context: OrderRouteContext
 ) {
   try {
-    const id = params.id;
+    const id = context.params.id;
 
     const body = (await req.json()) as { status?: string };
     const status = body.status;
