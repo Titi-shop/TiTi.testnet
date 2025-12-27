@@ -3,11 +3,10 @@ import { kv } from "@vercel/kv";
 
 /* ===========================
    🟢 GET — Lấy chi tiết đơn
-   /api/orders/[id]
 =========================== */
 export async function GET(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: any
 ) {
   const { id } = context.params;
 
@@ -41,7 +40,7 @@ export async function GET(
     }
 
     return NextResponse.json(order);
-  } catch (err: unknown) {
+  } catch (err) {
     console.log("❌ Lỗi GET:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
@@ -52,13 +51,13 @@ export async function GET(
 =========================== */
 export async function PATCH(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: any
 ) {
   const { id } = context.params;
 
   try {
-    const body = (await req.json()) as { status?: string };
-    const status = body.status;
+    const body = await req.json();
+    const status = body?.status;
 
     if (!id || !status) {
       return NextResponse.json(
@@ -93,7 +92,7 @@ export async function PATCH(
 
     console.log(`✅ Đơn ${id} cập nhật trạng thái: ${status}`);
     return NextResponse.json({ success: true });
-  } catch (err: unknown) {
+  } catch (err) {
     console.error("❌ Lỗi API PATCH:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
