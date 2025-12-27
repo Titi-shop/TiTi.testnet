@@ -1,23 +1,25 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
+
+type OrderRecord = Record<string, unknown>;
 
 /* ===========================
    🟢 GET — Lấy chi tiết đơn
 =========================== */
 export async function GET(
-  req: NextRequest,
-  context: any
+  _req: Request,
+  { params }: { params: { id: string } }
 ) {
-  const { id } = context.params;
+  const { id } = params;
 
   try {
     const stored = await kv.get("orders");
-    let orders: unknown[] = [];
+    let orders: OrderRecord[] = [];
 
     if (stored) {
       try {
         orders = Array.isArray(stored)
-          ? (stored as unknown[])
+          ? (stored as OrderRecord[])
           : JSON.parse(stored as string);
       } catch (e) {
         console.warn("⚠️ Lỗi parse dữ liệu KV:", e);
@@ -50,14 +52,13 @@ export async function GET(
    🟡 PATCH — Cập nhật trạng thái
 =========================== */
 export async function PATCH(
-  req: NextRequest,
-  context: any
+  req: Request,
+  { params }: { params: { id: string } }
 ) {
-  const { id } = context.params;
-
   try {
-    const body = await req.json();
-    const status = body?.status;
+    const { id } = params;
+    const body = (await req.json()) as { status?: string };
+    const status = body.status;
 
     if (!id || !status) {
       return NextResponse.json(
@@ -66,16 +67,16 @@ export async function PATCH(
       );
     }
 
-    let orders: unknown[] = [];
+    let orders: OrderRecord[] = [];
     const stored = await kv.get("orders");
 
     if (stored) {
       try {
         orders = Array.isArray(stored)
-          ? (stored as unknown[])
+          ? (stored as OrderRecord[])
           : JSON.parse(stored as string);
-      } catch (e) {
-        console.warn("⚠️ Không thể parse dữ liệu KV:", e);
+      } catch {
+        console.warn("⚠️ Không thể parse dữ liệu KV");
       }
     }
 
@@ -84,13 +85,12 @@ export async function PATCH(
       o !== null &&
       "id" in o &&
       String((o as { id: unknown }).id) === String(id)
-        ? { ...(o as Record<string, unknown>), status }
+        ? { ...(o as OrderRecord), status }
         : o
     );
 
     await kv.set("orders", JSON.stringify(updatedOrders));
 
-    console.log(`✅ Đơn ${id} cập nhật trạng thái: ${status}`);
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("❌ Lỗi API PATCH:", err);
