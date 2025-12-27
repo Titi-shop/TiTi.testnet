@@ -1,18 +1,13 @@
 import { kv } from "@vercel/kv";
 import { NextResponse } from "next/server";
 
-interface RouteParams {
-  params: {
-    username?: string;
-  };
-}
-
 export async function GET(
   _req: Request,
-  { params }: RouteParams
+  context: any
 ) {
   try {
-    const seller = params.username?.toLowerCase();
+    const seller = context.params?.username?.toLowerCase();
+
     if (!seller) {
       return NextResponse.json(
         { error: "Missing seller" },
@@ -38,14 +33,14 @@ export async function GET(
       )
     );
 
-    // Lọc bỏ null
+    // Lọc null
     const filtered = products.filter(
       (p): p is Record<string, unknown> =>
         typeof p === "object" && p !== null
     );
 
     return NextResponse.json(filtered);
-  } catch (err: unknown) {
+  } catch (err) {
     console.error("Seller API Error:", err);
     return NextResponse.json(
       { error: "Server error" },
