@@ -13,8 +13,11 @@ type RouteContext = {
 /* ===========================
    🟢 GET — Lấy chi tiết đơn
 =========================== */
-export async function GET(_req: Request, context: RouteContext) {
-  const id = context?.params?.id;
+export async function GET(
+  _req: Request,
+  { params }: { params: { id: string } }
+) {
+  const id = params.id;
 
   try {
     const stored = await kv.get("orders");
@@ -55,9 +58,11 @@ export async function GET(_req: Request, context: RouteContext) {
 /* ===========================
    🟡 PATCH — Cập nhật trạng thái
 =========================== */
-export async function PATCH(req: Request, context: RouteContext) {
-  try {
-    const id = context?.params?.id;
+export async function PATCH(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  const id = params.id;
 
     const body = (await req.json()) as { status?: string };
     const status = body.status;
