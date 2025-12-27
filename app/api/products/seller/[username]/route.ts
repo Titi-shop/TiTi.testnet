@@ -1,12 +1,18 @@
 import { kv } from "@vercel/kv";
 import { NextResponse } from "next/server";
 
+type ProductRecord = Record<string, unknown>;
+
+interface RouteParams {
+  params: { username?: string };
+}
+
 export async function GET(
   _req: Request,
-  context: any
+  { params }: RouteParams
 ) {
   try {
-    const seller = context.params?.username?.toLowerCase();
+    const seller = params.username?.toLowerCase();
 
     if (!seller) {
       return NextResponse.json(
@@ -15,7 +21,6 @@ export async function GET(
       );
     }
 
-    // Lấy list ID sản phẩm của seller
     const ids = await kv.lrange<string>(
       `products:seller:${seller}`,
       0,
@@ -26,16 +31,14 @@ export async function GET(
       return NextResponse.json([]);
     }
 
-    // Lấy chi tiết sản phẩm
     const products = await Promise.all(
       ids.map(async (id) =>
-        kv.get<Record<string, unknown>>(`product:${id}`)
+        kv.get<ProductRecord>(`product:${id}`)
       )
     );
 
-    // Lọc null
     const filtered = products.filter(
-      (p): p is Record<string, unknown> =>
+      (p): p is ProductRecord =>
         typeof p === "object" && p !== null
     );
 
