@@ -3,14 +3,18 @@ import { kv } from "@vercel/kv";
 
 type OrderRecord = Record<string, unknown>;
 
+interface RouteContext {
+  params: { id: string };
+}
+
 /* ===========================
    🟢 GET — Lấy chi tiết đơn
 =========================== */
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } }
+  context: RouteContext
 ) {
-  const { id } = params;
+  const { id } = context.params;
 
   try {
     const stored = await kv.get("orders");
@@ -53,10 +57,11 @@ export async function GET(
 =========================== */
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  context: RouteContext
 ) {
   try {
-    const { id } = params;
+    const { id } = context.params;
+
     const body = (await req.json()) as { status?: string };
     const status = body.status;
 
