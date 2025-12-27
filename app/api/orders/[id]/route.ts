@@ -3,13 +3,6 @@ import { kv } from "@vercel/kv";
 
 type OrderRecord = Record<string, unknown>;
 
-/** 🔹 Khai báo type riêng cho context (không đổi logic) */
-type RouteContext = {
-  params: {
-    id: string;
-  };
-};
-
 /* ===========================
    🟢 GET — Lấy chi tiết đơn
 =========================== */
@@ -62,7 +55,8 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const id = params.id;
+  try {
+    const id = params.id;
 
     const body = (await req.json()) as { status?: string };
     const status = body.status;
