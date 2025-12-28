@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 interface Order {
@@ -17,23 +17,24 @@ interface Order {
   createdAt: string;
 }
 
-export default function OrderDetailPage({ params }: { params: { id: string } }) {
+export default function OrderDetailPage() {
   const router = useRouter();
-  const { id } = params;
+  const searchParams = useSearchParams();
   const { t } = useTranslation();
+
+  // 🔹 Lấy id từ URL: /seller/orders/[id]?id=123
+  const id = searchParams.get("id");
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!id) return;
+
     fetch(`/api/orders/${id}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data?.error) {
-          setOrder(null);
-        } else {
-          setOrder(data);
-        }
+        setOrder(data?.error ? null : data);
         setLoading(false);
       })
       .catch(() => {
@@ -54,14 +55,10 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-
-    // SAFE template string
     a.download = `order_${id}.json`;
-
     a.click();
   };
 
-  // ⏳ LOADING
   if (loading)
     return (
       <p className="text-center mt-10 text-gray-500">
@@ -69,7 +66,6 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
       </p>
     );
 
-  // ❌ ORDER NOT FOUND
   if (!order)
     return (
       <p className="text-center mt-10 text-red-500">
@@ -79,7 +75,6 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
 
   return (
     <main className="min-h-screen p-5 max-w-2xl mx-auto bg-white">
-      {/* BACK */}
       <button
         onClick={() => router.back()}
         className="text-orange-500 text-lg mb-4"
@@ -87,46 +82,25 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
         ← {t.back}
       </button>
 
-      {/* TITLE */}
       <h1 className="text-2xl font-bold text-gray-800 mb-3">
         🧾 {t.order_details} #{id}
       </h1>
 
-      {/* ORDER INFO */}
       <div className="border p-4 rounded-lg shadow-sm space-y-2">
-        <p>
-          <b>👤 {t.buyer}:</b> {order.buyerName}
-        </p>
-        <p>
-          <b>📧 {t.email}:</b> {order.email}
-        </p>
-        <p>
-          <b>📞 {t.phone_number}:</b> {order.phone}
-        </p>
-        <p>
-          <b>🏠 {t.address}:</b> {order.address}
-        </p>
-        <p>
-          <b>🌍 {t.country}:</b> {order.country}
-        </p>
-        <p>
-          <b>🏙 {t.province}:</b> {order.province}
-        </p>
+        <p><b>👤 {t.buyer}:</b> {order.buyerName}</p>
+        <p><b>📧 {t.email}:</b> {order.email}</p>
+        <p><b>📞 {t.phone_number}:</b> {order.phone}</p>
+        <p><b>🏠 {t.address}:</b> {order.address}</p>
+        <p><b>🌍 {t.country}:</b> {order.country}</p>
+        <p><b>🏙 {t.province}:</b> {order.province}</p>
 
         <hr className="my-3" />
 
-        <p>
-          <b>💰 {t.total_pi}:</b> {order.total} Pi
-        </p>
-        <p>
-          <b>📦 {t.status}:</b> {order.status}
-        </p>
-        <p>
-          <b>📅 {t.created_at}:</b> {order.createdAt}
-        </p>
+        <p><b>💰 {t.total_pi}:</b> {order.total} Pi</p>
+        <p><b>📦 {t.status}:</b> {order.status}</p>
+        <p><b>📅 {t.created_at}:</b> {order.createdAt}</p>
       </div>
 
-      {/* Buttons */}
       <div className="mt-6 flex gap-3">
         <button
           onClick={downloadJSON}
