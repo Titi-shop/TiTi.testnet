@@ -6,6 +6,15 @@ type Order = {
   status?: string;
 } & Record<string, unknown>;
 
+function isParamsContext(ctx: unknown): ctx is { params: { id?: string } } {
+  return (
+    typeof ctx === "object" &&
+    ctx !== null &&
+    "params" in ctx &&
+    typeof (ctx as any).params === "object"
+  );
+}
+
 function matchOrder(o: unknown, id: string): o is Order {
   return (
     typeof o === "object" &&
@@ -20,41 +29,34 @@ function matchOrder(o: unknown, id: string): o is Order {
 =========================== */
 export async function GET(
   _req: NextRequest,
-  context: any // ⬅ bắt buộc để Next.js build pass
+  context: unknown   // ⬅ dùng unknown để không vi phạm eslint
 ) {
-  const id = String(context?.params?.id ?? "");
+  if (!isParamsContext(context)) {
+    return NextResponse.json({ error: "Invalid route context" }, { status: 500 });
+  }
+
+  const id = String(context.params.id ?? "");
 
   if (!id) {
-    return NextResponse.json(
-      { error: "Thiếu ID đơn hàng" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Thiếu ID đơn hàng" }, { status: 400 });
   }
 
-  try {
-    const stored = await kv.get("orders");
+  const stored = await kv.get("orders");
 
-    const orders: Order[] =
-      Array.isArray(stored)
-        ? stored as Order[]
-        : stored
-        ? JSON.parse(stored as string)
-        : [];
+  const orders: Order[] =
+    Array.isArray(stored)
+      ? (stored as Order[])
+      : stored
+      ? JSON.parse(stored as string)
+      : [];
 
-    const order = orders.find(o => matchOrder(o, id));
+  const order = orders.find(o => matchOrder(o, id));
 
-    if (!order) {
-      return NextResponse.json(
-        { error: "Không tìm thấy đơn hàng" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(order);
-  } catch (err) {
-    console.error("❌ Lỗi GET:", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  if (!order) {
+    return NextResponse.json({ error: "Không tìm thấy đơn hàng" }, { status: 404 });
   }
+
+  return NextResponse.json(order);
 }
 
 /* ===========================
@@ -62,39 +64,35 @@ export async function GET(
 =========================== */
 export async function PATCH(
   req: NextRequest,
-  context: any // ⬅ bắt buộc để Next.js build pass
+  context: unknown   // ⬅ vẫn dùng unknown
 ) {
-  const id = String(context?.params?.id ?? "");
+  if (!isParamsContext(context)) {
+    return NextResponse.json({ error: "Invalid route context" }, { status: 500 });
+  }
+
+  const id = String(context.params.id ?? "");
   const body = await req.json();
 
   if (!id || !body?.status) {
-    return NextResponse.json(
-      { error: "Thiếu thông tin cập nhật" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Thiếu thông tin cập nhật" }, { status: 400 });
   }
 
-  try {
-    const stored = await kv.get("orders");
+  const stored = await kv.get("orders");
 
-    const orders: Order[] =
-      Array.isArray(stored)
-        ? stored as Order[]
-        : stored
-        ? JSON.parse(stored as string)
-        : [];
+  const orders: Order[] =
+    Array.isArray(stored)
+      ? (stored as Order[])
+      : stored
+      ? JSON.parse(stored as string)
+      : [];
 
-    const updated = orders.map(order =>
-      matchOrder(order, id)
-        ? { ...order, status: body.status }
-        : order
-    );
+  const updated = orders.map(order =>
+    matchOrder(order, id)
+      ? { ...order, status: body.status }
+      : order
+  );
 
-    await kv.set("orders", JSON.stringify(updated));
+  await kv.set("orders", JSON.stringify(updated));
 
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error("❌ Lỗi PATCH:", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
-  }
+  return NextResponse.json({ success: true });
 }
