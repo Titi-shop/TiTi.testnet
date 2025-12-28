@@ -1,24 +1,36 @@
 import { NextResponse } from "next/server";
 
-export const dynamic = "force-dynamic"; // 🔥 tránh cache
+export const dynamic = "force-dynamic";
+
+type CancelRequest = {
+  paymentId: string;
+};
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as {
-      paymentId?: string;
-    };
-
-    const { paymentId } = body;
+    const body = (await req.json()) as Partial<CancelRequest>;
+    const paymentId = body.paymentId?.trim();
 
     if (!paymentId) {
-      return NextResponse.json({ error: "missing paymentId" }, { status: 400 });
+      return NextResponse.json(
+        { error: "missing paymentId" },
+        { status: 400 }
+      );
     }
 
     const API_KEY = process.env.PI_API_KEY;
-    const API_URL =
-      process.env.NEXT_PUBLIC_PI_ENV === "testnet"
-        ? "https://api.minepi.com/v2/sandbox/payments"
-        : "https://api.minepi.com/v2/payments";
+    const IS_TESTNET = process.env.NEXT_PUBLIC_PI_ENV === "testnet";
+
+    if (!API_KEY) {
+      return NextResponse.json(
+        { error: "PI_API_KEY not configured" },
+        { status: 500 }
+      );
+    }
+
+    const API_URL = IS_TESTNET
+      ? "https://api.minepi.com/v2/sandbox/payments"
+      : "https://api.minepi.com/v2/payments";
 
     console.log("🛑 [Pi CANCEL] Hủy giao dịch:", paymentId);
 
@@ -31,18 +43,24 @@ export async function POST(req: Request) {
     });
 
     const text = await res.text();
-    console.log("✅ [Pi CANCEL RESULT]:", res.status, text);
+
+    console.log("✅ [Pi CANCEL RESULT]:", res.status);
 
     return new NextResponse(text, {
       status: res.status,
-      headers: { "Access-Control-Allow-Origin": "*" },
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
     });
   } catch (err: unknown) {
     console.error("💥 [Pi CANCEL ERROR]:", err);
 
-    const message =
-      err instanceof Error ? err.message : "Internal server error";
-
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      {
+        error:
+          err instanceof Error ? err.message : "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }
