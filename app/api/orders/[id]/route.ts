@@ -6,7 +6,7 @@ type Order = {
   status?: string;
 } & Record<string, unknown>;
 
-function isOrderWithId(o: unknown, id: string): o is Order {
+function matchOrder(o: unknown, id: string): o is Order {
   return (
     typeof o === "object" &&
     o !== null &&
@@ -16,13 +16,20 @@ function isOrderWithId(o: unknown, id: string): o is Order {
 }
 
 /* ===========================
-   🟢 GET — Lấy chi tiết đơn
+   🟢 GET — lấy đơn theo ID
 =========================== */
 export async function GET(
   _req: NextRequest,
-  context: { params: { id: string } }
+  context: any // ⬅ bắt buộc để Next.js build pass
 ) {
-  const id = context.params.id;
+  const id = String(context?.params?.id ?? "");
+
+  if (!id) {
+    return NextResponse.json(
+      { error: "Thiếu ID đơn hàng" },
+      { status: 400 }
+    );
+  }
 
   try {
     const stored = await kv.get("orders");
@@ -34,7 +41,7 @@ export async function GET(
         ? JSON.parse(stored as string)
         : [];
 
-    const order = orders.find(o => isOrderWithId(o, id));
+    const order = orders.find(o => matchOrder(o, id));
 
     if (!order) {
       return NextResponse.json(
@@ -44,35 +51,30 @@ export async function GET(
     }
 
     return NextResponse.json(order);
-
   } catch (err) {
-    console.error("❌ Lỗi GET order:", err);
-    return NextResponse.json(
-      { error: "Server error" },
-      { status: 500 }
-    );
+    console.error("❌ Lỗi GET:", err);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
 
 /* ===========================
-   🟡 PATCH — Cập nhật trạng thái
+   🟡 PATCH — cập nhật trạng thái
 =========================== */
 export async function PATCH(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: any // ⬅ bắt buộc để Next.js build pass
 ) {
-  const id = context.params.id;
+  const id = String(context?.params?.id ?? "");
+  const body = await req.json();
+
+  if (!id || !body?.status) {
+    return NextResponse.json(
+      { error: "Thiếu thông tin cập nhật" },
+      { status: 400 }
+    );
+  }
 
   try {
-    const body: { status?: string } = await req.json();
-
-    if (!body.status) {
-      return NextResponse.json(
-        { error: "Thiếu trạng thái cập nhật" },
-        { status: 400 }
-      );
-    }
-
     const stored = await kv.get("orders");
 
     const orders: Order[] =
@@ -83,7 +85,7 @@ export async function PATCH(
         : [];
 
     const updated = orders.map(order =>
-      isOrderWithId(order, id)
+      matchOrder(order, id)
         ? { ...order, status: body.status }
         : order
     );
@@ -91,12 +93,8 @@ export async function PATCH(
     await kv.set("orders", JSON.stringify(updated));
 
     return NextResponse.json({ success: true });
-
   } catch (err) {
-    console.error("❌ Lỗi PATCH order:", err);
-    return NextResponse.json(
-      { error: "Server error" },
-      { status: 500 }
-    );
+    console.error("❌ Lỗi PATCH:", err);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
