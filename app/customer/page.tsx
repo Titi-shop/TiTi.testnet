@@ -6,17 +6,20 @@ import { useAuth } from "@/context/AuthContext";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 import { Clock, Package, Truck, Star, RotateCcw } from "lucide-react";
 
-export default function CustomerPage({ embedded = false }) {
+export default function CustomerPage() {
   const router = useRouter();
   const { user, piReady } = useAuth();
   const { t } = useTranslation();
   const [avatar, setAvatar] = useState<string | null>(null);
 
+  // ❗ embedded mặc định = false (không dùng props nữa)
+  const embedded = false;
+
   useEffect(() => {
     if (!embedded && piReady && !user) {
       router.replace("/pilogin");
     }
-  }, [piReady, user]);
+  }, [embedded, piReady, user, router]);
 
   useEffect(() => {
     if (!user?.username) return;
@@ -33,7 +36,6 @@ export default function CustomerPage({ embedded = false }) {
   return (
     <div className="pb-6 bg-gray-100">
 
-      {/* HEADER */}
       <div className="bg-orange-500 text-white p-6 text-center shadow">
         <div className="w-24 h-24 bg-white rounded-full mx-auto text-orange-600 text-4xl overflow-hidden shadow">
           {avatar ? (
@@ -42,11 +44,9 @@ export default function CustomerPage({ embedded = false }) {
             user.username.charAt(0).toUpperCase()
           )}
         </div>
-
         <p className="mt-3 text-lg font-semibold">@{user.username} ✔</p>
       </div>
 
-      {/* MY ORDERS */}
       <section className="bg-white mx-4 mt-4 rounded-lg shadow">
         <div className="p-4 border-b">
           <h2 className="text-lg font-semibold">{t.my_orders}</h2>
@@ -61,7 +61,6 @@ export default function CustomerPage({ embedded = false }) {
         </div>
       </section>
 
-      {/* WALLET */}
       <section className="mx-4 mt-4 p-4 rounded-lg bg-orange-100 border border-orange-300 text-center">
         <p className="text-orange-700 font-medium">
           {t.wallet}:{" "}
@@ -75,7 +74,11 @@ export default function CustomerPage({ embedded = false }) {
   );
 }
 
-function OrderItem({ icon, label, path }) {
+function OrderItem({ icon, label, path }: {
+  icon: JSX.Element;
+  label: string;
+  path: string;
+}) {
   const router = useRouter();
   return (
     <button
