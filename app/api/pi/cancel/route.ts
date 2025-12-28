@@ -2,18 +2,25 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-type CancelRequest = {
-  paymentId: string;
+type CreatePaymentRequest = {
+  amount: number;
+  memo: string;
+  user_uid: string;
+  txid: string;
 };
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as Partial<CancelRequest>;
-    const paymentId = body.paymentId?.trim();
+    const body = (await req.json()) as Partial<CreatePaymentRequest>;
 
-    if (!paymentId) {
+    const amount = body.amount ?? 0;
+    const memo = body.memo ?? "";
+    const user_uid = body.user_uid ?? "";
+    const txid = body.txid ?? "";
+
+    if (!amount || !memo || !user_uid || !txid) {
       return NextResponse.json(
-        { error: "missing paymentId" },
+        { error: "missing required fields" },
         { status: 400 }
       );
     }
@@ -32,19 +39,25 @@ export async function POST(req: Request) {
       ? "https://api.minepi.com/v2/sandbox/payments"
       : "https://api.minepi.com/v2/payments";
 
-    console.log("🛑 [Pi CANCEL] Hủy giao dịch:", paymentId);
+    console.log("💰 [PI CREATE] tạo giao dịch", { amount, memo, user_uid });
 
-    const res = await fetch(`${API_URL}/${paymentId}/cancel`, {
+    const res = await fetch(API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Key ${API_KEY}`,
       },
+      body: JSON.stringify({
+        amount,
+        memo,
+        metadata: { user_uid },
+        txid,
+      }),
     });
 
     const text = await res.text();
 
-    console.log("✅ [Pi CANCEL RESULT]:", res.status);
+    console.log("✅ [PI CREATE RESULT]", res.status);
 
     return new NextResponse(text, {
       status: res.status,
@@ -53,7 +66,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (err: unknown) {
-    console.error("💥 [Pi CANCEL ERROR]:", err);
+    console.error("💥 [PI CREATE ERROR]:", err);
 
     return NextResponse.json(
       {
