@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { type PageProps } from "next";
 
 interface Product {
   id: string;
@@ -20,19 +21,12 @@ interface Category {
   icon?: string;
 }
 
-interface PageProps {
-  params: {
-    slug: string;
-  };
-}
-
 export default function CategoryPage({ params }: PageProps) {
 
-  const slug = params.slug;
+  const { slug } = params as { slug: string };
 
   const [products, setProducts] = useState<Product[]>([]);
   const [category, setCategory] = useState<Category | null>(null);
-  const [categoryId, setCategoryId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,19 +34,12 @@ export default function CategoryPage({ params }: PageProps) {
 
     async function loadData() {
       try {
-
-        // Lấy danh sách danh mục
         const resCate = await fetch("/api/categories");
         const categories: Category[] = await resCate.json();
 
-        const cate = categories.find(
-          (c) => String(c.id) === String(slug)
-        );
+        const cate = categories.find(c => String(c.id) === String(slug));
+        setCategory(cate ?? null);
 
-        setCategory(cate || null);
-        setCategoryId(Number(cate?.id));
-
-        // Lấy tất cả sản phẩm
         const resProducts = await fetch("/api/products", {
           cache: "no-store",
         });
@@ -60,7 +47,7 @@ export default function CategoryPage({ params }: PageProps) {
         const allProducts: Product[] = await resProducts.json();
 
         const filtered = allProducts
-          .filter((p) => Number(p.categoryId) === Number(cate?.id))
+          .filter(p => String(p.categoryId) === String(cate?.id))
           .sort(
             (a, b) =>
               new Date(b.createdAt).getTime() -
@@ -77,21 +64,17 @@ export default function CategoryPage({ params }: PageProps) {
     }
 
     loadData();
-
   }, [slug]);
 
   return (
     <main className="p-4 max-w-6xl mx-auto">
 
-      <Link
-        href="/categories"
-        className="text-orange-600 font-bold text-lg inline-block mb-4"
-      >
+      <Link href="/categories" className="text-orange-600 font-bold mb-4">
         ←
       </Link>
 
-      <h1 className="text-2xl font-bold mb-4 text-orange-600">
-        {category ? category.name : "Danh mục"}
+      <h1 className="text-2xl font-bold text-orange-600 mb-4">
+        {category?.name ?? "Danh mục"}
       </h1>
 
       {loading ? (
@@ -100,12 +83,8 @@ export default function CategoryPage({ params }: PageProps) {
         <p className="text-gray-500">Hiện chưa có sản phẩm.</p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {products.map((p) => (
-            <Link
-              key={p.id}
-              href={`/product/${p.id}`}
-              className="border p-2 rounded-md shadow-sm hover:shadow-md transition"
-            >
+          {products.map(p => (
+            <Link key={p.id} href={`/product/${p.id}`} className="border rounded p-2">
               <img
                 src={p.images?.[0] || "/placeholder.png"}
                 alt={p.name}
