@@ -3,12 +3,9 @@ import { NextResponse } from "next/server";
 
 type ProductRecord = Record<string, unknown>;
 
-export async function GET(
-  _req: Request,
-  context: { params: { username: string } }
-) {
+export async function GET(_req: Request, { params }) {
   try {
-    const seller = context.params.username.toLowerCase();
+    const seller = params.username.toLowerCase();
 
     const ids = await kv.lrange<string>(
       `products:seller:${seller}`,
@@ -34,6 +31,7 @@ export async function GET(
     return NextResponse.json(filtered);
   } catch (err) {
     console.error("Seller API Error:", err);
+
     return NextResponse.json(
       { error: "Server error" },
       { status: 500 }
