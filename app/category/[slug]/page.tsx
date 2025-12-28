@@ -3,9 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-/* =====================
-   TYPES
-===================== */
 interface Product {
   id: string;
   name: string;
@@ -28,27 +25,42 @@ interface PageProps {
     slug: string;
   };
 }
-export default async function CategoryPage({ params }) {
-  const slug = params.slug;
 
+export default function CategoryPage({ params }: PageProps) {
+
+  const slug = params.slug;
 
   const [products, setProducts] = useState<Product[]>([]);
   const [category, setCategory] = useState<Category | null>(null);
+  const [categoryId, setCategoryId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!slug) return;
+
     async function loadData() {
       try {
-        /* ============================
-           ⭐ LẤY TẤT CẢ SẢN PHẨM
-        ============================ */
+
+        // Lấy danh sách danh mục
+        const resCate = await fetch("/api/categories");
+        const categories: Category[] = await resCate.json();
+
+        const cate = categories.find(
+          (c) => String(c.id) === String(slug)
+        );
+
+        setCategory(cate || null);
+        setCategoryId(Number(cate?.id));
+
+        // Lấy tất cả sản phẩm
         const resProducts = await fetch("/api/products", {
           cache: "no-store",
         });
+
         const allProducts: Product[] = await resProducts.json();
 
         const filtered = allProducts
-          .filter((p) => Number(p.categoryId) === categoryId)
+          .filter((p) => Number(p.categoryId) === Number(cate?.id))
           .sort(
             (a, b) =>
               new Date(b.createdAt).getTime() -
@@ -57,17 +69,6 @@ export default async function CategoryPage({ params }) {
 
         setProducts(filtered);
 
-        /* ============================
-           ⭐ LẤY THÔNG TIN DANH MỤC
-        ============================ */
-        const resCate = await fetch("/api/categories");
-        const categories: Category[] = await resCate.json();
-
-        const cate = categories.find(
-          (c) => Number(c.id) === categoryId
-        );
-
-        setCategory(cate || null);
       } catch (err) {
         console.error("❌ Lỗi tải danh mục:", err);
       } finally {
@@ -76,10 +77,12 @@ export default async function CategoryPage({ params }) {
     }
 
     loadData();
-  }, [categoryId]);
+
+  }, [slug]);
 
   return (
     <main className="p-4 max-w-6xl mx-auto">
+
       <Link
         href="/categories"
         className="text-orange-600 font-bold text-lg inline-block mb-4"
