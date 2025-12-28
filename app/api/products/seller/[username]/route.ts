@@ -3,16 +3,12 @@ import { NextResponse } from "next/server";
 
 type ProductRecord = Record<string, unknown>;
 
-interface RouteParams {
-  params: { username?: string };
-}
-
 export async function GET(
   _req: Request,
-  { params }: RouteParams
+  context: { params: { username?: string } }
 ) {
   try {
-    const seller = params.username?.toLowerCase();
+    const seller = context.params.username?.toLowerCase();
 
     if (!seller) {
       return NextResponse.json(
