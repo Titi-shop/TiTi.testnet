@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
 
-type Order = Record<string, unknown>;
+type Order = {
+  id?: string | number;
+  status?: string;
+} & Record<string, unknown>;
+
+function isOrderWithId(o: unknown, id: string): o is Order {
+  return (
+    typeof o === "object" &&
+    o !== null &&
+    "id" in o &&
+    String((o as { id?: string | number }).id) === id
+  );
+}
 
 /* ===========================
    🟢 GET — Lấy chi tiết đơn
@@ -15,19 +27,14 @@ export async function GET(
   try {
     const stored = await kv.get("orders");
 
-    const orders: Order[] = Array.isArray(stored)
-      ? stored
-      : stored
-      ? JSON.parse(stored as string)
-      : [];
+    const orders: Order[] =
+      Array.isArray(stored)
+        ? stored as Order[]
+        : stored
+        ? JSON.parse(stored as string)
+        : [];
 
-    const order = orders.find(
-      (o) =>
-        typeof o === "object" &&
-        o &&
-        "id" in o &&
-        String((o as any).id) === String(id)
-    );
+    const order = orders.find(o => isOrderWithId(o, id));
 
     if (!order) {
       return NextResponse.json(
@@ -37,6 +44,7 @@ export async function GET(
     }
 
     return NextResponse.json(order);
+
   } catch (err) {
     console.error("❌ Lỗi GET order:", err);
     return NextResponse.json(
@@ -56,10 +64,9 @@ export async function PATCH(
   const id = context.params.id;
 
   try {
-    const body = await req.json();
-    const status = body?.status;
+    const body: { status?: string } = await req.json();
 
-    if (!status) {
+    if (!body.status) {
       return NextResponse.json(
         { error: "Thiếu trạng thái cập nhật" },
         { status: 400 }
@@ -68,24 +75,23 @@ export async function PATCH(
 
     const stored = await kv.get("orders");
 
-    const orders: Order[] = Array.isArray(stored)
-      ? stored
-      : stored
-      ? JSON.parse(stored as string)
-      : [];
+    const orders: Order[] =
+      Array.isArray(stored)
+        ? stored as Order[]
+        : stored
+        ? JSON.parse(stored as string)
+        : [];
 
-    const updated = orders.map((o) =>
-      typeof o === "object" &&
-      o &&
-      "id" in o &&
-      String((o as any).id) === String(id)
-        ? { ...(o as Order), status }
-        : o
+    const updated = orders.map(order =>
+      isOrderWithId(order, id)
+        ? { ...order, status: body.status }
+        : order
     );
 
     await kv.set("orders", JSON.stringify(updated));
 
     return NextResponse.json({ success: true });
+
   } catch (err) {
     console.error("❌ Lỗi PATCH order:", err);
     return NextResponse.json(
