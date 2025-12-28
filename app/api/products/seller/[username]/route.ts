@@ -5,17 +5,10 @@ type ProductRecord = Record<string, unknown>;
 
 export async function GET(
   _req: Request,
-  context: { params: { username?: string } }
+  context: { params: { username: string } }
 ) {
   try {
-    const seller = context.params.username?.toLowerCase();
-
-    if (!seller) {
-      return NextResponse.json(
-        { error: "Missing seller" },
-        { status: 400 }
-      );
-    }
+    const seller = context.params.username.toLowerCase();
 
     const ids = await kv.lrange<string>(
       `products:seller:${seller}`,
