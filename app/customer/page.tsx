@@ -6,14 +6,15 @@ import { useAuth } from "@/context/AuthContext";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 import { Clock, Package, Truck, Star, RotateCcw } from "lucide-react";
 
-export default function CustomerPage() {
+export default function CustomerPage({
+  embedded = false,
+}: {
+  embedded?: boolean;
+}) {
   const router = useRouter();
   const { user, piReady } = useAuth();
   const { t } = useTranslation();
   const [avatar, setAvatar] = useState<string | null>(null);
-
-  // ❗ embedded mặc định = false (không dùng props nữa)
-  const embedded = false;
 
   useEffect(() => {
     if (!embedded && piReady && !user) {
@@ -74,7 +75,11 @@ export default function CustomerPage() {
   );
 }
 
-function OrderItem({ icon, label, path }: {
+function OrderItem({
+  icon,
+  label,
+  path,
+}: {
   icon: JSX.Element;
   label: string;
   path: string;
