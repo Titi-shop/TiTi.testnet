@@ -4,7 +4,7 @@ import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/app/context/CartContext";
-import { LanguageProvider } from "@/app/context/LanguageContext";
+import { LanguageProvider } from "@/context/LanguageContext";
 
 export default function PiLayoutClient({
   children,
