@@ -28,9 +28,9 @@ interface PageProps {
     slug: string;
   };
 }
+export default async function CategoryPage({ params }) {
+  const slug = params.slug;
 
-export default function CategoryDetailPage({ params }: PageProps) {
-  const categoryId = Number(params.slug);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [category, setCategory] = useState<Category | null>(null);
