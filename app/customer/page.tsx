@@ -7,10 +7,12 @@ import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 import { Clock, Package, Truck, Star, RotateCcw } from "lucide-react";
 
 export default function CustomerPage({
-  embedded = false,
+  searchParams,
 }: {
-  embedded?: boolean;
+  searchParams?: { embedded?: string };
 }) {
+  const embedded = searchParams?.embedded === "true";
+
   const router = useRouter();
   const { user, piReady } = useAuth();
   const { t } = useTranslation();
