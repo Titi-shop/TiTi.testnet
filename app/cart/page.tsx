@@ -93,7 +93,7 @@ const selectAll = () => {
       const total = cart
   .filter((i) => selectedItems.includes(String(i.id)))
   .reduce(
-  (sum, i) => sum + Number(i.price) * Number(i.quantity || 1),
+  (sum, i) => sum + Number(i.price) * Number(i.quantity ?? 1),
   0
 );
 
