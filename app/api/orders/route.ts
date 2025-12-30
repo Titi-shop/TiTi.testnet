@@ -143,8 +143,6 @@ export async function PUT(req: Request) {
 
     const current = orders[index] as Record<string, unknown>;
 
-    const current = orders[index] as Record<string, unknown>;
-
 type OrderUpdate = Record<string, unknown> & {
   status?: unknown;
   txid?: unknown;
