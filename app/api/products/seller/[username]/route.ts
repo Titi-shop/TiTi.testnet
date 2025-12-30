@@ -1,17 +1,12 @@
 import { kv } from "@vercel/kv";
 import { NextResponse } from "next/server";
+import type { RouteParams } from "next/dist/server/app-render/types";
 
 type ProductRecord = Record<string, unknown>;
 
-type SellerRouteContext = {
-  params: {
-    username: string;
-  };
-};
-
 export async function GET(
   _req: Request,
-  { params }: SellerRouteContext
+  { params }: RouteParams<{ username: string }>
 ) {
   try {
     const seller = params.username.toLowerCase();
