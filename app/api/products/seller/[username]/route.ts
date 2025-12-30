@@ -1,12 +1,11 @@
 import { kv } from "@vercel/kv";
 import { NextResponse } from "next/server";
-import type { RouteParams } from "next/dist/server/app-render/types";
 
 type ProductRecord = Record<string, unknown>;
 
 export async function GET(
   _req: Request,
-  { params }: RouteParams<{ username: string }>
+  { params }: { params: { username: string } }
 ) {
   try {
     const seller = params.username.toLowerCase();
@@ -22,7 +21,7 @@ export async function GET(
     }
 
     const products = await Promise.all(
-      ids.map(async (id) =>
+      ids.map((id) =>
         kv.get<ProductRecord>(`product:${id}`)
       )
     );
