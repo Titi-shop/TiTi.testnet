@@ -99,7 +99,7 @@ const selectAll = () => {
 
       const orderId = Date.now();
       const accessToken =
-  (user as any)?.accessToken ??
+  (user as unknown as { accessToken?: string })?.accessToken ??
   JSON.parse(localStorage.getItem("pi_user") || "{}")?.accessToken;
 
       const verifyRes = await fetch("/api/pi/verify", {
