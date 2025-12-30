@@ -8,10 +8,11 @@ import { toISO } from "@/lib/formatDate";
 ------------------------------------------- */
 async function isSeller(username: string): Promise<boolean> {
   try {
-    const host = headers().get("host");
-    const protocol =
-      process.env.NODE_ENV === "development" ? "http" : "https";
-    const base = `${protocol}://${host}`;
+    const hs = await headers();
+const host = hs.get("host") ?? "";
+const protocol =
+  process.env.NODE_ENV === "development" ? "http" : "https";
+const base = `${protocol}://${host}`;
 
     const res = await fetch(`${base}/api/users/role?username=${username}`);
     const data = (await res.json()) as { role?: unknown };
