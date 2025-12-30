@@ -3,9 +3,12 @@ import { NextResponse } from "next/server";
 
 type ProductRecord = Record<string, unknown>;
 
-export async function GET(_req: Request, { params }) {
+export async function GET(
+  _req: Request,
+  ctx: { params: { username: string } }
+) {
   try {
-    const seller = params.username.toLowerCase();
+    const seller = ctx.params.username.toLowerCase();
 
     const ids = await kv.lrange<string>(
       `products:seller:${seller}`,
