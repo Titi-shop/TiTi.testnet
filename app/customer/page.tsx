@@ -6,25 +6,20 @@ import { useAuth } from "@/context/AuthContext";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 import { Clock, Package, Truck, Star, RotateCcw } from "lucide-react";
 
-type SearchParams =
-  | { embedded?: string }
-  | Promise<{ embedded?: string }>;
+type SearchParams = {
+  embedded?: string;
+};
 
-export default function CustomerPage(props: { searchParams?: SearchParams }) {
+export default function CustomerPage({
+  searchParams,
+}: {
+  searchParams?: SearchParams;
+}) {
   const [embedded, setEmbedded] = useState(false);
 
   useEffect(() => {
-    async function resolveParams() {
-      const params =
-        typeof props.searchParams === "object"
-          ? props.searchParams
-          : await props.searchParams;
-
-      setEmbedded(params?.embedded === "true");
-    }
-
-    void resolveParams();
-  }, [props.searchParams]);
+    setEmbedded(searchParams?.embedded === "true");
+  }, [searchParams]);
 
   const router = useRouter();
   const { user, piReady } = useAuth();
@@ -54,7 +49,11 @@ export default function CustomerPage(props: { searchParams?: SearchParams }) {
       <div className="bg-orange-500 text-white p-6 text-center shadow">
         <div className="w-24 h-24 bg-white rounded-full mx-auto text-orange-600 text-4xl overflow-hidden shadow">
           {avatar ? (
-            <img src={avatar} alt="avatar" className="w-full h-full object-cover" />
+            <img
+              src={avatar}
+              alt="avatar"
+              className="w-full h-full object-cover"
+            />
           ) : (
             user.username.charAt(0).toUpperCase()
           )}
