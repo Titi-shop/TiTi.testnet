@@ -86,7 +86,7 @@ const selectAll = () => {
 
       setLoading(true);
 
-      const selectedProducts: CartItem[] = cart.filter((i) =>
+      const selectedProducts = cart.filter((i) =>
   selectedItems.includes(String(i.id))
 );
 
