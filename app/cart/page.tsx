@@ -55,9 +55,11 @@ export default function CartPage() {
   };
 
   const selectAll = () => {
-    if (selectedItems.length === cart.length) setSelectedItems([]);
-    else setSelectedItems(cart.map((i) => i.id));
-  };
+  if (selectedItems.length === cart.length)
+    setSelectedItems([]);
+  else
+    setSelectedItems(cart.map((i) => String(i.id)));
+};
 
   // ===========================
   // 🔥 THANH TOÁN ĐA SẢN PHẨM
