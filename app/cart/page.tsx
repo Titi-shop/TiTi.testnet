@@ -49,12 +49,16 @@ export default function CartPage() {
   const [loading, setLoading] = useState(false);
 
   const toggleSelect = (id: string) => {
-    setSelectedItems((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
-  };
+  const key = String(id);
 
-  const selectAll = () => {
+  setSelectedItems((prev) =>
+    prev.includes(key)
+      ? prev.filter((i) => i !== key)
+      : [...prev, key]
+  );
+};
+
+const selectAll = () => {
   if (selectedItems.length === cart.length)
     setSelectedItems([]);
   else
@@ -83,13 +87,12 @@ export default function CartPage() {
       setLoading(true);
 
       const selectedProducts: CartItem[] = cart.filter((i) =>
-        selectedItems.includes(i.id)
-      );
+  selectedItems.includes(String(i.id))
+);
 
-      const total = selectedProducts.reduce(
-        (sum, i) => sum + i.price * (i.quantity || 1),
-        0
-      );
+      const total = cart
+  .filter((i) => selectedItems.includes(String(i.id)))
+  .reduce((sum, i) => sum + i.price * (i.quantity || 1), 0);
 
       const orderId = Date.now();
       const accessToken =
