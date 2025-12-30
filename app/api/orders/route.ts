@@ -143,19 +143,28 @@ export async function PUT(req: Request) {
 
     const current = orders[index] as Record<string, unknown>;
 
-    const updated = {
-      ...current,
-      status: status ?? current.status,
-      txid: txid ?? current.txid,
-      updatedAt: new Date().toISOString(),
-    };
+    const current = orders[index] as Record<string, unknown>;
 
-    if (status === "Đã thanh toán") {
-      updated.paidAt = new Date().toISOString();
-    }
+type OrderUpdate = Record<string, unknown> & {
+  status?: unknown;
+  txid?: unknown;
+  updatedAt: string;
+  paidAt?: string;
+};
 
-    orders[index] = updated;
-    await writeOrders(orders);
+const updated: OrderUpdate = {
+  ...current,
+  status: status ?? current.status,
+  txid: txid ?? current.txid,
+  updatedAt: new Date().toISOString(),
+};
+
+if (status === "Đã thanh toán") {
+  updated.paidAt = new Date().toISOString();
+}
+
+orders[index] = updated;
+await writeOrders(orders);
 
     console.log("🔄 [ORDER UPDATED]:", updated);
 
