@@ -7,11 +7,11 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
-declare global {
-  interface Window {
-    Pi?: PiSDK;
-  }
-}
+/**
+ * KHÔNG khai báo lại Window.Pi ở đây
+ * vì đã có trong global.d.ts
+ * -> chỉ cần type tạm cho biến Pi cục bộ
+ */
 
 interface PiSDK {
   createPayment: (
@@ -24,6 +24,12 @@ interface PiSDK {
     }
   ) => Promise<unknown>;
 }
+
+// 👉 Lấy Pi SDK từ window nhưng KHÔNG đụng tới interface Window
+const Pi =
+  typeof window !== "undefined"
+    ? (window.Pi as PiSDK | undefined)
+    : undefined;
 
 interface CartItem {
   id: string;
@@ -58,7 +64,7 @@ export default function CartPage() {
   // ===========================
   const handlePaySelected = async () => {
     try {
-      if (!piReady || !window.Pi) {
+      if (!piReady || !Pi) {
         alert("⚠️ " + t.pi_not_ready);
         return;
       }
@@ -102,7 +108,7 @@ export default function CartPage() {
         return router.push("/pilogin");
       }
 
-      const payment = await window.Pi.createPayment(
+    const payment = await Pi.createPayment(
         {
           amount: total,
           memo: `${t.paying_order} (${selectedProducts.length} items)`,
