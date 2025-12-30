@@ -99,8 +99,8 @@ const selectAll = () => {
 
       const orderId = Date.now();
       const accessToken =
-        user?.accessToken ||
-        JSON.parse(localStorage.getItem("pi_user") || "{}").accessToken;
+  (user as any)?.accessToken ??
+  JSON.parse(localStorage.getItem("pi_user") || "{}")?.accessToken;
 
       const verifyRes = await fetch("/api/pi/verify", {
         method: "POST",
