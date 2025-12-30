@@ -6,9 +6,9 @@ import { useAuth } from "@/context/AuthContext";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 import { Clock, Package, Truck, Star, RotateCcw } from "lucide-react";
 
-type SearchParams = {
+type SearchParams = Promise<{
   embedded?: string;
-};
+}>;
 
 export default function CustomerPage({
   searchParams,
@@ -18,7 +18,20 @@ export default function CustomerPage({
   const [embedded, setEmbedded] = useState(false);
 
   useEffect(() => {
-    setEmbedded(searchParams?.embedded === "true");
+    if (!searchParams) return;
+
+    let active = true;
+
+    (async () => {
+      const params = await searchParams;
+      if (active) {
+        setEmbedded(params?.embedded === "true");
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
   }, [searchParams]);
 
   const router = useRouter();

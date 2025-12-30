@@ -6,8 +6,14 @@ type OrderRecord = Record<string, unknown>;
 /* ===========================
    🟢 GET — Lấy chi tiết đơn
 =========================== */
-export async function GET(_req: Request, { params }) {
-  const id = String(params.id);
+interface RouteContext {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
+export async function GET(_req: Request, { params }: RouteContext) {
+  const { id } = await params;
 
   const stored = await kv.get("orders");
   let orders: OrderRecord[] = [];
@@ -43,8 +49,11 @@ export async function GET(_req: Request, { params }) {
 /* ===========================
    🟡 PATCH — Cập nhật trạng thái
 =========================== */
-export async function PATCH(req: Request, { params }) {
-  const id = String(params.id);
+export async function PATCH(
+  req: Request,
+  { params }: RouteContext
+) {
+  const { id } = await params;
 
   const body = (await req.json()) as { status?: string };
   const status = body.status;

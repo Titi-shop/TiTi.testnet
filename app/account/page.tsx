@@ -32,7 +32,7 @@ export default function AccountPage() {
     <main className="bg-gray-100 pb-20">
 
       {/* 🔶 PHẦN TRÊN: Customer UI (từ customer/page.tsx) */}
-      <CustomerPage embedded />
+      <CustomerPage />
 
       {/* 🔽 PHẦN DƯỚI: Customer Menu */}
       <CustomerMenu />
