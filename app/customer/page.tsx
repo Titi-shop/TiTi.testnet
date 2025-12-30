@@ -6,12 +6,25 @@ import { useAuth } from "@/context/AuthContext";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 import { Clock, Package, Truck, Star, RotateCcw } from "lucide-react";
 
-export default function CustomerPage({
-  searchParams,
-}: {
-  searchParams?: { embedded?: string };
-}) {
-  const embedded = searchParams?.embedded === "true";
+type SearchParams =
+  | { embedded?: string }
+  | Promise<{ embedded?: string }>;
+
+export default function CustomerPage(props: { searchParams?: SearchParams }) {
+  const [embedded, setEmbedded] = useState(false);
+
+  useEffect(() => {
+    async function resolveParams() {
+      const params =
+        typeof props.searchParams === "object"
+          ? props.searchParams
+          : await props.searchParams;
+
+      setEmbedded(params?.embedded === "true");
+    }
+
+    void resolveParams();
+  }, [props.searchParams]);
 
   const router = useRouter();
   const { user, piReady } = useAuth();
@@ -38,11 +51,10 @@ export default function CustomerPage({
 
   return (
     <div className="pb-6 bg-gray-100">
-
       <div className="bg-orange-500 text-white p-6 text-center shadow">
         <div className="w-24 h-24 bg-white rounded-full mx-auto text-orange-600 text-4xl overflow-hidden shadow">
           {avatar ? (
-            <img src={avatar} className="w-full h-full object-cover" />
+            <img src={avatar} alt="avatar" className="w-full h-full object-cover" />
           ) : (
             user.username.charAt(0).toUpperCase()
           )}
@@ -72,7 +84,6 @@ export default function CustomerPage({
           </span>
         </p>
       </section>
-
     </div>
   );
 }
