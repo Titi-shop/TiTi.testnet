@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+type PageParams = {
+  params: {
+    slug: string;
+  };
+};
 interface Product {
   id: string;
   name: string;
@@ -20,9 +25,8 @@ interface Category {
   icon?: string;
 }
 
-export default function CategoryPage(props: { params: { slug: string } }) {
-  const slug = String(props.params.slug);
-
+export default function CategoryPage({ params }: PageParams) {
+  const slug = String(params.slug);
   const [products, setProducts] = useState<Product[]>([]);
   const [category, setCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
