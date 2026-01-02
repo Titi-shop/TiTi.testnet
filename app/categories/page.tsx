@@ -4,8 +4,19 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
+/** =========================
+ *  TYPE CHUẨN CHO CATEGORY
+ * ======================== */
+type Category = {
+  id: string | number;
+  name: string;
+  slug?: string;
+  icon?: string;
+};
+
 export default function CategoryPage() {
   const { t } = useTranslation();
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -16,11 +27,13 @@ export default function CategoryPage() {
         if (!res.ok) throw new Error("API lỗi");
 
         const data = await res.json();
-        const sorted = (data as Category[]).sort(
-  (a, b) => Number(a.id) - Number(b.id)
-);
-        setCategories(sorted);
 
+        // ✔ ép kiểu an toàn + sắp xếp theo id
+        const sorted: Category[] = (data as Category[]).sort(
+          (a, b) => Number(a.id) - Number(b.id)
+        );
+
+        setCategories(sorted);
       } catch (err) {
         console.error("❌ Lỗi tải danh mục:", err);
       } finally {
@@ -49,19 +62,21 @@ export default function CategoryPage() {
         {loading ? (
           <p className="text-gray-600">{t["loading"] || "Đang tải..."}</p>
         ) : categories.length === 0 ? (
-          <p className="text-gray-500">{t["no_category"] || "Không có danh mục"}</p>
+          <p className="text-gray-500">
+            {t["no_category"] || "Không có danh mục"}
+          </p>
         ) : (
           categories.map((c) => {
             const key = "category_" + c.id;
             return (
               <Link
-                key={c.id}
+                key={String(c.id)}
                 href={`/category/${c.id}`}
                 className="flex flex-col items-center min-w-[90px]"
               >
                 <img
                   src={c.icon || "/placeholder.png"}
-                  alt={t[key]}
+                  alt={t[key] || c.name}
                   className="w-16 h-16 rounded-full border object-cover"
                 />
                 <span className="text-sm text-center mt-2 truncate">
@@ -86,13 +101,13 @@ export default function CategoryPage() {
             const key = "category_" + c.id;
             return (
               <Link
-                key={c.id}
+                key={String(c.id)}
                 href={`/category/${c.id}`}
                 className="flex flex-col items-center"
               >
                 <img
                   src={c.icon || "/placeholder.png"}
-                  alt={t[key]}
+                  alt={t[key] || c.name}
                   className="w-16 h-16 rounded-full border object-cover"
                 />
                 <span className="mt-2 text-sm truncate">
