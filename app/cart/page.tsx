@@ -156,8 +156,8 @@ const selectAll = () => {
   };
 
   const total = cart
-    .filter((i) => selectedItems.includes(i.id))
-    .reduce((sum, i) => sum + i.price * (i.quantity || 1), 0);
+  .filter((i) => selectedItems.includes(String(i.id)))
+  .reduce((sum, i) => sum + i.price * (i.quantity || 1), 0);
 
   return (
     <main className="min-h-screen bg-gray-50 p-4 flex flex-col items-center">
