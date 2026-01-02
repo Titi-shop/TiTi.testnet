@@ -20,25 +20,14 @@ interface Category {
   icon?: string;
 }
 
-/** 👇 Khai báo đúng kiểu params */
-interface PageParams {
-  slug: string;
-}
-
-export default function CategoryPage({
-  params,
-}: {
-  params: PageParams;
-}) {
-  const { slug } = params;
+export default function CategoryPage(props: { params: { slug: string } }) {
+  const slug = String(props.params.slug);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [category, setCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!slug) return;
-
     async function loadData() {
       try {
         // --- load categories ---
@@ -48,8 +37,9 @@ export default function CategoryPage({
         const categories: Category[] = await resCate.json();
 
         const cate = categories.find(
-          (c) => String(c.id) === String(slug)
+          (c) => String(c.id) === slug
         );
+
         setCategory(cate ?? null);
 
         // --- load products ---
