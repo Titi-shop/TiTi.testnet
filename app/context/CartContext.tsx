@@ -29,36 +29,42 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
      LOAD CART (ensure correct typing)
   ===================================== */
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("cart");
-      if (!raw) return;
+  try {
+    const raw = localStorage.getItem("cart");
+    if (!raw) return;
 
-      const parsed = JSON.parse(raw) as unknown[];
+    const parsed: unknown = JSON.parse(raw);
 
-      const normalized = parsed
-        .map((i) => {
-          if (typeof i !== "object" || i === null) return null;
-
-          const obj = i as any;
-
-          const item: CartItem = {
-            id: String(obj.id),
-            name: String(obj.name ?? ""),
-            price: Number(obj.price) || 0,
-            quantity: Number(obj.quantity) || 1,
-            description: obj.description,
-            images: Array.isArray(obj.images) ? obj.images : [],
-          };
-
-          return item;
-        })
-        .filter(Boolean) as CartItem[];
-
-      setCart(normalized);
-    } catch {
+    if (!Array.isArray(parsed)) {
       setCart([]);
+      return;
     }
-  }, []);
+
+    const normalized: CartItem[] = parsed
+      .map((val): CartItem | null => {
+        if (typeof val !== "object" || val === null) return null;
+
+        const obj = val as Record<string, unknown>;
+
+        return {
+          id: String(obj.id),
+          name: String(obj.name ?? ""),
+          price: Number(obj.price) || 0,
+          quantity: Number(obj.quantity) || 1,
+          description:
+            typeof obj.description === "string" ? obj.description : undefined,
+          images: Array.isArray(obj.images)
+            ? obj.images.filter((x): x is string => typeof x === "string")
+            : [],
+        };
+      })
+      .filter((x): x is CartItem => x !== null);
+
+    setCart(normalized);
+  } catch {
+    setCart([]);
+  }
+}, []);
 
   /* =====================================
      SAVE CART
