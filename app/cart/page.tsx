@@ -27,9 +27,9 @@ const Pi =
 
 // ---- Cart Item TYPE SAFE ----
 interface CartItem {
-  id: string | number;
+  id: string;
   name: string;
-  price: number;
+  price: number;      // luôn là number
   quantity: number;
   images?: string[];
 }
@@ -85,9 +85,14 @@ export default function CartPage() {
 
       setLoading(true);
 
-      const selectedProducts: CartItem[] = cart.filter(i =>
-        selectedItems.includes(String(i.id))
-      );
+      const selectedProducts: CartItem[] = cart
+  .filter(i => selectedItems.includes(String(i.id)))
+  .map(i => ({
+    ...i,
+    id: String(i.id),
+    price: Number(i.price) || 0,
+    quantity: Number(i.quantity) || 1
+  }));
 
       const total = selectedProducts.reduce((sum, i) => {
         const price = Number(i.price) || 0;
@@ -162,12 +167,12 @@ export default function CartPage() {
 
   // ---- tổng tiền các sản phẩm đã chọn ----
   const total = cart
-    .filter(i => selectedItems.includes(String(i.id)))
-    .reduce((sum: number, i) => {
-      const price = Number(i.price) || 0;
-      const qty = Number(i.quantity) || 1;
-      return sum + price * qty;
-    }, 0);
+  .filter(i => selectedItems.includes(String(i.id)))
+  .reduce((sum, i) => {
+    const price = Number(i.price) || 0;
+    const qty = Number(i.quantity) || 1;
+    return sum + price * qty;
+  }, 0);
 
   return (
     <main className="min-h-screen bg-gray-50 p-4 flex flex-col items-center">
