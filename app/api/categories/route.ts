@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export async function GET() {
   return NextResponse.json([
     { id: 1, name: "Điện thoại & Laptop", icon: "/banners/maytinh.jpg" },
-    { id: 2, name: "Thời trang Nam", icon: "/banners/thoitrangnam.jpg" },
+    { id: 2, name: "Thời trang Nam", icon: "/banners/thời trang nam.jpg" },
     { id: 3, name: "Thời trang Nữ", icon: "/banners/thoitrangnu.jpg" },
     { id: 4, name: "Giày dép", icon: "/banners/Screenshot_2025-11-14-19-32-23-378_com.vuahanghieu.jpg" },
     { id: 5, name: "Làm đẹp", icon: "/banners/lamdep.jpg" },
