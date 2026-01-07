@@ -10,7 +10,7 @@ export async function GET() {
       id: 1,
       image: "/banners/quảng cáo 1.jpg",
       link: "/category/pet",
-      title: "
+      title: "",
     },
     {
       id: 2,
