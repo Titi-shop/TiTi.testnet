@@ -47,31 +47,34 @@ export default function CustomerShippingPage() {
   }, [lang, isLoggedIn]);
 
   const fetchOrders = async () => {
-    try {
-      const res = await fetch("/api/orders", { cache: "no-store" });
-      if (!res.ok) throw new Error("Failed to fetch");
+  try {
+    const res = await fetch("/api/orders", {
+      method: "GET",
+      cache: "no-store",
+      credentials: "include", // 🔥 QUAN TRỌNG NHẤT
+    });
 
-      const data: Order[] = await res.json();
+    if (!res.ok) throw new Error("Unauthorized");
 
-      const filterByLang: Record<string, string[]> = {
-        vi: ["Đang giao"],
-        en: ["Delivering"],
-        zh: ["配送中"],
-      };
+    const data: Order[] = await res.json();
 
-      const filtered = data.filter(
-        (o) =>
-          (filterByLang[lang] || filterByLang["vi"]).includes(o.status) &&
-          o.buyer?.toLowerCase() === currentUser.toLowerCase()
-      );
-      setOrders(filtered);
-    } catch (err) {
-      console.error("❌ Lỗi tải đơn hàng:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const filterByLang: Record<string, string[]> = {
+      vi: ["Đang giao"],
+      en: ["Delivering"],
+      zh: ["配送中"],
+    };
 
+    const filtered = data.filter((o) =>
+      (filterByLang[lang] || filterByLang.vi).includes(o.status)
+    );
+
+    setOrders(filtered);
+  } catch (err) {
+    console.error("❌ Lỗi tải đơn hàng:", err);
+  } finally {
+    setLoading(false);
+  }
+};
   if (loading)
     return <p className="text-center mt-6">⏳ {t.loading_orders}</p>;
 
