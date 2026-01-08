@@ -1,145 +1,192 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { kv } from "@vercel/kv";
 
-/**
- * =======================================
- * 🧾 TiTi Shop - API Đơn hàng (Orders)
- * ---------------------------------------
- * ✅ Hoạt động tốt cho cả Testnet & Mainnet
- * ✅ Tự động phát hiện môi trường Pi
- * ✅ Lưu dữ liệu trên Vercel KV
- * ✅ Dễ debug, log rõ ràng
- * =======================================
- */
+/* =========================================================
+   CONFIG
+========================================================= */
+const COOKIE_NAME = "pi_user";
 
-// 🔹 Nhận biết môi trường Pi
 const isTestnet =
   process.env.NEXT_PUBLIC_PI_ENV === "testnet" ||
   process.env.PI_API_URL?.includes("/sandbox");
 
-// ----------------------------
-// 🔸 Helper: Đọc danh sách đơn hàng
-// ----------------------------
-async function readOrders() {
-  try {
-    const stored = await kv.get("orders");
-    if (!stored) return [];
-    if (Array.isArray(stored)) return stored;
+/* =========================================================
+   AUTH HELPER – LẤY USER ĐANG ĐĂNG NHẬP
+========================================================= */
+function getCurrentUser() {
+  const raw = cookies().get(COOKIE_NAME)?.value;
+  if (!raw) return null;
 
-    try {
-      return JSON.parse(stored);
-    } catch {
-      console.warn("⚠️ Dữ liệu orders trong KV không hợp lệ, reset lại.");
-      return [];
+  try {
+    return JSON.parse(
+      Buffer.from(raw, "base64").toString("utf8")
+    );
+  } catch {
+    return null;
+  }
+}
+
+/* =========================================================
+   GET – LẤY ĐƠN HÀNG CỦA USER ĐANG ĐĂNG NHẬP
+========================================================= */
+export async function GET() {
+  try {
+    const user = getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "unauthorized" },
+        { status: 401 }
+      );
     }
+
+    // 👉 Lấy danh sách orderId của user
+    const orderIds =
+      (await kv.lrange<string>(`orders:user:${user.uid}`, 0, -1)) || [];
+
+    if (orderIds.length === 0) {
+      return NextResponse.json([]);
+    }
+
+    // 👉 Lấy chi tiết từng đơn
+    const orders = await Promise.all(
+      orderIds.map((id) => kv.get(`order:${id}`))
+    );
+
+    // Lọc null (phòng lỗi)
+    return NextResponse.json(orders.filter(Boolean));
   } catch (err) {
-    console.error("❌ Lỗi đọc orders:", err);
-    return [];
-  }
-}
-
-// ----------------------------
-// 🔸 Helper: Ghi danh sách đơn hàng
-// ----------------------------
-async function writeOrders(orders: any[]) {
-  try {
-    await kv.set("orders", JSON.stringify(orders));
-    return true;
-  } catch (err) {
-    console.error("❌ Lỗi ghi orders:", err);
-    return false;
-  }
-}
-
-// ----------------------------
-// 🔹 GET: Lấy danh sách đơn hàng (lọc theo buyer nếu có)
-// ----------------------------
-export async function GET(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const buyer = searchParams.get("buyer");
-    const orders = await readOrders();
-
-    const filtered = buyer
-      ? orders.filter((o) => o.buyer === buyer)
-      : orders;
-
-    return NextResponse.json(filtered);
-  } catch (err) {
-    console.error("❌ GET /orders:", err);
+    console.error("❌ GET /api/orders error:", err);
     return NextResponse.json([], { status: 500 });
   }
 }
 
-// ----------------------------
-// 🔹 POST: Tạo đơn hàng mới
-// ----------------------------
+/* =========================================================
+   POST – TẠO ĐƠN HÀNG MỚI (THEO USER ĐANG LOGIN)
+========================================================= */
 export async function POST(req: Request) {
   try {
-    const order = await req.json();
-    const orders = await readOrders();
+    const user = getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "unauthorized" },
+        { status: 401 }
+      );
+    }
 
-    const newOrder = {
-      id: order.id ?? `ORD-${Date.now()}`,
-      buyer: order.buyer || "unknown",
-      items: order.items ?? [],
-      total: Number(order.total ?? 0),
-      status: order.status ?? "Chờ xác nhận",
-      note: order.note ?? "",
-      shipping: order.shipping ?? {},
-      paymentId: order.paymentId ?? "",
-      txid: order.txid ?? "",
-      env: isTestnet ? "testnet" : "mainnet", // ✅ môi trường giao dịch
-      createdAt: order.createdAt ?? new Date().toISOString(),
+    const body = await req.json();
+
+    if (!body.items || !Array.isArray(body.items)) {
+      return NextResponse.json(
+        { success: false, message: "Thiếu sản phẩm" },
+        { status: 400 }
+      );
+    }
+
+    const orderId = `ORD-${Date.now()}`;
+
+    const order = {
+      id: orderId,
+      buyerId: user.uid,
+      buyerUsername: user.username,
+
+      items: body.items,
+      total: Number(body.total || 0),
+      status: "Chờ xác nhận",
+
+      note: body.note ?? "",
+      shipping: body.shipping ?? {},
+
+      paymentId: body.paymentId ?? "",
+      txid: body.txid ?? "",
+
+      env: isTestnet ? "testnet" : "mainnet",
+
+      createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    orders.unshift(newOrder);
-    await writeOrders(orders);
+    // 👉 LƯU CHI TIẾT ĐƠN
+    await kv.set(`order:${orderId}`, order);
 
-    console.log("🧾 [ORDER CREATED]:", newOrder);
+    // 👉 GẮN ĐƠN VÀO USER
+    await kv.lpush(`orders:user:${user.uid}`, orderId);
 
-    return NextResponse.json({ success: true, order: newOrder });
+    console.log("🧾 ORDER CREATED:", order);
+
+    return NextResponse.json({ success: true, order });
   } catch (err) {
-    console.error("❌ POST /orders:", err);
-    return NextResponse.json({ success: false }, { status: 500 });
+    console.error("❌ POST /api/orders error:", err);
+    return NextResponse.json(
+      { success: false, error: "server_error" },
+      { status: 500 }
+    );
   }
 }
 
-// ----------------------------
-// 🔹 PUT: Cập nhật trạng thái đơn hàng
-// ----------------------------
+/* =========================================================
+   PUT – CẬP NHẬT TRẠNG THÁI ĐƠN (ADMIN / SELLER)
+========================================================= */
 export async function PUT(req: Request) {
   try {
-    const { id, status, txid } = await req.json();
-    const orders = await readOrders();
-
-    const index = orders.findIndex((o) => String(o.id) === String(id));
-    if (index === -1) {
+    const user = getCurrentUser();
+    if (!user) {
       return NextResponse.json(
-        { success: false, message: "Không tìm thấy đơn hàng" },
+        { success: false, error: "unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const { id, status, txid } = await req.json();
+    if (!id) {
+      return NextResponse.json(
+        { success: false, message: "Thiếu ID đơn hàng" },
+        { status: 400 }
+      );
+    }
+
+    const order: any = await kv.get(`order:${id}`);
+    if (!order) {
+      return NextResponse.json(
+        { success: false, message: "Không tìm thấy đơn" },
         { status: 404 }
       );
     }
 
-    orders[index] = {
-      ...orders[index],
-      status: status || orders[index].status,
-      txid: txid || orders[index].txid,
+    // 👉 CHỈ CHO PHÉP:
+    // - buyer (xem / huỷ)
+    // - seller / admin (update trạng thái)
+    const isOwner = order.buyerId === user.uid;
+    const isStaff = user.roles?.includes("seller") || user.roles?.includes("admin");
+
+    if (!isOwner && !isStaff) {
+      return NextResponse.json(
+        { success: false, error: "forbidden" },
+        { status: 403 }
+      );
+    }
+
+    const updated = {
+      ...order,
+      status: status || order.status,
+      txid: txid || order.txid,
       updatedAt: new Date().toISOString(),
     };
 
     if (status === "Đã thanh toán") {
-      orders[index].paidAt = new Date().toISOString();
+      updated.paidAt = new Date().toISOString();
     }
 
-    await writeOrders(orders);
+    await kv.set(`order:${id}`, updated);
 
-    console.log("🔄 [ORDER UPDATED]:", orders[index]);
+    console.log("🔄 ORDER UPDATED:", updated);
 
-    return NextResponse.json({ success: true, order: orders[index] });
+    return NextResponse.json({ success: true, order: updated });
   } catch (err) {
-    console.error("❌ PUT /orders:", err);
-    return NextResponse.json({ success: false }, { status: 500 });
+    console.error("❌ PUT /api/orders error:", err);
+    return NextResponse.json(
+      { success: false, error: "server_error" },
+      { status: 500 }
+    );
   }
 }
