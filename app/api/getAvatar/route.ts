@@ -1,20 +1,33 @@
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
+import { cookies } from "next/headers";
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const username = searchParams.get("username")?.trim().toLowerCase();
+const COOKIE_NAME = "pi_user";
 
-  if (!username) {
-    return NextResponse.json({ error: "Thiếu username" }, { status: 400 });
+type Session = {
+  uid: string;
+};
+
+export async function GET() {
+  const raw = cookies().get(COOKIE_NAME)?.value;
+  if (!raw) {
+    return NextResponse.json({ avatar: null }, { status: 401 });
   }
 
-  // Lấy profile từ KV
-  const profile = await kv.get<Record<string, any>>(`user_profile:${username}`);
+  let session: Session | null = null;
+  try {
+    session = JSON.parse(Buffer.from(raw, "base64").toString("utf8"));
+  } catch {}
 
-  const avatar = profile?.avatar || null;
+  if (!session?.uid) {
+    return NextResponse.json({ avatar: null }, { status: 401 });
+  }
+
+  const profile = await kv.get<{ avatar?: string }>(
+    `user_profile:${session.uid}`
+  );
 
   return NextResponse.json({
-    avatar: avatar ?? null,
+    avatar: profile?.avatar ?? null,
   });
 }
