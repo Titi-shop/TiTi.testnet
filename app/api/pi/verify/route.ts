@@ -7,22 +7,52 @@ const COOKIE_NAME = "pi_user";
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 /* ============================================================
-   ENCODE / DECODE USER
+   TYPES
 ============================================================ */
-function encodeUser(user: object) {
-  return Buffer.from(JSON.stringify(user), "utf8").toString("base64");
+type PiMeResponse = {
+  uid?: string;
+  user_uid?: string;
+  id?: string;
+  username: string;
+  wallet_address?: string | null;
+  created_at?: string;
+  roles?: string[];
+};
+
+type SessionPayload = {
+  uid: string;
+};
+
+/* ============================================================
+   ENCODE / DECODE SESSION
+============================================================ */
+function encodeSession(payload: SessionPayload): string {
+  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64");
 }
 
-function decodeUser(raw: string) {
+function decodeSession(raw: string): SessionPayload | null {
   try {
-    return JSON.parse(Buffer.from(raw, "base64").toString("utf8"));
+    const parsed = JSON.parse(
+      Buffer.from(raw, "base64").toString("utf8")
+    ) as unknown;
+
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "uid" in parsed &&
+      typeof (parsed as { uid: unknown }).uid === "string"
+    ) {
+      return { uid: (parsed as { uid: string }).uid };
+    }
+
+    return null;
   } catch {
     return null;
   }
 }
 
 /* ============================================================
-   COOKIE BUILDER — FULLY COMPATIBLE WITH SAFARI + PI BROWSER
+   COOKIE BUILDER — PI BROWSER + SAFARI SAFE
 ============================================================ */
 function buildCookie(value: string, age = MAX_AGE) {
   return [
@@ -31,7 +61,7 @@ function buildCookie(value: string, age = MAX_AGE) {
     `Max-Age=${age}`,
     "HttpOnly",
     "SameSite=None",
-    "Secure" // 🔥 ALWAYS secure for Pi Browser + Safari
+    "Secure",
   ].join("; ");
 }
 
@@ -40,29 +70,40 @@ function buildCookie(value: string, age = MAX_AGE) {
 ============================================================ */
 export function GET(req: NextRequest) {
   const raw = req.cookies.get(COOKIE_NAME)?.value;
-  const user = raw ? decodeUser(raw) : null;
+  const session = raw ? decodeSession(raw) : null;
+
+  if (!session) {
+    return NextResponse.json({ success: false, uid: null });
+  }
 
   return NextResponse.json({
-    success: !!user,
-    user: user || null,
+    success: true,
+    uid: session.uid,
   });
 }
 
 /* ============================================================
-   🔹 POST — LOGIN WITH PI TOKEN
+   🔹 POST — LOGIN WITH PI ACCESS TOKEN
 ============================================================ */
 export async function POST(req: NextRequest) {
   try {
-    const { accessToken } = await req.json();
+    const body = (await req.json()) as unknown;
 
-    if (!accessToken) {
+    if (
+      typeof body !== "object" ||
+      body === null ||
+      !("accessToken" in body) ||
+      typeof (body as { accessToken?: unknown }).accessToken !== "string"
+    ) {
       return NextResponse.json(
         { success: false, error: "missing_access_token" },
         { status: 400 }
       );
     }
 
-    // 🔥 Fetch login info from Pi Network
+    const accessToken = (body as { accessToken: string }).accessToken;
+
+    // 🔐 VERIFY TOKEN WITH PI NETWORK
     const piRes = await fetch("https://api.minepi.com/v2/me", {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -77,26 +118,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const data = await piRes.json();
+    const data = (await piRes.json()) as PiMeResponse;
 
-    // 🔥 FIX: some Pi accounts DO NOT HAVE uid → fallback required
-    const user = {
-      username: data.username,
-      uid: data.uid || `user_${data.username}`,
-      wallet_address: data.wallet_address ?? null,
-      created_at: data.created_at ?? new Date().toISOString(),
-      roles: data.roles ?? [],
+    // 🔥 UID MUST COME FROM PI — NO FALLBACK
+    const piUid = data.uid || data.user_uid || data.id;
+
+    if (!piUid) {
+      return NextResponse.json(
+        { success: false, error: "pi_uid_missing" },
+        { status: 401 }
+      );
+    }
+
+    const session: SessionPayload = {
+      uid: String(piUid),
     };
 
-    const cookieValue = encodeUser(user);
+    const cookieValue = encodeSession(session);
 
-    // 🔥 MUST return Set-Cookie so Safari accepts
-    const res = NextResponse.json({ success: true, user });
+    const res = NextResponse.json({
+      success: true,
+      uid: session.uid,
+      username: data.username,
+    });
+
     res.headers.set("Set-Cookie", buildCookie(cookieValue));
-
     return res;
-  } catch (err) {
-    console.error("❌ PI LOGIN ERROR:", err);
+  } catch (err: unknown) {
+    console.error("❌ PI VERIFY ERROR:", err);
     return NextResponse.json(
       { success: false, error: "server_error" },
       { status: 500 }
