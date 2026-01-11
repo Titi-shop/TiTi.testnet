@@ -1,14 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
-    ignoreDuringBuilds: true, // OK cho production
+    ignoreDuringBuilds: true,
   },
   typescript: {
-    ignoreBuildErrors: true, // OK (bạn đã audit type Pi)
+    ignoreBuildErrors: true,
   },
 
   images: {
-    unoptimized: true, // OK cho Pi Browser
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",
@@ -45,10 +45,6 @@ const nextConfig = {
         ],
       },
     ];
-  },
-
-  experimental: {
-    serverActions: false, // an toàn, không cần cho TiTi
   },
 };
 
