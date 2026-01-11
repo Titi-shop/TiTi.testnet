@@ -33,10 +33,9 @@ function getSession(): Session | null {
 
 export async function GET() {
   const session = getSession();
-  if (!session) {
-    // tuỳ bạn: 401 hoặc 200
-    return NextResponse.json({ avatar: null }, { status: 401 });
-  }
+  if (!raw) {
+  return NextResponse.json({ avatar: null }, { status: 200 });
+}
 
   const profile = await kv.get<{ avatar?: string }>(
     `user_profile:${session.uid}`
