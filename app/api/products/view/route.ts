@@ -1,20 +1,36 @@
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
 
+/* =========================
+   TYPES
+========================= */
+type Product = {
+  id: string;
+};
+
+/* =========================
+   POST — TĂNG VIEW
+========================= */
 export async function POST(req: Request) {
   try {
-    const { id } = await req.json();
+    const body = (await req.json()) as unknown;
 
-    if (!id) {
+    if (
+      typeof body !== "object" ||
+      body === null ||
+      !("id" in body) ||
+      typeof (body as { id: unknown }).id !== "string"
+    ) {
       return NextResponse.json(
-        { success: false, message: "Thiếu id" },
+        { success: false, message: "Thiếu hoặc sai id" },
         { status: 400 }
       );
     }
 
-    const key = `product:${id}`;
-    const product = await kv.get<any>(key);
+    const { id } = body as { id: string };
 
+    // 🔍 Kiểm tra product tồn tại (nhẹ)
+    const product = await kv.get<Product>(`product:${id}`);
     if (!product) {
       return NextResponse.json(
         { success: false, message: "Không tìm thấy sản phẩm" },
@@ -22,14 +38,16 @@ export async function POST(req: Request) {
       );
     }
 
-    // ⭐ Tăng view ngay trong KV (đúng chuẩn)
-    product.views = (product.views ?? 0) + 1;
+    const viewKey = `product:views:${id}`;
 
-    // Lưu lại
-    await kv.set(key, product);
+    // ⭐ ATOMIC INCREMENT
+    const views = await kv.incr(viewKey);
 
-    return NextResponse.json({ success: true, views: product.views });
-  } catch (err) {
+    return NextResponse.json({
+      success: true,
+      views,
+    });
+  } catch (err: unknown) {
     console.error("❌ Lỗi tăng view:", err);
     return NextResponse.json(
       { success: false, message: "Lỗi server" },
