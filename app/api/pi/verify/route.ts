@@ -7,52 +7,22 @@ const COOKIE_NAME = "pi_user";
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 /* ============================================================
-   TYPES
+   ENCODE / DECODE USER
 ============================================================ */
-type PiMeResponse = {
-  uid?: string;
-  user_uid?: string;
-  id?: string;
-  username: string;
-  wallet_address?: string | null;
-  created_at?: string;
-  roles?: string[];
-};
-
-type SessionPayload = {
-  uid: string;
-};
-
-/* ============================================================
-   ENCODE / DECODE SESSION
-============================================================ */
-function encodeSession(payload: SessionPayload): string {
-  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64");
+function encodeUser(user: object) {
+  return Buffer.from(JSON.stringify(user), "utf8").toString("base64");
 }
 
-function decodeSession(raw: string): SessionPayload | null {
+function decodeUser(raw: string) {
   try {
-    const parsed = JSON.parse(
-      Buffer.from(raw, "base64").toString("utf8")
-    ) as unknown;
-
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      "uid" in parsed &&
-      typeof (parsed as { uid: unknown }).uid === "string"
-    ) {
-      return { uid: (parsed as { uid: string }).uid };
-    }
-
-    return null;
+    return JSON.parse(Buffer.from(raw, "base64").toString("utf8"));
   } catch {
     return null;
   }
 }
 
 /* ============================================================
-   COOKIE BUILDER — PI BROWSER + SAFARI SAFE
+   COOKIE BUILDER — FULLY COMPATIBLE WITH SAFARI + PI BROWSER
 ============================================================ */
 function buildCookie(value: string, age = MAX_AGE) {
   return [
@@ -61,7 +31,7 @@ function buildCookie(value: string, age = MAX_AGE) {
     `Max-Age=${age}`,
     "HttpOnly",
     "SameSite=None",
-    "Secure",
+    "Secure" // 🔥 ALWAYS secure for Pi Browser + Safari
   ].join("; ");
 }
 
@@ -70,40 +40,29 @@ function buildCookie(value: string, age = MAX_AGE) {
 ============================================================ */
 export function GET(req: NextRequest) {
   const raw = req.cookies.get(COOKIE_NAME)?.value;
-  const session = raw ? decodeSession(raw) : null;
-
-  if (!session) {
-    return NextResponse.json({ success: false, uid: null });
-  }
+  const user = raw ? decodeUser(raw) : null;
 
   return NextResponse.json({
-    success: true,
-    uid: session.uid,
+    success: !!user,
+    user: user || null,
   });
 }
 
 /* ============================================================
-   🔹 POST — LOGIN WITH PI ACCESS TOKEN
+   🔹 POST — LOGIN WITH PI TOKEN
 ============================================================ */
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as unknown;
+    const { accessToken } = await req.json();
 
-    if (
-      typeof body !== "object" ||
-      body === null ||
-      !("accessToken" in body) ||
-      typeof (body as { accessToken?: unknown }).accessToken !== "string"
-    ) {
+    if (!accessToken) {
       return NextResponse.json(
         { success: false, error: "missing_access_token" },
         { status: 400 }
       );
     }
 
-    const accessToken = (body as { accessToken: string }).accessToken;
-
-    // 🔐 VERIFY TOKEN WITH PI NETWORK
+    // 🔥 Fetch login info from Pi Network
     const piRes = await fetch("https://api.minepi.com/v2/me", {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -118,34 +77,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const data = (await piRes.json()) as PiMeResponse;
+    const data = await piRes.json();
 
-    // 🔥 UID MUST COME FROM PI — NO FALLBACK
-    const piUid = data.uid || data.user_uid || data.id;
-
-    if (!piUid) {
-      return NextResponse.json(
-        { success: false, error: "pi_uid_missing" },
-        { status: 401 }
-      );
-    }
-
-    const session: SessionPayload = {
-      uid: String(piUid),
+    // 🔥 FIX: some Pi accounts DO NOT HAVE uid → fallback required
+    const user = {
+      username: data.username,
+      uid: data.uid || `user_${data.username}`,
+      wallet_address: data.wallet_address ?? null,
+      created_at: data.created_at ?? new Date().toISOString(),
+      roles: data.roles ?? [],
     };
 
-    const cookieValue = encodeSession(session);
+    const cookieValue = encodeUser(user);
 
-    const res = NextResponse.json({
-      success: true,
-      uid: session.uid,
-      username: data.username,
-    });
-
+    // 🔥 MUST return Set-Cookie so Safari accepts
+    const res = NextResponse.json({ success: true, user });
     res.headers.set("Set-Cookie", buildCookie(cookieValue));
+
     return res;
-  } catch (err: unknown) {
-    console.error("❌ PI VERIFY ERROR:", err);
+  } catch (err) {
+    console.error("❌ PI LOGIN ERROR:", err);
     return NextResponse.json(
       { success: false, error: "server_error" },
       { status: 500 }
