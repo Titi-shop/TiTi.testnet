@@ -1,227 +1,179 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
 import { kv } from "@vercel/kv";
+import { cookies } from "next/headers";
 import { toISO } from "@/lib/formatDate";
 
-/* -------------------------------------------
-   CHECK SELLER
-------------------------------------------- */
-async function isSeller(username: string) {
+const COOKIE_NAME = "pi_user";
+
+/* =========================
+   TYPES
+========================= */
+type Session = { uid: string };
+
+type Product = {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  images: string[];
+  sellerId: string;
+  categoryId: number | null;
+  createdAt: string;
+  updatedAt?: string;
+  views: number;
+  sold: number;
+  salePrice: number | null;
+  saleStart: string | null;
+  saleEnd: string | null;
+};
+
+/* =========================
+   SESSION
+========================= */
+function getSession(): Session | null {
+  const raw = cookies().get(COOKIE_NAME)?.value;
+  if (!raw) return null;
   try {
-    const host = headers().get("host");
-    const protocol =
-      process.env.NODE_ENV === "development" ? "http" : "https";
-    const base = `${protocol}://${host}`;
-
-    const res = await fetch(`${base}/api/users/role?username=${username}`);
-    const data = await res.json();
-
-    return data.role === "seller";
+    const parsed = JSON.parse(Buffer.from(raw, "base64").toString("utf8")) as unknown;
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "uid" in parsed &&
+      typeof (parsed as { uid: unknown }).uid === "string"
+    ) {
+      return { uid: (parsed as { uid: string }).uid };
+    }
+    return null;
   } catch {
-    return false;
+    return null;
   }
 }
 
-/* -------------------------------------------
-   GET ALL PRODUCTS (Đã sửa lỗi lrange)
-------------------------------------------- */
+/* =========================
+   CHECK SELLER ROLE
+========================= */
+async function isSeller(uid: string): Promise<boolean> {
+  const role = await kv.get<string>(`user_role:${uid}`);
+  return role === "seller";
+}
+
+/* =========================
+   GET ALL PRODUCTS (PUBLIC)
+========================= */
 export async function GET() {
-  try {
-    // LẤY DANH SÁCH ID TỪ LIST
-    const ids = await kv.lrange<string>("products:all", 0, -1);
+  const ids = await kv.lrange<string>("products:all", 0, -1);
+  if (!ids.length) return NextResponse.json([]);
 
-    if (!ids || ids.length === 0) return NextResponse.json([]);
+  const now = new Date();
 
-    const now = new Date();
+  const products = await Promise.all(
+    ids.map(id => kv.get<Product>(`product:${id}`))
+  );
 
-    const products = await Promise.all(
-      ids.map(async (id) => await kv.get(`product:${id}`))
-    );
+  const safe = products.filter(Boolean).map(p => {
+    const start = p!.saleStart ? new Date(p!.saleStart) : null;
+    const end = p!.saleEnd ? new Date(p!.saleEnd) : null;
 
-    const updated = products
-      .filter(Boolean)
-      .map((p: any) => {
-        const start = p.saleStart ? new Date(p.saleStart) : null;
-        const end = p.saleEnd ? new Date(p.saleEnd) : null;
+    const isSale =
+      p!.salePrice &&
+      start &&
+      end &&
+      now >= start &&
+      now <= end;
 
-        if (start) start.setHours(0, 0, 0, 0);
-        if (end) end.setHours(23, 59, 59, 999);
+    return {
+      ...p!,
+      isSale,
+      finalPrice: isSale ? p!.salePrice : p!.price,
+    };
+  });
 
-        const isSale =
-          p.salePrice &&
-          start &&
-          end &&
-          now.getTime() >= start.getTime() &&
-          now.getTime() <= end.getTime();
-
-        return {
-          ...p,
-          isSale,
-          finalPrice: isSale ? p.salePrice : p.price,
-        };
-      });
-
-    return NextResponse.json(updated);
-  } catch (err) {
-    console.error("GET products error:", err);
-    return NextResponse.json([], { status: 500 });
-  }
+  return NextResponse.json(safe);
 }
 
-/* -------------------------------------------
-   CREATE PRODUCT
-------------------------------------------- */
+/* =========================
+   CREATE PRODUCT (SELLER)
+========================= */
 export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-    const {
-      name,
-      price,
-      description,
-      images,
-      seller,
-      categoryId,
-      salePrice,
-      saleStart,
-      saleEnd,
-    } = body;
+  const session = getSession();
+  if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-    if (!name || !price || !seller)
-      return NextResponse.json({ success: false, message: "Thiếu dữ liệu" });
-
-    const sellerLower = seller.toLowerCase();
-
-    if (!(await isSeller(sellerLower)))
-      return NextResponse.json({
-        success: false,
-        message: "Không phải seller",
-      });
-
-    const id = Date.now().toString();
-
-    const newProduct = {
-      id,
-      name,
-      price,
-      description: description || "",
-      images: images || [],
-      seller: sellerLower,
-      categoryId: Number(categoryId) || null,
-      createdAt: new Date().toISOString(),
-      views: 0,
-      sold: 0,
-
-      salePrice: salePrice || null,
-      saleStart: saleStart ? toISO(saleStart) : null,
-      saleEnd: saleEnd ? toISO(saleEnd) : null,
-    };
-
-    // LƯU SẢN PHẨM
-    await kv.set(`product:${id}`, newProduct);
-
-    // THÊM VÀO DANH SÁCH CHUNG (LIST)
-    await kv.rpush("products:all", id);
-
-    // THÊM VÀO DANH SÁCH SELLER
-    await kv.rpush(`products:seller:${sellerLower}`, id);
-
-    return NextResponse.json({ success: true, product: newProduct });
-  } catch (err) {
-    console.error("POST error:", err);
-    return NextResponse.json({ success: false, message: "Lỗi server" });
+  if (!(await isSeller(session.uid))) {
+    return NextResponse.json({ error: "not_seller" }, { status: 403 });
   }
+
+  const body = (await req.json()) as Partial<Product>;
+  if (!body.name || typeof body.price !== "number") {
+    return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
+  }
+
+  const id = `PRD-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const now = new Date().toISOString();
+
+  const product: Product = {
+    id,
+    name: body.name,
+    price: body.price,
+    description: body.description ?? "",
+    images: body.images ?? [],
+    sellerId: session.uid,
+    categoryId: body.categoryId ?? null,
+    createdAt: now,
+    views: 0,
+    sold: 0,
+    salePrice: body.salePrice ?? null,
+    saleStart: body.saleStart ? toISO(body.saleStart) : null,
+    saleEnd: body.saleEnd ? toISO(body.saleEnd) : null,
+  };
+
+  await kv.set(`product:${id}`, product);
+  await kv.rpush("products:all", id);
+  await kv.rpush(`products:seller:${session.uid}`, id);
+
+  return NextResponse.json({ success: true, product });
 }
 
-/* -------------------------------------------
-   UPDATE PRODUCT
-------------------------------------------- */
+/* =========================
+   UPDATE / DELETE
+========================= */
 export async function PUT(req: Request) {
-  try {
-    const body = await req.json();
-    const {
-      id,
-      name,
-      price,
-      description,
-      images,
-      seller,
-      categoryId,
-      salePrice,
-      saleStart,
-      saleEnd,
-    } = body;
+  const session = getSession();
+  if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!(await isSeller(session.uid))) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-    if (!id || !seller)
-      return NextResponse.json({ success: false });
-
-    const sellerLower = seller.toLowerCase();
-    if (!(await isSeller(sellerLower)))
-      return NextResponse.json({ success: false });
-
-    const product: any = await kv.get(`product:${id}`);
-    if (!product) return NextResponse.json({ success: false });
-
-    if (product.seller !== sellerLower)
-      return NextResponse.json({ success: false });
-
-    const updated = {
-      ...product,
-      name,
-      price,
-      description,
-      images,
-      categoryId: Number(categoryId) || product.categoryId,
-      updatedAt: new Date().toISOString(),
-
-      salePrice: salePrice || null,
-      saleStart: saleStart ? toISO(saleStart) : null,
-      saleEnd: saleEnd ? toISO(saleEnd) : null,
-    };
-
-    await kv.set(`product:${id}`, updated);
-
-    return NextResponse.json({ success: true, product: updated });
-  } catch (err) {
-    console.error("PUT error:", err);
-    return NextResponse.json({ success: false });
+  const body = await req.json();
+  const product = await kv.get<Product>(`product:${body.id}`);
+  if (!product || product.sellerId !== session.uid) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
+
+  const updated: Product = {
+    ...product,
+    ...body,
+    sellerId: session.uid,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await kv.set(`product:${product.id}`, updated);
+  return NextResponse.json({ success: true, product: updated });
 }
 
-/* -------------------------------------------
-   DELETE PRODUCT
-------------------------------------------- */
 export async function DELETE(req: Request) {
-  try {
-    const url = new URL(req.url);
-    const id = url.searchParams.get("id");
+  const session = getSession();
+  if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!(await isSeller(session.uid))) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-    const { seller } = await req.json();
-    if (!id || !seller)
-      return NextResponse.json({ success: false });
+  const id = new URL(req.url).searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "missing_id" }, { status: 400 });
 
-    const sellerLower = seller.toLowerCase();
-
-    if (!(await isSeller(sellerLower)))
-      return NextResponse.json({ success: false });
-
-    const product: any = await kv.get(`product:${id}`);
-    if (!product) return NextResponse.json({ success: false });
-
-    if (product.seller !== sellerLower)
-      return NextResponse.json({ success: false });
-
-    // XÓA PRODUCT
-    await kv.del(`product:${id}`);
-
-    // XÓA TRONG LIST CỦA SELLER
-    await kv.lrem(`products:seller:${sellerLower}`, 0, id);
-
-    // XÓA TRONG LIST TẤT CẢ
-    await kv.lrem("products:all", 0, id);
-
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error("DELETE error:", err);
-    return NextResponse.json({ success: false });
+  const product = await kv.get<Product>(`product:${id}`);
+  if (!product || product.sellerId !== session.uid) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
+
+  await kv.del(`product:${id}`);
+  await kv.lrem(`products:seller:${session.uid}`, 0, id);
+  await kv.lrem("products:all", 0, id);
+
+  return NextResponse.json({ success: true });
 }
