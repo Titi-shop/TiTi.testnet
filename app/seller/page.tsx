@@ -18,7 +18,9 @@ export default function SellerDashboard() {
 
   useEffect(() => {
     if (!loading && piReady && user) {
-      fetch(`/api/users/role?username=${user.username}`)
+      fetch(`/api/users/role?username=${user.username}`, {
+  credentials: "include",
+});
         .then((r) => r.json())
         .then((d) => {
           setRole(d.role);
