@@ -1,82 +1,139 @@
 export const dynamic = "force-dynamic";
+
 import { kv } from "@vercel/kv";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
-/**
- * 🟣 API: /api/profile
- * - Lưu & tải hồ sơ người dùng (username, avatar, email, v.v.)
- * - Dữ liệu được lưu trong Vercel KV
- * - GET: ?username=
- * - POST: body JSON
- */
+const COOKIE_NAME = "pi_user";
 
-function normalize(str: string) {
-  return str?.trim().toLowerCase();
+/* =========================
+   TYPES
+========================= */
+type Session = {
+  uid: string;
+};
+
+type UserProfile = {
+  uid: string;
+  username: string;
+  displayName: string;
+  avatar: string | null;
+  email: string;
+  phone: string;
+  address: string;
+  createdAt: number;
+  updatedAt?: number;
+};
+
+/* =========================
+   SESSION HELPER
+========================= */
+function getSession(): Session | null {
+  const raw = cookies().get(COOKIE_NAME)?.value;
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(
+      Buffer.from(raw, "base64").toString("utf8")
+    ) as unknown;
+
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "uid" in parsed &&
+      typeof (parsed as { uid: unknown }).uid === "string"
+    ) {
+      return { uid: (parsed as { uid: string }).uid };
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
-// 🟢 Lấy hồ sơ
-export async function GET(req: Request) {
+/* =========================
+   GET — PROFILE CỦA USER HIỆN TẠI
+========================= */
+export async function GET() {
+  const session = getSession();
+  if (!session) {
+    return NextResponse.json(
+      { success: false, error: "unauthorized" },
+      { status: 401 }
+    );
+  }
+
+  const key = `user_profile:${session.uid}`;
+  let profile = await kv.get<UserProfile>(key);
+
+  // Nếu chưa có → tạo profile mặc định
+  if (!profile) {
+    profile = {
+      uid: session.uid,
+      username: "",
+      displayName: "",
+      avatar: null,
+      email: "",
+      phone: "",
+      address: "",
+      createdAt: Date.now(),
+    };
+    await kv.set(key, profile);
+  }
+
+  return NextResponse.json(profile);
+}
+
+/* =========================
+   POST — UPDATE PROFILE USER HIỆN TẠI
+========================= */
+export async function POST(req: Request) {
+  const session = getSession();
+  if (!session) {
+    return NextResponse.json(
+      { success: false, error: "unauthorized" },
+      { status: 401 }
+    );
+  }
+
   try {
-    const { searchParams } = new URL(req.url);
-    const username = searchParams.get("username");
+    const body = (await req.json()) as unknown;
 
-    if (!username)
-      return NextResponse.json({ error: "Thiếu username" }, { status: 400 });
+    if (typeof body !== "object" || body === null) {
+      return NextResponse.json(
+        { success: false, error: "invalid_payload" },
+        { status: 400 }
+      );
+    }
 
-    const key = `user_profile:${normalize(username)}`;
-    const data = await kv.get<Record<string, any>>(key);
-
-    if (!data) {
-      // Nếu chưa có dữ liệu, tạo hồ sơ mặc định
-      const newProfile = {
-        username: normalize(username),
-        displayName: username,
+    const key = `user_profile:${session.uid}`;
+    const existing =
+      (await kv.get<UserProfile>(key)) ??
+      ({
+        uid: session.uid,
+        username: "",
+        displayName: "",
         avatar: null,
         email: "",
         phone: "",
         address: "",
         createdAt: Date.now(),
-      };
-      await kv.set(key, newProfile);
-      return NextResponse.json(newProfile);
-    }
+      } as UserProfile);
 
-    return NextResponse.json(data);
-  } catch (err: any) {
-    console.error("❌ Lỗi GET profile:", err);
-    return NextResponse.json(
-      { success: false, error: err.message },
-      { status: 500 }
-    );
-  }
-}
-
-// 🟢 Cập nhật hồ sơ
-export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-    const username = body?.username;
-
-    if (!username)
-      return NextResponse.json({ error: "Thiếu username" }, { status: 400 });
-
-    const key = `user_profile:${normalize(username)}`;
-    const existing = (await kv.get<Record<string, any>>(key)) || {};
-
-    const updatedProfile = {
+    const updated: UserProfile = {
       ...existing,
       ...body,
-      username: normalize(username),
+      uid: session.uid, // 🔐 ÉP ĐÚNG USER
       updatedAt: Date.now(),
     };
 
-    await kv.set(key, updatedProfile);
+    await kv.set(key, updated);
 
-    return NextResponse.json({ success: true, profile: updatedProfile });
-  } catch (err: any) {
+    return NextResponse.json({ success: true, profile: updated });
+  } catch (err: unknown) {
     console.error("❌ Lỗi POST profile:", err);
     return NextResponse.json(
-      { success: false, error: err.message },
+      { success: false, error: "server_error" },
       { status: 500 }
     );
   }
