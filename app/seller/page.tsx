@@ -17,18 +17,23 @@ export default function SellerDashboard() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    if (!loading && piReady && user) {
-      fetch(`/api/users/role?username=${user.username}`, {
-  credentials: "include",
-});
-        .then((r) => r.json())
-        .then((d) => {
-          setRole(d.role);
-          if (d.role !== "seller") router.push("/no-access");
-        })
-        .finally(() => setChecking(false));
-    }
-  }, [loading, piReady, user]);
+  if (!loading && piReady && user) {
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/users/role?username=${user.username}`,
+          { credentials: "include" }
+        );
+        const d = await res.json();
+
+        setRole(d.role);
+        if (d.role !== "seller") router.push("/no-access");
+      } finally {
+        setChecking(false);
+      }
+    })();
+  }
+}, [loading, piReady, user, router]);
 
   if (checking || loading || !piReady)
     return <p className="text-center mt-10">⏳ Đang tải...</p>;
