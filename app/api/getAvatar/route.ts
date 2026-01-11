@@ -8,18 +8,33 @@ type Session = {
   uid: string;
 };
 
-export async function GET() {
+function getSession(): Session | null {
   const raw = cookies().get(COOKIE_NAME)?.value;
-  if (!raw) {
-    return NextResponse.json({ avatar: null }, { status: 401 });
-  }
+  if (!raw) return null;
 
-  let session: Session | null = null;
   try {
-    session = JSON.parse(Buffer.from(raw, "base64").toString("utf8"));
-  } catch {}
+    const parsed = JSON.parse(
+      Buffer.from(raw, "base64").toString("utf8")
+    ) as unknown;
 
-  if (!session?.uid) {
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "uid" in parsed &&
+      typeof (parsed as { uid: unknown }).uid === "string"
+    ) {
+      return { uid: (parsed as { uid: string }).uid };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function GET() {
+  const session = getSession();
+  if (!session) {
+    // tuỳ bạn: 401 hoặc 200
     return NextResponse.json({ avatar: null }, { status: 401 });
   }
 
