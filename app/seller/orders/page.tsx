@@ -30,7 +30,10 @@ export default function OrdersTabs() {
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch("/api/orders", { cache: "no-store" });
+ const res = await fetch("/api/seller/orders", {
+  cache: "no-store",
+  credentials: "include",
+});
       const data = await res.json();
       setOrders(data || []);
     } catch (err) {
