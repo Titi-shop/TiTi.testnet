@@ -4,37 +4,52 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
-// 🔼 phần trên
+// 🔼 PHẦN TRÊN
 import CustomerPage from "../customer/page";
 
-// 🔽 phần dưới
+// 🔶 PHẦN GIỮA (SELLER)
+import SellerPage from "../seller/page";
+import { isSellerByEnv } from "@/utils/roles";
+
+// 🔽 PHẦN DƯỚI
 import CustomerMenu from "@/components/customerMenu";
 
 export default function AccountPage() {
   const router = useRouter();
   const { user, piReady } = useAuth();
 
-  // Nếu chưa login → pilogin
+  // 🚫 Chưa login → chuyển sang pilogin
   useEffect(() => {
     if (piReady && !user) {
       router.replace("/pilogin");
     }
-  }, [piReady, user]);
+  }, [piReady, user, router]);
 
-  if (!user)
+  // ⏳ Loading
+  if (!user) {
     return (
       <main className="min-h-screen flex items-center justify-center text-gray-500">
         Loading...
       </main>
     );
+  }
+
+  const isSeller = isSellerByEnv(user);
 
   return (
-    <main className="bg-gray-100 pb-20">
+    <main className="bg-gray-100 pb-20 space-y-6">
 
-      {/* 🔶 PHẦN TRÊN: Customer UI (từ customer/page.tsx) */}
+      {/* 🔼 PHẦN TRÊN: CUSTOMER */}
       <CustomerPage embedded />
 
-      {/* 🔽 PHẦN DƯỚI: Customer Menu */}
+      {/* 🔶 PHẦN GIỮA: SELLER (chỉ hiện nếu là seller) */}
+      {isSeller && (
+        <section className="bg-white rounded-xl shadow mx-4 p-4">
+          <SellerPage embedded />
+        </section>
+      )}
+
+      {/* 🔽 PHẦN DƯỚI: MENU */}
       <CustomerMenu />
 
     </main>
