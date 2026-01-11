@@ -4,6 +4,9 @@ import { cookies } from "next/headers";
 
 const COOKIE_NAME = "pi_user";
 
+/* =========================
+   TYPES
+========================= */
 type Session = {
   uid: string;
   username: string;
@@ -13,6 +16,14 @@ type OrderItem = {
   productId: string;
   quantity: number;
   seller: string; // seller username
+  price?: number;
+};
+
+type Order = {
+  id: string;
+  items: OrderItem[];
+  status: string;
+  createdAt: string;
 };
 
 type SellerOrder = {
@@ -23,23 +34,41 @@ type SellerOrder = {
   createdAt: string;
 };
 
+/* =========================
+   SESSION HELPER
+========================= */
 function getSession(): Session | null {
   const raw = cookies().get(COOKIE_NAME)?.value;
   if (!raw) return null;
 
   try {
-    const parsed = JSON.parse(
+    const parsed: unknown = JSON.parse(
       Buffer.from(raw, "base64").toString("utf8")
     );
-    if (parsed?.uid && parsed?.username) {
-      return { uid: parsed.uid, username: parsed.username };
+
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "uid" in parsed &&
+      "username" in parsed &&
+      typeof (parsed as { uid: unknown }).uid === "string" &&
+      typeof (parsed as { username: unknown }).username === "string"
+    ) {
+      return {
+        uid: (parsed as { uid: string }).uid,
+        username: (parsed as { username: string }).username,
+      };
     }
+
     return null;
   } catch {
     return null;
   }
 }
 
+/* =========================
+   GET — SELLER ORDERS
+========================= */
 export async function GET(req: Request) {
   const session = getSession();
   if (!session) {
@@ -47,40 +76,47 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
-  const status = searchParams.get("status");
+  const statusFilter = searchParams.get("status");
 
-  // ⚠️ TẠM: duyệt toàn bộ order của buyer (chưa tối ưu)
-  const allUserKeys = await kv.keys("orders:user:*");
+  // ⚠️ TẠM THỜI: duyệt toàn bộ buyer orders (chưa tối ưu)
+  const buyerOrderKeys = await kv.keys("orders:user:*");
 
-  const orders = await Promise.all(
-    allUserKeys.flatMap(async (key) => {
+  const ordersNested: (Order | null)[][] = await Promise.all(
+    buyerOrderKeys.map(async (key) => {
       const ids = await kv.lrange<string>(key, 0, -1);
-      return Promise.all(ids.map(id => kv.get<any>(`order:${id}`)));
+      return Promise.all(
+        ids.map((id) => kv.get<Order>(`order:${id}`))
+      );
     })
   );
 
   const sellerOrders: SellerOrder[] = [];
 
-  for (const order of orders.flat()) {
-    if (!order) continue;
-    if (status && order.status !== status) continue;
+  for (const orders of ordersNested) {
+    for (const order of orders) {
+      if (!order) continue;
+      if (statusFilter && order.status !== statusFilter) continue;
 
-    const items = order.items.filter(
-      (i: any) => i.seller === session.username
-    );
+      const sellerItems = order.items.filter(
+        (item) => item.seller === session.username
+      );
 
-    if (items.length === 0) continue;
+      if (sellerItems.length === 0) continue;
 
-    sellerOrders.push({
-      orderId: order.id,
-      items,
-      total: items.reduce(
-        (sum: number, i: any) => sum + (i.price ?? 0) * i.quantity,
+      const total = sellerItems.reduce(
+        (sum, item) =>
+          sum + (item.price ?? 0) * item.quantity,
         0
-      ),
-      status: order.status,
-      createdAt: order.createdAt,
-    });
+      );
+
+      sellerOrders.push({
+        orderId: order.id,
+        items: sellerItems,
+        total,
+        status: order.status,
+        createdAt: order.createdAt,
+      });
+    }
   }
 
   return NextResponse.json(sellerOrders);
