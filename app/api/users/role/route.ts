@@ -1,113 +1,123 @@
 export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
+import { cookies } from "next/headers";
 
-/**
- * =========================================
- * 👤 API: /api/users/role
- * -----------------------------------------
- * ✅ Phân quyền người dùng (seller / buyer)
- * ✅ Hoạt động tốt cho cả testnet & mainnet
- * ✅ Dữ liệu tách biệt giữa 2 môi trường
- * ✅ Cho phép testnet auto-seller
- * =========================================
- */
+const COOKIE_NAME = "pi_user";
 
-// 🔹 Phát hiện môi trường (testnet hoặc mainnet)
-const isTestnet =
-  process.env.NEXT_PUBLIC_PI_ENV === "testnet" ||
-  process.env.PI_API_URL?.includes("/sandbox");
+/* =========================
+   TYPES
+========================= */
+type Session = {
+  uid: string;
+};
 
-// 🔸 Danh sách người bán mặc định
-const DEFAULT_SELLERS = ["nguyenminhduc1991111", "vothao11996611"];
+type UserRole = "buyer" | "seller" | "admin";
 
-// 🔸 Chuẩn hoá username (xoá khoảng trắng, viết thường)
-function normalize(str: string): string {
-  return str.trim().toLowerCase();
-}
+/* =========================
+   SESSION HELPER
+========================= */
+function getSession(): Session | null {
+  const raw = cookies().get(COOKIE_NAME)?.value;
+  if (!raw) return null;
 
-// ----------------------------
-// 🔹 POST: Gán quyền cho user
-// ----------------------------
-export async function POST(req: Request) {
   try {
-    const { username, role } = await req.json();
+    const parsed = JSON.parse(
+      Buffer.from(raw, "base64").toString("utf8")
+    ) as unknown;
 
-    if (!username || !role)
-      return NextResponse.json({ error: "Thiếu dữ liệu" }, { status: 400 });
-
-    const normalized = normalize(username);
-    const envPrefix = isTestnet ? "testnet" : "mainnet";
-    const key = `user_role:${envPrefix}:${normalized}`;
-
-    if (!["seller", "buyer"].includes(role))
-      return NextResponse.json(
-        { error: "Role không hợp lệ" },
-        { status: 400 }
-      );
-
-    await kv.set(key, role);
-
-    console.log(`✅ [${envPrefix}] Gán role cho ${normalized}: ${role}`);
-
-    return NextResponse.json({ success: true, username: normalized, role, env: envPrefix });
-  } catch (err: any) {
-    console.error("❌ Lỗi lưu quyền:", err);
-    return NextResponse.json(
-      { success: false, error: err.message },
-      { status: 500 }
-    );
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "uid" in parsed &&
+      typeof (parsed as { uid: unknown }).uid === "string"
+    ) {
+      return { uid: (parsed as { uid: string }).uid };
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
 
-// ----------------------------
-// 🔹 GET: Lấy quyền của user
-// ----------------------------
-export async function GET(req: Request) {
+/* =========================
+   GET — LẤY ROLE USER HIỆN TẠI
+========================= */
+export async function GET() {
+  const session = getSession();
+  if (!session) {
+    return NextResponse.json(
+      { success: false, error: "unauthorized" },
+      { status: 401 }
+    );
+  }
+
+  const key = `user_role:${session.uid}`;
+  const role = (await kv.get<UserRole>(key)) ?? "buyer";
+
+  return NextResponse.json({
+    success: true,
+    role,
+  });
+}
+
+/* =========================
+   POST — ADMIN GÁN ROLE
+========================= */
+export async function POST(req: Request) {
+  const session = getSession();
+  if (!session) {
+    return NextResponse.json(
+      { success: false, error: "unauthorized" },
+      { status: 401 }
+    );
+  }
+
+  // 🔐 CHỈ ADMIN
+  const myRole = await kv.get<UserRole>(`user_role:${session.uid}`);
+  if (myRole !== "admin") {
+    return NextResponse.json(
+      { success: false, error: "forbidden" },
+      { status: 403 }
+    );
+  }
+
   try {
-    const { searchParams } = new URL(req.url);
-    const username = searchParams.get("username");
+    const body = (await req.json()) as unknown;
 
-    if (!username)
-      return NextResponse.json({ error: "Thiếu username" }, { status: 400 });
-
-    const normalized = normalize(username);
-    const envPrefix = isTestnet ? "testnet" : "mainnet";
-    const key = `user_role:${envPrefix}:${normalized}`;
-
-    // 🔸 Auto seller trong testnet để dễ test
-    if (isTestnet) {
-      console.log(`🧪 [TESTNET] Auto gán seller cho ${normalized}`);
-      await kv.set(key, "seller");
-      return NextResponse.json({
-        success: true,
-        username: normalized,
-        role: "seller",
-        env: envPrefix,
-      });
+    if (
+      typeof body !== "object" ||
+      body === null ||
+      !("uid" in body) ||
+      !("role" in body)
+    ) {
+      return NextResponse.json(
+        { success: false, error: "invalid_payload" },
+        { status: 400 }
+      );
     }
 
-    // 🔸 Lấy role từ KV (hoặc mặc định là buyer)
-    let role = (await kv.get<string>(key)) || "buyer";
+    const { uid, role } = body as { uid: string; role: UserRole };
 
-    // 🔸 Nếu user trong danh sách mặc định → ép role seller
-    if (DEFAULT_SELLERS.some((u) => normalize(u) === normalized)) {
-      role = "seller";
-      await kv.set(key, role);
+    if (!["buyer", "seller", "admin"].includes(role)) {
+      return NextResponse.json(
+        { success: false, error: "invalid_role" },
+        { status: 400 }
+      );
     }
 
-    console.log(`👤 [${envPrefix}] Role của ${normalized}: ${role}`);
+    await kv.set(`user_role:${uid}`, role);
 
     return NextResponse.json({
       success: true,
-      username: normalized,
+      uid,
       role,
-      env: envPrefix,
     });
-  } catch (err: any) {
-    console.error("❌ Lỗi GET role:", err);
+  } catch (err: unknown) {
+    console.error("❌ Lỗi gán role:", err);
     return NextResponse.json(
-      { success: false, error: err.message },
+      { success: false, error: "server_error" },
       { status: 500 }
     );
   }
