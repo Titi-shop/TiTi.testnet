@@ -1,8 +1,22 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: { ignoreDuringBuilds: true },
-  typescript: { ignoreBuildErrors: true },
-  images: { unoptimized: true },
+  eslint: {
+    ignoreDuringBuilds: true, // OK cho production
+  },
+  typescript: {
+    ignoreBuildErrors: true, // OK (bạn đã audit type Pi)
+  },
+
+  images: {
+    unoptimized: true, // OK cho Pi Browser
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.public.blob.vercel-storage.com",
+        pathname: "/**",
+      },
+    ],
+  },
 
   async headers() {
     return [
@@ -20,16 +34,21 @@ const nextConfig = {
               "frame-src 'self' https://sdk.minepi.com https://minepi.com;",
             ].join(" "),
           },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "X-Frame-Options", value: "ALLOWALL" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
         ],
       },
     ];
   },
 
   experimental: {
-    serverActions: false,
+    serverActions: false, // an toàn, không cần cho TiTi
   },
 };
 
