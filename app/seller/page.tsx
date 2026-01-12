@@ -25,7 +25,7 @@ export default function SellerPage() {
       <div className="grid grid-cols-3 gap-6 text-center mb-10">
         {/* Post Product */}
         <Link
-          href={canOperate ? "/seller/post-product" : "#"}
+          href={canOperate ? "/seller/post" : "#"}
           className={!canOperate ? "pointer-events-none opacity-40" : ""}
         >
           <div className="mx-auto w-20 h-20 rounded-full bg-green-100 flex items-center justify-center shadow">
