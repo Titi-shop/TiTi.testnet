@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef, ChangeEvent, FormEvent } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 function formatDateToInput(dateString: string | null) {
@@ -37,7 +36,6 @@ export default function EditProductPage() {
   const { t } = useTranslation();
   const { id } = useParams();
   const router = useRouter();
-  const { user, loading, piReady } = useAuth();
 
   const [product, setProduct] = useState<ProductData | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -53,13 +51,6 @@ export default function EditProductPage() {
   const [images, setImages] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
 
-  /* AUTH CHECK */
-  useEffect(() => {
-    if (!loading && piReady && !user) {
-      router.push("/pilogin");
-    }
-  }, [loading, piReady, user]);
-
   /* LOAD CATEGORIES */
   useEffect(() => {
     fetch("/api/categories")
@@ -69,14 +60,18 @@ export default function EditProductPage() {
 
   /* LOAD PRODUCT */
   useEffect(() => {
-    if (!id || !user) return;
 
-    fetch(`/api/products`, { cache: "no-store" })
-      .then((r) => r.json())
-      .then((list: ProductData[]) => {
-        const p = list.find((x) => x.id == id);
 
-        if (!p || p.seller !== user.username.toLowerCase()) {
+    if (!id) return;
+
+...
+if (!p) {
+  setMessage({
+    text: t.product_not_found,
+    type: "error",
+  });
+  return;
+}
           setMessage({
             text: t.no_permission,
             type: "error",
@@ -135,30 +130,7 @@ export default function EditProductPage() {
   /* SAVE PRODUCT */
   async function handleSave(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!product || !user) return;
-
-    setSaving(true);
-
-    const form = e.currentTarget as HTMLFormElement;
-    const payload: ProductData = {
-      id: product.id,
-      name: (form.elements.namedItem("name") as HTMLInputElement).value.trim(),
-      price: Number((form.elements.namedItem("price") as HTMLInputElement).value),
-      description: (form.elements.namedItem("description") as HTMLTextAreaElement)
-        .value,
-      categoryId: Number(
-        (form.elements.namedItem("categoryId") as HTMLSelectElement).value
-      ),
-      salePrice:
-        Number(
-          (form.elements.namedItem("salePrice") as HTMLInputElement).value
-        ) || null,
-      saleStart:
-        (form.elements.namedItem("saleStart") as HTMLInputElement).value ||
-        null,
-      saleEnd:
-        (form.elements.namedItem("saleEnd") as HTMLInputElement).value || null,
-      seller: user.username,
+   if (!product) return;
       images: [],
     };
 
@@ -189,7 +161,7 @@ export default function EditProductPage() {
   }
 
   /* UI */
-  if (loadingPage || loading || !piReady)
+if (loadingPage)
     return <p className="text-center mt-10">⏳ {t.loading}...</p>;
 
   if (!product)
@@ -211,10 +183,6 @@ export default function EditProductPage() {
       <h1 className="text-2xl font-bold text-center text-[#ff6600] mb-3">
         ✏️ {t.edit_product}
       </h1>
-
-      <p className="text-center text-gray-500 mb-3">
-        👤 {t.seller}: <b>{user.username}</b>
-      </p>
 
       {message.text && (
         <p
