@@ -8,7 +8,7 @@ export default function SellerPage() {
   const { user, loading, piReady, logout } = useAuth();
 
   // 🔐 CHỈ USER NÀY ĐƯỢC THAO TÁC
-  const canOperate = user?.username === "nguyenminhduc1991111","TranYenNhi1611";
+  const canOperate = user?.username === "nguyenminhduc1991111,TranYenNhi1611";
 
   if (loading || !piReady) {
     return (
