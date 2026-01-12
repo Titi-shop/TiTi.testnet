@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
 
 type OrderType = {
   id: string | number;
@@ -12,18 +11,19 @@ type OrderType = {
 
 export default function CancelledOrders() {
   const router = useRouter();
-  const { user, piReady } = useAuth();
   const [orders, setOrders] = useState<OrderType[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!piReady || !user) return;
     fetchOrders();
   }, [piReady, user]);
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch("/api/orders", { cache: "no-store" });
+      const res = await fetch("/api/seller/orders?status=Đã hủy", {
+  cache: "no-store",
+  credentials: "include",
+});
       const data = await res.json();
       const filtered = (data || []).filter((o: OrderType) => o.status === "Đã hủy");
       setOrders(filtered);
