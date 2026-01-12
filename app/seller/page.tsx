@@ -1,20 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useAuth } from "@/context/AuthContext";
-import { PackagePlus, Package, ClipboardList, LogOut } from "lucide-react";
+import { PackagePlus, Package, ClipboardList } from "lucide-react";
+import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
+
+type PublicUser = {
+  username: string;
+};
 
 export default function SellerPage() {
-  const { user, loading, piReady, logout } = useAuth();
-
+  // 🔓 PUBLIC USER (KHÔNG AUTH)
+  const user: PublicUser = {
+    username: "guest_user", // 👉 có thể đổi thành username thật nếu muốn
+  };
+const { t } = useTranslation();
   // 🔐 CHỈ USER NÀY ĐƯỢC THAO TÁC
-  const canOperate = user?.username === "nguyenminhduc1991111";
-
-  if (loading || !piReady) {
-    return (
-      <p className="text-center mt-10 text-gray-500">⏳ Đang tải...</p>
-    );
-  }
+  const canOperate = user.username === "nguyenminhduc1991111";
 
   return (
     <main className="max-w-3xl mx-auto p-6">
@@ -56,19 +57,6 @@ export default function SellerPage() {
           <p className="mt-3 text-sm font-medium">Seller Orders</p>
         </Link>
       </div>
-
-      {user && canOperate && (
-        <>
-          <hr className="my-6" />
-          <button
-            onClick={logout}
-            className="w-full bg-red-500 hover:bg-red-600 text-white py-4 rounded-xl flex items-center justify-center gap-3 text-lg font-medium shadow"
-          >
-            <LogOut />
-            Logout
-          </button>
-        </>
-      )}
     </main>
   );
 }
