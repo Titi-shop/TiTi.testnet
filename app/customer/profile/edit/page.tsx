@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
 import { countries } from "@/data/countries";
 import { provincesByCountry } from "@/data/provinces";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
@@ -21,13 +20,14 @@ interface ProfileInfo {
 export default function EditProfilePage() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { user, loading: authLoading, piReady } = useAuth();
+
+  const [username, setUsername] = useState<string | null>(null);
 
   const [info, setInfo] = useState<ProfileInfo>({
     pi_uid: "",
     appName: "",
     email: "",
-    phoneCode: "+00",
+    phoneCode: "+84",
     phone: "",
     address: "",
     province: "",
@@ -35,53 +35,81 @@ export default function EditProfilePage() {
   });
 
   const [avatar, setAvatar] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // 🟢 Load profile
+  /* ===============================
+     1️⃣ LẤY USERNAME (KHÔNG AUTH)
+  =============================== */
   useEffect(() => {
-    if (authLoading || !user) return;
+    const direct = localStorage.getItem("titi_username");
+    if (direct) {
+      setUsername(direct);
+      return;
+    }
 
-    const username =
-      user.username || localStorage.getItem("titi_username");
+    try {
+      const raw = localStorage.getItem("pi_user");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.username) {
+          setUsername(parsed.username);
+          return;
+        }
+      }
+    } catch {}
 
-    fetch(`/api/profile?username=${encodeURIComponent(username!)}`)
+    setUsername(null);
+    setLoading(false);
+  }, []);
+
+  /* ===============================
+     2️⃣ LOAD PROFILE THEO USERNAME
+  =============================== */
+  useEffect(() => {
+    if (!username) return;
+
+    fetch(`/api/profile?username=${encodeURIComponent(username)}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data) {
-          const countryCode = data.country || "VN";
-          const countryData = countries.find((c) => c.code === countryCode);
+        if (!data) return;
 
-          setInfo((prev) => ({
-            ...prev,
-            pi_uid: data.pi_uid || "",
-            appName: data.appName || data.displayName || username!,
-            email: data.email || "",
-            phone: data.phone || "",
-            address: data.address || "",
-            province: data.province || "",
-            country: countryCode,
-            phoneCode: countryData?.dial || "+00",
-          }));
+        const countryCode = data.country || "VN";
+        const countryData = countries.find((c) => c.code === countryCode);
 
-          if (data.avatar) setAvatar(data.avatar);
-        }
+        setInfo({
+          pi_uid: data.pi_uid || "",
+          appName: data.appName || data.displayName || username,
+          email: data.email || "",
+          phone: data.phone || "",
+          address: data.address || "",
+          province: data.province || "",
+          country: countryCode,
+          phoneCode: countryData?.dial || "+84",
+        });
+
+        if (data.avatar) setAvatar(data.avatar);
       })
-      .catch(() => console.log("⚠️ Không thể tải hồ sơ"));
-  }, [authLoading, user]);
+      .catch(() => console.warn("⚠️ Không thể tải hồ sơ"))
+      .finally(() => setLoading(false));
+  }, [username]);
 
-  // 📸 Preview avatar
+  /* ===============================
+     3️⃣ UPLOAD AVATAR (OPTIONAL)
+  =============================== */
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      setAvatar(URL.createObjectURL(file));
-    }
+    if (!file) return;
+
+    setAvatar(URL.createObjectURL(file));
+    // 👉 nếu có API upload riêng thì xử lý ở đây
   };
 
-  // 💾 Lưu hồ sơ
+  /* ===============================
+     4️⃣ SAVE PROFILE
+  =============================== */
   const handleSave = async () => {
-    if (!user) {
+    if (!username) {
       alert(t.profile_error_not_logged_in);
       return;
     }
@@ -98,13 +126,10 @@ export default function EditProfilePage() {
     try {
       const res = await fetch("/api/profile", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${user.accessToken}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...info,
-          username: user.username,
+          username,
           displayName: info.appName,
           avatar,
         }),
@@ -124,9 +149,12 @@ export default function EditProfilePage() {
     }
   };
 
-  const provinceList: string[] = provincesByCountry[info.country] || [];
+  const provinceList = provincesByCountry[info.country] || [];
 
-  if (!piReady || authLoading || !user) {
+  /* ===============================
+     UI STATES
+  =============================== */
+  if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center">
         <p className="text-gray-500">{t.loading_profile}</p>
@@ -134,10 +162,17 @@ export default function EditProfilePage() {
     );
   }
 
+  if (!username) {
+    return (
+      <main className="min-h-screen flex items-center justify-center">
+        <p className="text-red-500">{t.profile_error_not_logged_in}</p>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-gray-100 pb-32 relative">
-
-      {/* 🔙 Back */}
+      {/* BACK */}
       <button
         onClick={() => router.back()}
         className="absolute top-3 left-3 text-orange-600 text-lg font-bold"
@@ -146,12 +181,10 @@ export default function EditProfilePage() {
       </button>
 
       <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg mt-12 p-6">
-
-        {/* Avatar */}
+        {/* AVATAR */}
         <div className="relative w-24 h-24 mx-auto mb-4">
           <img
-            src={avatar || `/api/getAvatar?username=${user.username}`}
-            alt="avatar"
+            src={avatar || `/api/getAvatar?username=${username}`}
             className="w-24 h-24 rounded-full object-cover border-4 border-orange-500"
           />
           <label className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full cursor-pointer">
@@ -160,114 +193,72 @@ export default function EditProfilePage() {
           </label>
         </div>
 
-        <h1 className="text-center text-lg font-semibold text-gray-800 mb-4">
-          {user?.username}
-        </h1>
+        <h1 className="text-center text-lg font-semibold mb-4">@{username}</h1>
 
+        {/* FORM */}
         <div className="space-y-4">
+          <input
+            className="w-full border px-3 py-2 rounded"
+            value={info.appName}
+            onChange={(e) => setInfo({ ...info, appName: e.target.value })}
+            placeholder={t.app_name}
+          />
 
-          {/* App Name */}
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">{t.app_name}</label>
-            <input
-              type="text"
-              className="w-full border px-3 py-2 rounded"
-              value={info.appName}
-              onChange={(e) => setInfo({ ...info, appName: e.target.value })}
-            />
-          </div>
+          <input
+            type="email"
+            className="w-full border px-3 py-2 rounded"
+            value={info.email}
+            onChange={(e) => setInfo({ ...info, email: e.target.value })}
+            placeholder={t.email}
+          />
 
-          {/* Email */}
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">{t.email}</label>
-            <input
-              type="email"
-              className="w-full border px-3 py-2 rounded"
-              value={info.email}
-              onChange={(e) => setInfo({ ...info, email: e.target.value })}
-            />
-          </div>
+          <textarea
+            className="w-full border px-3 py-2 rounded h-20"
+            value={info.address}
+            onChange={(e) => setInfo({ ...info, address: e.target.value })}
+            placeholder={t.address}
+          />
 
-          {/* Phone */}
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">{t.phone}</label>
-            <div className="flex mb-1">
-              <span className="px-3 py-2 bg-gray-100 border rounded-l">{info.phoneCode}</span>
-              <input
-                type="tel"
-                className="flex-1 border px-3 py-2 rounded-r"
-                value={info.phone}
-                onChange={(e) => setInfo({ ...info, phone: e.target.value })}
-                placeholder={t.enter_phone}
-              />
-            </div>
-          </div>
+          <select
+            className="w-full border px-3 py-2 rounded"
+            value={info.country}
+            onChange={(e) => {
+              const c = countries.find((x) => x.code === e.target.value);
+              setInfo({
+                ...info,
+                country: e.target.value,
+                phoneCode: c?.dial || "+84",
+                province: "",
+              });
+            }}
+          >
+            {countries.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.flag} {c.name}
+              </option>
+            ))}
+          </select>
 
-          {/* Address */}
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">{t.address}</label>
-            <textarea
-              className="w-full border px-3 py-2 rounded h-20"
-              value={info.address}
-              onChange={(e) => setInfo({ ...info, address: e.target.value })}
-            />
-          </div>
-
-          {/* Country */}
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">{t.country}</label>
-            <select
-              className="w-full border px-3 py-2 rounded"
-              value={info.country}
-              onChange={(e) => {
-                const newCountry = e.target.value;
-                const c = countries.find((x) => x.code === newCountry);
-
-                setInfo((prev) => ({
-                  ...prev,
-                  country: newCountry,
-                  phoneCode: c?.dial || "+00",
-                  province: "",
-                }));
-              }}
-            >
-              {countries.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.flag} {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Province */}
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">{t.province}</label>
-            <select
-              className="w-full border px-3 py-2 rounded"
-              value={info.province}
-              onChange={(e) => setInfo({ ...info, province: e.target.value })}
-            >
-              <option value="">{t.select_option}</option>
-              {provinceList.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </div>
-
+          <select
+            className="w-full border px-3 py-2 rounded"
+            value={info.province}
+            onChange={(e) => setInfo({ ...info, province: e.target.value })}
+          >
+            <option value="">{t.select_option}</option>
+            {provinceList.map((p) => (
+              <option key={p}>{p}</option>
+            ))}
+          </select>
         </div>
 
         {/* SAVE */}
-        <div className="flex flex-col mt-6 space-y-3">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="bg-green-500 text-white py-2 rounded"
-          >
-            {saving ? t.saving : t.save_changes}
-          </button>
-        </div>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="mt-6 w-full bg-green-500 text-white py-2 rounded"
+        >
+          {saving ? t.saving : t.save_changes}
+        </button>
       </div>
     </main>
   );
