@@ -1,37 +1,40 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 interface Order {
-  id: string;
-  buyer: string;
+  orderId: string;
   total: number;
   status: string;
 }
 
 export default function ShippingOrders() {
   const router = useRouter();
-  const { user, piReady } = useAuth();
-  const { t } = useTranslation(); // 🔹 i18n
+  const { t } = useTranslation();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!piReady || !user) return;
     fetchOrders();
-  }, [piReady, user]);
+  }, []);
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch("/api/orders", { cache: "no-store" });
-      const data = await res.json();
-      const filtered = (data || []).filter(
-        (o: Order) =>
-          o.status === t.shipping_orders || o.status === "Đang giao"
+      const res = await fetch(
+        "/api/seller/orders?status=Đang giao",
+        {
+          cache: "no-store",
+          credentials: "include",
+        }
       );
-      setOrders(filtered);
+
+      if (!res.ok) {
+        throw new Error("Unauthorized");
+      }
+
+      const data = await res.json();
+      setOrders(data || []);
     } catch (err) {
       alert(t.error_load_orders || "❌ Lỗi tải đơn hàng");
     } finally {
@@ -40,12 +43,17 @@ export default function ShippingOrders() {
   };
 
   const totalPi = orders.reduce(
-    (sum, o) => sum + (parseFloat(String(o.total)) || 0),
+    (sum, o) => sum + (Number(o.total) || 0),
     0
   );
 
-  if (loading)
-    return <p className="text-center mt-10 text-gray-500">⏳ {t.loading || "Đang tải..."}</p>;
+  if (loading) {
+    return (
+      <p className="text-center mt-10 text-gray-500">
+        ⏳ {t.loading || "Đang tải..."}
+      </p>
+    );
+  }
 
   return (
     <main className="min-h-screen max-w-4xl mx-auto p-4 pb-24 bg-gray-50">
@@ -62,15 +70,21 @@ export default function ShippingOrders() {
         </h1>
       </div>
 
-      {/* ===== Thống kê nhanh ===== */}
+      {/* ===== Thống kê ===== */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="card text-center">
-          <p className="text-gray-500 text-sm">{t.total_orders || "Tổng đơn"}</p>
+          <p className="text-gray-500 text-sm">
+            {t.total_orders || "Tổng đơn"}
+          </p>
           <p className="text-xl font-bold">{orders.length}</p>
         </div>
         <div className="card text-center">
-          <p className="text-gray-500 text-sm">{t.total_pi || "Tổng Pi"}</p>
-          <p className="text-xl font-bold">{totalPi.toFixed(2)} Pi</p>
+          <p className="text-gray-500 text-sm">
+            {t.total_pi || "Tổng Pi"}
+          </p>
+          <p className="text-xl font-bold">
+            {totalPi.toFixed(2)} Pi
+          </p>
         </div>
       </div>
 
@@ -83,13 +97,20 @@ export default function ShippingOrders() {
         <div className="space-y-3">
           {orders.map((o) => (
             <div
-              key={o.id}
+              key={o.orderId}
               className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition"
             >
-              <p>🧾 <b>{t.order_id || "Mã đơn"}:</b> #{o.id}</p>
-              <p>👤 <b>{t.buyer || "Người mua"}:</b> {o.buyer || "guest_user"}</p>
-              <p>💰 <b>{t.total || "Tổng"}:</b> {parseFloat(String(o.total)).toFixed(2)} Pi</p>
-              <p>📦 <b>{t.status || "Trạng thái"}:</b> {t.shipping_orders || "Đang giao"}</p>
+              <p>
+                🧾 <b>{t.order_id || "Mã đơn"}:</b> #{o.orderId}
+              </p>
+              <p>
+                💰 <b>{t.total || "Tổng"}:</b>{" "}
+                {Number(o.total).toFixed(2)} Pi
+              </p>
+              <p>
+                📦 <b>{t.status || "Trạng thái"}:</b>{" "}
+                {t.shipping_orders || "Đang giao"}
+              </p>
             </div>
           ))}
         </div>
