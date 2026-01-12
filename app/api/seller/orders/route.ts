@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"; // ⭐ RẤT QUAN TRỌNG
+
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
 import { cookies } from "next/headers";
@@ -15,7 +17,7 @@ type Session = {
 type OrderItem = {
   productId: string;
   quantity: number;
-  seller: string; // seller username
+  seller: string;
   price?: number;
 };
 
@@ -42,21 +44,21 @@ function getSession(): Session | null {
   if (!raw) return null;
 
   try {
-    const parsed: unknown = JSON.parse(
+    const parsed = JSON.parse(
       Buffer.from(raw, "base64").toString("utf8")
-    );
+    ) as unknown;
 
     if (
       typeof parsed === "object" &&
       parsed !== null &&
       "uid" in parsed &&
       "username" in parsed &&
-      typeof (parsed as { uid: unknown }).uid === "string" &&
-      typeof (parsed as { username: unknown }).username === "string"
+      typeof (parsed as any).uid === "string" &&
+      typeof (parsed as any).username === "string"
     ) {
       return {
-        uid: (parsed as { uid: string }).uid,
-        username: (parsed as { username: string }).username,
+        uid: (parsed as any).uid,
+        username: (parsed as any).username.toLowerCase().trim(), // ⭐ normalize
       };
     }
 
@@ -78,34 +80,27 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const statusFilter = searchParams.get("status");
 
-  // ⚠️ TẠM THỜI: duyệt toàn bộ buyer orders (chưa tối ưu)
+  // ⚠️ tạm thời duyệt toàn bộ buyer orders
   const buyerOrderKeys = await kv.keys("orders:user:*");
-
-  const ordersNested: (Order | null)[][] = await Promise.all(
-    buyerOrderKeys.map(async (key) => {
-      const ids = await kv.lrange<string>(key, 0, -1);
-      return Promise.all(
-        ids.map((id) => kv.get<Order>(`order:${id}`))
-      );
-    })
-  );
 
   const sellerOrders: SellerOrder[] = [];
 
-  for (const orders of ordersNested) {
-    for (const order of orders) {
+  for (const key of buyerOrderKeys) {
+    const ids = await kv.lrange<string>(key, 0, -1);
+
+    for (const id of ids) {
+      const order = await kv.get<Order>(`order:${id}`);
       if (!order) continue;
       if (statusFilter && order.status !== statusFilter) continue;
 
       const sellerItems = order.items.filter(
-        (item) => item.seller === session.username
+        (item) => item.seller?.toLowerCase().trim() === session.username
       );
 
       if (sellerItems.length === 0) continue;
 
       const total = sellerItems.reduce(
-        (sum, item) =>
-          sum + (item.price ?? 0) * item.quantity,
+        (sum, item) => sum + (item.price ?? 0) * item.quantity,
         0
       );
 
