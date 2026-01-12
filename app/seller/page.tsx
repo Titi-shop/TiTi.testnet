@@ -10,10 +10,7 @@ export default function SellerPage() {
   const { t } = useTranslation();
 
  // 🔐 DANH SÁCH TÀI KHOẢN ĐƯỢC PHÉP DÙNG SELLER
-const SELLER_USERS = [
-  "nguyenminhduc1991111",
-  "hung123",
-];
+const SELLER_USERS = ["nguyenminhduc1991111","TranYenNhi1611",];
 
 const canOperate = SELLER_USERS.includes(user?.username ?? "");
 
