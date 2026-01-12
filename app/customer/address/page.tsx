@@ -3,7 +3,6 @@
 import { useEffect, useState, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { countries } from "@/data/countries";
-import { useAuth } from "@/context/AuthContext";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 interface AddressForm {
@@ -16,7 +15,6 @@ interface AddressForm {
 
 export default function CustomerAddressPage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
   const { t } = useTranslation(); // ⭐ Sử dụng i18n
 
   const [form, setForm] = useState<AddressForm>({
@@ -29,18 +27,6 @@ export default function CustomerAddressPage() {
 
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-
-  /**
-   * ================================
-   *  1) LOAD ADDRESS KHI USER ĐÃ LOGIN
-   * ================================
-   */
-  useEffect(() => {
-    if (loading) return;
-    if (!user) return;
-
-    fetchAddress(user.username);
-  }, [user, loading]);
 
   /**
    * ================================
@@ -107,10 +93,24 @@ export default function CustomerAddressPage() {
       return;
     }
 
-    if (!user) {
-      setMessage("⚠️ " + t.must_login_first);
-      return;
-    }
+    const handleSave = async () => {
+  if (!form.name || !form.phone || !form.address) {
+    setMessage("⚠️ " + t.fill_all_fields);
+    return;
+  }
+
+  setSaving(true);
+
+  localStorage.setItem("shipping_info", JSON.stringify(form));
+
+  setMessage("✅ " + t.address_saved);
+
+  setTimeout(() => {
+    router.push("/checkout");
+  }, 500);
+
+  setSaving(false);
+};
 
     setSaving(true);
 
@@ -137,33 +137,6 @@ export default function CustomerAddressPage() {
 
     setSaving(false);
   };
-
-  /**
-   * ================================
-   *  5) UI KHI CHƯA CÓ USER
-   * ================================
-   */
-  if (loading) {
-    return (
-      <main className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">⏳ {t.loading}</p>
-      </main>
-    );
-  }
-
-  if (!user) {
-    return (
-      <main className="min-h-screen flex flex-col items-center justify-center">
-        <p className="text-gray-600 mb-4">{t.login_required}</p>
-        <button
-          onClick={() => router.push("/login")}
-          className="bg-orange-600 text-white px-5 py-2 rounded"
-        >
-          {t.login_with_pi}
-        </button>
-      </main>
-    );
-  }
 
   /**
    * ================================
