@@ -42,7 +42,7 @@ export default function SellerPostPage() {
         return;
       }
 
-      fetch(`/api/users/role?username=${user.username}`)
+      fetch("/api/users/role", { credentials: "include" })
         .then((r) => r.json())
         .then((d) => {
           setRole(d.role);
