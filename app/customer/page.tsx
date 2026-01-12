@@ -6,7 +6,7 @@ import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 import { Clock, Package, Truck, Star, RotateCcw } from "lucide-react";
 
 type PublicUser = {
-  username?: string;
+  username: string;
   wallet_address?: string;
 };
 
@@ -14,8 +14,8 @@ export default function CustomerPage({ embedded = false }) {
   const router = useRouter();
   const { t } = useTranslation();
 
-  // 🔓 USER GIẢ (PUBLIC)
-  const [user, setUser] = useState<PublicUser>({
+  // 🔓 PUBLIC USER (KHÔNG AUTH)
+  const [user] = useState<PublicUser>({
     username: "guest_user",
     wallet_address: "",
   });
@@ -26,30 +26,27 @@ export default function CustomerPage({ embedded = false }) {
      LOAD AVATAR (NẾU CÓ)
   =============================== */
   useEffect(() => {
-    if (!user?.username) return;
+    if (!user.username || user.username === "guest_user") return;
 
     fetch(`/api/getAvatar?username=${user.username}`)
       .then((res) => res.json())
       .then((data) => data?.avatar && setAvatar(data.avatar))
       .catch(() => {});
-  }, [user]);
+  }, [user.username]);
 
   return (
     <div className="pb-6 bg-gray-100">
-
       {/* HEADER */}
       <div className="bg-orange-500 text-white p-6 text-center shadow">
         <div className="w-24 h-24 bg-white rounded-full mx-auto text-orange-600 text-4xl overflow-hidden shadow">
           {avatar ? (
             <img src={avatar} className="w-full h-full object-cover" />
           ) : (
-            user.username?.charAt(0)?.toUpperCase() || "G"
+            user.username.charAt(0).toUpperCase()
           )}
         </div>
 
-        <p className="mt-3 text-lg font-semibold">
-          @{user.username || "guest"} ✔
-        </p>
+        <p className="mt-3 text-lg font-semibold">@{user.username} ✔</p>
       </div>
 
       {/* MY ORDERS */}
@@ -76,7 +73,6 @@ export default function CustomerPage({ embedded = false }) {
           </span>
         </p>
       </section>
-
     </div>
   );
 }
