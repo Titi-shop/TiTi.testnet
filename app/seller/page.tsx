@@ -10,7 +10,7 @@ export default function SellerPage() {
   const { user, loading, piReady, logout } = useAuth();
   const { t } = useTranslation();
 
-  const [role, setRole] = useState<"buyer" | "seller" | "admin" | null>(null);
+  const canOperate = user?.username === "nguyenminhduc1991111";
   const [checking, setChecking] = useState(false);
 
   // 👉 CHỈ LẤY ROLE NẾU ĐÃ LOGIN (KHÔNG CHẶN PAGE)
