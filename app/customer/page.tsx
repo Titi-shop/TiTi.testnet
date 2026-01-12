@@ -2,22 +2,29 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 import { Clock, Package, Truck, Star, RotateCcw } from "lucide-react";
 
+type PublicUser = {
+  username?: string;
+  wallet_address?: string;
+};
+
 export default function CustomerPage({ embedded = false }) {
   const router = useRouter();
-  const { user, piReady } = useAuth();
   const { t } = useTranslation();
+
+  // 🔓 USER GIẢ (PUBLIC)
+  const [user, setUser] = useState<PublicUser>({
+    username: "guest_user",
+    wallet_address: "",
+  });
+
   const [avatar, setAvatar] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!embedded && piReady && !user) {
-      router.replace("/pilogin");
-    }
-  }, [piReady, user]);
-
+  /* ===============================
+     LOAD AVATAR (NẾU CÓ)
+  =============================== */
   useEffect(() => {
     if (!user?.username) return;
 
@@ -26,9 +33,6 @@ export default function CustomerPage({ embedded = false }) {
       .then((data) => data?.avatar && setAvatar(data.avatar))
       .catch(() => {});
   }, [user]);
-
-  if (!user)
-    return <div className="text-center py-10">{t.loading}</div>;
 
   return (
     <div className="pb-6 bg-gray-100">
@@ -39,11 +43,13 @@ export default function CustomerPage({ embedded = false }) {
           {avatar ? (
             <img src={avatar} className="w-full h-full object-cover" />
           ) : (
-            user.username.charAt(0).toUpperCase()
+            user.username?.charAt(0)?.toUpperCase() || "G"
           )}
         </div>
 
-        <p className="mt-3 text-lg font-semibold">@{user.username} ✔</p>
+        <p className="mt-3 text-lg font-semibold">
+          @{user.username || "guest"} ✔
+        </p>
       </div>
 
       {/* MY ORDERS */}
@@ -75,7 +81,18 @@ export default function CustomerPage({ embedded = false }) {
   );
 }
 
-function OrderItem({ icon, label, path }) {
+/* ===============================
+   ORDER ITEM
+=============================== */
+function OrderItem({
+  icon,
+  label,
+  path,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  path: string;
+}) {
   const router = useRouter();
   return (
     <button
