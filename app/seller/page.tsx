@@ -9,8 +9,13 @@ export default function SellerPage() {
   const { user, loading, piReady } = useAuth();
   const { t } = useTranslation();
 
-  // 🔐 CHỈ USER NÀY ĐƯỢC THAO TÁC
-  const canOperate = user?.username === "nguyenminhduc1991111";
+ // 🔐 DANH SÁCH TÀI KHOẢN ĐƯỢC PHÉP DÙNG SELLER
+const SELLER_USERS = [
+  "nguyenminhduc1991111",
+  "hung123",
+];
+
+const canOperate = SELLER_USERS.includes(user?.username ?? "");
 
   if (loading || !piReady) {
     return (
