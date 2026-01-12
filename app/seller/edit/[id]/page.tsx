@@ -60,32 +60,35 @@ export default function EditProductPage() {
 
   /* LOAD PRODUCT */
   useEffect(() => {
+  if (!id) {
+    setMessage({
+      text: t.product_not_found,
+      type: "error",
+    });
+    setLoadingPage(false);
+    return;
+  }
 
+  fetch("/api/products", { cache: "no-store" })
+    .then((r) => r.json())
+    .then((list: ProductData[]) => {
+      const p = list.find((x) => x.id == id);
 
-    if (!id) return;
+      if (!p) {
+        setMessage({
+          text: t.product_not_found,
+          type: "error",
+        });
+        setTimeout(() => router.push("/seller/stock"), 1500);
+        return;
+      }
 
-...
-if (!p) {
-  setMessage({
-    text: t.product_not_found,
-    type: "error",
-  });
-  return;
-}
-          setMessage({
-            text: t.no_permission,
-            type: "error",
-          });
-          setTimeout(() => router.push("/seller/stock"), 2000);
-          return;
-        }
-
-        setProduct(p);
-        setPreviews(p.images || []);
-      })
-      .finally(() => setLoadingPage(false));
-  }, [id, user, t]);
-
+      setProduct(p);
+      setPreviews(p.images || []);
+    })
+    .finally(() => setLoadingPage(false));
+}, [id, t, router]);
+  
   /* UPLOAD FILE */
   async function handleFileUpload(file: File): Promise<string | null> {
     try {
@@ -128,38 +131,60 @@ if (!p) {
   };
 
   /* SAVE PRODUCT */
+
   async function handleSave(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-   if (!product) return;
-      images: [],
-    };
+  e.preventDefault();
+  if (!product) return;
 
-    const newUrls: string[] = [];
-    for (const f of images) {
-      const url = await handleFileUpload(f);
-      if (url) newUrls.push(url);
-    }
+  setSaving(true);
 
-    payload.images = [...(product.images || []), ...newUrls];
+  const form = e.currentTarget as HTMLFormElement;
 
-    const res = await fetch("/api/products", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+  const payload: ProductData = {
+    id: product.id,
+    name: (form.elements.namedItem("name") as HTMLInputElement).value.trim(),
+    price: Number((form.elements.namedItem("price") as HTMLInputElement).value),
+    description: (form.elements.namedItem("description") as HTMLTextAreaElement).value,
+    categoryId: Number(
+      (form.elements.namedItem("categoryId") as HTMLSelectElement).value
+    ),
+    salePrice:
+      Number(
+        (form.elements.namedItem("salePrice") as HTMLInputElement).value
+      ) || null,
+    saleStart:
+      (form.elements.namedItem("saleStart") as HTMLInputElement).value || null,
+    saleEnd:
+      (form.elements.namedItem("saleEnd") as HTMLInputElement).value || null,
+    images: [],
+    seller: "", // giữ interface, API sẽ bỏ qua
+  };
 
-    const result = await res.json();
-
-    if (result.success) {
-      setMessage({ text: t.save_success, type: "success" });
-      setTimeout(() => router.push("/seller/stock"), 1000);
-    } else {
-      setMessage({ text: t.save_failed, type: "error" });
-    }
-
-    setSaving(false);
+  const newUrls: string[] = [];
+  for (const f of images) {
+    const url = await handleFileUpload(f);
+    if (url) newUrls.push(url);
   }
 
+  payload.images = [...(product.images || []), ...newUrls];
+
+  const res = await fetch("/api/products", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const result = await res.json();
+
+  if (res.ok) {
+    setMessage({ text: t.save_success, type: "success" });
+    setTimeout(() => router.push("/seller/stock"), 1000);
+  } else {
+    setMessage({ text: result.error || t.save_failed, type: "error" });
+  }
+
+  setSaving(false);
+}
   /* UI */
 if (loadingPage)
     return <p className="text-center mt-10">⏳ {t.loading}...</p>;
