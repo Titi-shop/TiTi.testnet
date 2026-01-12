@@ -9,14 +9,11 @@ import {
   MessageCircle,
   Globe,
   MapPin,
-  LogOut,
 } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 export default function CustomerMenu() {
   const router = useRouter();
-  const { user, logout } = useAuth();
   const { t } = useTranslation();
 
   const customerMenuItems = [
@@ -31,7 +28,6 @@ export default function CustomerMenu() {
 
   return (
     <div className="bg-white mx-3 mt-6 p-5 rounded-2xl shadow-lg border border-gray-100 mb-6">
-
       {/* ===== CUSTOMER MENU ===== */}
       <div className="grid grid-cols-4 gap-4 text-center">
         {customerMenuItems.map((item, i) => (
@@ -47,19 +43,6 @@ export default function CustomerMenu() {
           </button>
         ))}
       </div>
-
-      {/* ===== LOGOUT ===== */}
-      {user && <div className="border-t border-gray-200 my-4"></div>}
-
-      {user && (
-        <button
-          onClick={logout}
-          className="w-full py-2 bg-red-500 text-white rounded-lg flex items-center 
-            justify-center gap-2 font-medium shadow-md hover:bg-red-600"
-        >
-          <LogOut size={18} /> {t.logout}
-        </button>
-      )}
     </div>
   );
 }
