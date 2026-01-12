@@ -1,27 +1,37 @@
 "use client";
 
-import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
 export default function AvatarPage() {
-  const { user, piReady } = useAuth();
   const router = useRouter();
+
   const [preview, setPreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [username, setUsername] = useState<string>("");
 
+  /* ================================
+     LOAD USERNAME (NO AUTH)
+  ================================= */
   useEffect(() => {
-    if (piReady && !user) router.replace("/pilogin");
-  }, [piReady, user, router]);
+    const savedUsername =
+      localStorage.getItem("titi_username") ||
+      localStorage.getItem("username") ||
+      "";
 
-  if (!piReady || !user) return <div className="min-h-screen bg-gray-100"></div>;
+    if (!savedUsername) {
+      alert("⚠️ Chưa có username. Vui lòng nhập tên trước.");
+      router.back();
+      return;
+    }
 
-  // ✅ Ghi log user để dễ kiểm tra
-  useEffect(() => {
-    console.log("👤 User info:", user);
-  }, [user]);
+    setUsername(savedUsername);
+  }, [router]);
 
+  /* ================================
+     FILE CHANGE
+  ================================= */
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -30,24 +40,23 @@ export default function AvatarPage() {
     }
   };
 
+  /* ================================
+     UPLOAD AVATAR
+  ================================= */
   const handleUpload = async () => {
     if (!selectedFile) {
       alert("⚠️ Vui lòng chọn ảnh trước khi tải lên!");
       return;
     }
 
-    // ✅ Kiểm tra username
-    const username =
-      user?.username || localStorage.getItem("titi_username") || "";
-
     if (!username) {
-      alert("⚠️ Không xác định được username. Vui lòng đăng nhập lại.");
-      router.replace("/pilogin");
+      alert("⚠️ Không xác định được username.");
       return;
     }
 
     try {
       setLoading(true);
+
       const formData = new FormData();
       formData.append("file", selectedFile);
       formData.append("username", username.trim());
@@ -58,9 +67,9 @@ export default function AvatarPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Lỗi tải ảnh lên máy chủ");
+      if (!res.ok) throw new Error(data.error || "Upload failed");
 
-      alert("✅ Ảnh đại diện đã được cập nhật thành công!");
+      alert("✅ Ảnh đại diện đã được cập nhật!");
       router.refresh();
     } catch (err: any) {
       console.error("❌ Upload lỗi:", err);
@@ -70,18 +79,22 @@ export default function AvatarPage() {
     }
   };
 
+  /* ================================
+     UI
+  ================================= */
   return (
     <main className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6">
       <div className="bg-white p-6 rounded-xl shadow-lg text-center w-80">
         <div className="relative w-24 h-24 mx-auto mb-4">
           <img
-           src={
-  preview
-    ? preview
-    : `/api/getAvatar?username=${user.username}`
-           }
+            src={
+              preview
+                ? preview
+                : `/api/getAvatar?username=${username}`
+            }
             className="w-24 h-24 rounded-full object-cover border-4 border-orange-500"
           />
+
           <label className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full cursor-pointer hover:bg-orange-600 transition">
             <input
               type="file"
@@ -94,7 +107,7 @@ export default function AvatarPage() {
         </div>
 
         <h1 className="text-lg font-semibold text-gray-800 mb-2">
-          {user.username || "Chưa đăng nhập"}
+          @{username}
         </h1>
 
         <button
