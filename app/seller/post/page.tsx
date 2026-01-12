@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 interface Category {
   id: number;
@@ -20,6 +21,7 @@ function toISO(dateString: string | null) {
 
 export default function SellerPostPage() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
@@ -32,7 +34,7 @@ export default function SellerPostPage() {
   /* LOAD CATEGORIES */
   useEffect(() => {
     fetch("/api/categories")
-      .then((r) => r.json())
+      .then(r => r.json())
       .then(setCategories);
   }, []);
 
@@ -58,8 +60,8 @@ export default function SellerPostPage() {
   /* MULTI IMAGE */
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    setImages((prev) => [...prev, ...files]);
-    setPreviews((prev) => [...prev, ...files.map(f => URL.createObjectURL(f))]);
+    setImages(prev => [...prev, ...files]);
+    setPreviews(prev => [...prev, ...files.map(f => URL.createObjectURL(f))]);
   };
 
   const removeImage = (i: number) => {
@@ -75,10 +77,16 @@ export default function SellerPostPage() {
 
     const form = e.currentTarget;
     const name = form.name.value.trim();
+    const desc = form.description.value.trim();
     const price = parseFloat(form.price.value);
+    const categoryId = Number(form.category.value);
+
+    const salePrice = Number(form.salePrice.value) || null;
+    const saleStart = toISO(form.saleStart.value || null);
+    const saleEnd = toISO(form.saleEnd.value || null);
 
     if (!name || !price) {
-      setMessage({ text: "⚠️ Nhập tên & giá hợp lệ!", type: "error" });
+      setMessage({ text: t.enter_valid_name_price || "⚠️ Nhập tên & giá hợp lệ!", type: "error" });
       setSaving(false);
       return;
     }
@@ -95,11 +103,11 @@ export default function SellerPostPage() {
       body: JSON.stringify({
         name,
         price,
-        description: form.description.value,
-        categoryId: Number(form.category.value),
-        salePrice: Number(form.salePrice.value) || null,
-        saleStart: toISO(form.saleStart.value || null),
-        saleEnd: toISO(form.saleEnd.value || null),
+        description: desc,
+        categoryId,
+        salePrice,
+        saleStart,
+        saleEnd,
         images: urls,
       }),
     });
@@ -107,10 +115,13 @@ export default function SellerPostPage() {
     const data = await res.json();
 
     if (res.ok) {
-      setMessage({ text: "🎉 Đăng sản phẩm thành công!", type: "success" });
+      setMessage({ text: t.post_success || "🎉 Đăng thành công!", type: "success" });
       setTimeout(() => router.push("/seller/stock"), 1000);
     } else {
-      setMessage({ text: data.error || "❌ Không có quyền", type: "error" });
+      setMessage({
+        text: data?.error || t.post_failed || "❌ Không có quyền đăng sản phẩm",
+        type: "error",
+      });
     }
 
     setSaving(false);
@@ -118,26 +129,44 @@ export default function SellerPostPage() {
 
   return (
     <main className="p-5 max-w-lg mx-auto pb-32">
-      <h1 className="text-xl font-bold mb-4">🛒 Đăng sản phẩm</h1>
+      <button
+        onClick={() => router.back()}
+        className="mb-4 text-orange-600 font-bold"
+      >
+        ← {t.back || "Quay lại"}
+      </button>
+
+      <h1 className="text-xl font-bold mb-3">
+        🛒 {t.post_product || "Đăng sản phẩm mới"}
+      </h1>
 
       {message.text && (
-        <p className={`mb-3 text-center ${message.type === "success" ? "text-green-600" : "text-red-500"}`}>
+        <p className={`text-center mb-2 ${
+          message.type === "success" ? "text-green-600" : "text-red-500"
+        }`}>
           {message.text}
         </p>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <input name="name" placeholder="Tên sản phẩm" className="w-full border p-2 rounded" />
+        <input name="name" placeholder={t.product_name || "Tên sản phẩm"} className="w-full border p-2 rounded" />
+
         <select name="category" className="w-full border p-2 rounded">
-          <option value="">-- Chọn danh mục --</option>
-          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          <option value="">{t.select_category || "-- Chọn danh mục --"}</option>
+          {categories.map(c => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
         </select>
-        <input name="price" type="number" placeholder="Giá" className="w-full border p-2 rounded" />
 
-        <input type="file" multiple onChange={handleFileChange} />
+        <input name="price" type="number" className="w-full border p-2 rounded" />
 
-        <button disabled={saving} className="w-full bg-orange-600 text-white p-3 rounded">
-          {saving ? "Đang đăng..." : "Đăng sản phẩm"}
+        <input type="file" multiple ref={fileInputRef} onChange={handleFileChange} />
+
+        <button
+          disabled={saving}
+          className="w-full bg-orange-600 text-white p-3 rounded"
+        >
+          {saving ? t.posting || "Đang đăng..." : t.post_product || "Đăng sản phẩm"}
         </button>
       </form>
     </main>
