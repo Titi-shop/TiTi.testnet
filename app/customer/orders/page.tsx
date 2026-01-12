@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 interface OrderItem {
-  id: string | number;
-  buyer: string;
+  orderId: string;
   total: number;
   createdAt: string;
   status: string;
@@ -23,7 +22,11 @@ export default function OrdersSummaryPage() {
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch("/api/orders", { cache: "no-store" });
+      const res = await fetch("/api/seller/orders", {
+        cache: "no-store",
+        credentials: "include",
+      });
+
       const data = await res.json();
       setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -40,7 +43,6 @@ export default function OrdersSummaryPage() {
       </p>
     );
 
-  // Tính tổng
   const totalOrders = orders.length;
   const totalPi = orders.reduce(
     (sum, o) => sum + (parseFloat(String(o.total)) || 0),
@@ -62,33 +64,32 @@ export default function OrdersSummaryPage() {
         </h1>
       </div>
 
-      {/* ===== Khối tổng hợp ===== */}
+      {/* ===== Tổng hợp ===== */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-white border rounded-lg p-4 text-center shadow">
           <p className="text-gray-500 text-sm">{t.total_orders}</p>
-          <p className="text-2xl font-bold text-gray-800">{totalOrders}</p>
+          <p className="text-2xl font-bold">{totalOrders}</p>
         </div>
         <div className="bg-white border rounded-lg p-4 text-center shadow">
           <p className="text-gray-500 text-sm">{t.total_pi}</p>
-          <p className="text-2xl font-bold text-gray-800">
+          <p className="text-2xl font-bold">
             {totalPi.toFixed(2)} Pi
           </p>
         </div>
       </div>
 
-      {/* ===== Danh sách đơn ===== */}
+      {/* ===== Danh sách ===== */}
       {orders.length === 0 ? (
         <p className="text-center text-gray-500">{t.no_orders}</p>
       ) : (
         <div className="space-y-4">
           {orders.map((o) => (
             <div
-              key={o.id}
-              className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition"
+              key={o.orderId}
+              className="bg-white border rounded-lg p-4 shadow-sm"
             >
-              <p>🧾 <b>{t.order_code}:</b> #{o.id}</p>
-              <p>👤 <b>{t.buyer}:</b> {o.buyer}</p>
-              <p>💰 <b>{t.total}:</b> {o.total} Pi</p>
+              <p>🧾 <b>{t.order_code}:</b> #{o.orderId}</p>
+              <p>💰 <b>{t.total}:</b> {o.total.toFixed(2)} Pi</p>
               <p>📅 <b>{t.created_at}:</b> {o.createdAt}</p>
               <p>📊 <b>{t.status}:</b> {o.status}</p>
             </div>
