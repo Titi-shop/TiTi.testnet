@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 interface Order {
@@ -12,22 +11,11 @@ interface Order {
 
 export default function OrdersTabs() {
   const router = useRouter();
-  const { user, loading, piReady } = useAuth();
-  const { t } = useTranslation(); // 👈 Dùng i18n
+  const { t } = useTranslation(); 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
   // 🔹 Nếu chưa đăng nhập → chuyển về PiLogin
-  useEffect(() => {
-    if (piReady && !user) {
-      router.replace("/pilogin");
-    }
-  }, [piReady, user, router]);
-
-  useEffect(() => {
-    if (user) fetchOrders();
-  }, [user]);
-
   const fetchOrders = async () => {
     try {
  const res = await fetch("/api/seller/orders", {
@@ -52,7 +40,6 @@ export default function OrdersTabs() {
     return { count: filtered.length, totalPi: totalPi.toFixed(2) };
   };
 
-  if (!piReady || loading || loadingOrders || !user)
     return <p className="text-center mt-10 text-gray-500">⏳ {t.loading}</p>;
 
   return (
