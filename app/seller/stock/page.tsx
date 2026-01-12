@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 interface Product {
@@ -14,7 +13,7 @@ interface Product {
   saleStart?: string | null;
   saleEnd?: string | null;
   images?: string[];
-  seller: string;
+  sellerId: string;
 }
 
 interface Message {
@@ -25,56 +24,33 @@ interface Message {
 export default function SellerStockPage() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { user, loading, piReady } = useAuth();
 
-  const [role, setRole] = useState<string>("");
-  const [sellerUser, setSellerUser] = useState<string>("");
   const [products, setProducts] = useState<Product[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
-
   const [message, setMessage] = useState<Message>({
     text: "",
     type: "",
   });
 
   /* ============================================
-     🔐 KIỂM TRA SELLER
+     📦 LOAD PRODUCTS (API tự check quyền)
   ============================================ */
-  useEffect(() => {
-    if (!loading && piReady) {
-      if (!user) {
-        router.push("/pilogin");
+  async function loadProducts() {
+    try {
+      const res = await fetch("/api/products", {
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        setMessage({
+          text: err.error || t.load_products_error,
+          type: "error",
+        });
         return;
       }
 
-      const username = user.username.trim().toLowerCase();
-      setSellerUser(username);
-
-      fetch(`/api/users/role?username=${username}`)
-        .then((r) => r.json())
-        .then((d) => {
-          setRole(d.role);
-
-          if (d.role !== "seller") {
-            router.push("/no-access");
-          } else {
-            loadProducts(username);
-          }
-        });
-    }
-  }, [loading, piReady, user, router]);
-
-  /* ============================================
-     📦 Lấy sản phẩm theo seller
-  ============================================ */
-  async function loadProducts(username: string) {
-    try {
-      const res = await fetch(`/api/products`, { cache: "no-store" });
-      let data: Product[] = await res.json();
-
-      // LỌC THEO SELLER
-      data = data.filter((p) => p.seller === username);
-
+      const data: Product[] = await res.json();
       setProducts(data);
     } catch {
       setMessage({ text: t.load_products_error, type: "error" });
@@ -83,8 +59,12 @@ export default function SellerStockPage() {
     }
   }
 
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
   /* ============================================
-     ❌ Xóa sản phẩm
+     ❌ DELETE PRODUCT (API check seller)
   ============================================ */
   const handleDelete = async (id: number) => {
     const product = products.find((p) => p.id === id);
@@ -95,17 +75,18 @@ export default function SellerStockPage() {
     try {
       const res = await fetch(`/api/products?id=${id}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seller: sellerUser }),
       });
 
       const data = await res.json();
 
-      if (data.success) {
+      if (res.ok) {
         setMessage({ text: t.delete_success, type: "success" });
-        loadProducts(sellerUser);
+        loadProducts();
       } else {
-        setMessage({ text: data.message, type: "error" });
+        setMessage({
+          text: data.error || t.delete_failed,
+          type: "error",
+        });
       }
     } catch {
       setMessage({ text: t.delete_failed, type: "error" });
@@ -115,12 +96,12 @@ export default function SellerStockPage() {
   /* ============================================
      ⏳ LOADING
   ============================================ */
-  if (loading || pageLoading || !piReady || !user || role !== "seller") {
+  if (pageLoading) {
     return <main className="text-center p-8">⏳ {t.loading}</main>;
   }
 
   /* ============================================
-     🎨 UI STOCK + THÊM GIÁ SALE
+     🎨 UI (GIỮ NGUYÊN)
   ============================================ */
   return (
     <main className="p-4 max-w-2xl mx-auto pb-28">
@@ -134,10 +115,6 @@ export default function SellerStockPage() {
       <h1 className="text-2xl font-bold text-center mb-2 text-[#ff6600]">
         📦 {t.my_stock}
       </h1>
-
-      <p className="text-center text-gray-500 mb-4">
-        👤 {t.seller}: <b>{sellerUser}</b>
-      </p>
 
       {message.text && (
         <p
@@ -179,14 +156,14 @@ export default function SellerStockPage() {
                 key={product.id}
                 className="flex gap-3 p-3 bg-white rounded-lg shadow border relative"
               >
-                {/* ⭐ BADGE SALE */}
+                {/* SALE BADGE */}
                 {isSale && (
-                  <span className="absolute top-2 left-2 z-10 bg-red-600 text-white text-xs px-2 py-0.5 rounded-full shadow">
+                  <span className="absolute top-2 left-2 z-10 bg-red-600 text-white text-xs px-2 py-0.5 rounded-full">
                     -{salePercent}%
                   </span>
                 )}
 
-                {/* Hình sản phẩm */}
+                {/* IMAGE */}
                 <div
                   className="w-24 h-24 relative rounded overflow-hidden cursor-pointer"
                   onClick={() => router.push(`/product/${product.id}`)}
@@ -205,7 +182,7 @@ export default function SellerStockPage() {
                   )}
                 </div>
 
-                {/* Thông tin */}
+                {/* INFO */}
                 <div className="flex-1">
                   <h3 className="font-semibold truncate">{product.name}</h3>
 
@@ -219,7 +196,9 @@ export default function SellerStockPage() {
                       </p>
                     </>
                   ) : (
-                    <p className="text-[#ff6600] font-bold">{product.price} π</p>
+                    <p className="text-[#ff6600] font-bold">
+                      {product.price} π
+                    </p>
                   )}
 
                   <div className="flex gap-4 mt-2">
