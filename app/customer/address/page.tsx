@@ -15,7 +15,7 @@ interface AddressForm {
 
 export default function CustomerAddressPage() {
   const router = useRouter();
-  const { t } = useTranslation(); // ⭐ Sử dụng i18n
+  const { t } = useTranslation();
 
   const [form, setForm] = useState<AddressForm>({
     name: "",
@@ -28,48 +28,39 @@ export default function CustomerAddressPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  /**
-   * ================================
-   *  2) FETCH ADDRESS TỪ BACKEND
-   * ================================
-   */
-  const fetchAddress = async (username: string) => {
-    try {
-      const res = await fetch(`/api/address?username=${username}`);
-      const data = await res.json();
+  /* ================================
+     LOAD ADDRESS FROM LOCALSTORAGE
+  ================================= */
+  useEffect(() => {
+    const saved = localStorage.getItem("shipping_info");
 
-      if (data?.address) {
-        const saved = data.address;
-        const countryCode = saved.country || "VN";
-        const countryData = countries.find((c) => c.code === countryCode);
+    if (saved) {
+      const data = JSON.parse(saved);
+      const countryData =
+        countries.find((c) => c.code === data.country) || countries[0];
 
-        setForm({
-          name: saved.name || "",
-          phone: saved.phone || "",
-          address: saved.address || "",
-          country: countryCode,
-          countryCode: countryData?.dial || "+84",
-        });
-      } else {
-        const first = countries[0];
-        setForm({
-          name: "",
-          phone: "",
-          address: "",
-          country: first.code,
-          countryCode: first.dial,
-        });
-      }
-    } catch (err) {
-      console.error("❌ Lỗi tải địa chỉ:", err);
+      setForm({
+        name: data.name || "",
+        phone: data.phone || "",
+        address: data.address || "",
+        country: data.country || countryData.code,
+        countryCode: countryData.dial,
+      });
+    } else {
+      const first = countries[0];
+      setForm({
+        name: "",
+        phone: "",
+        address: "",
+        country: first.code,
+        countryCode: first.dial,
+      });
     }
-  };
+  }, []);
 
-  /**
-   * ================================
-   *  3) ĐỔI QUỐC GIA
-   * ================================
-   */
+  /* ================================
+     CHANGE COUNTRY
+  ================================= */
   const handleCountryChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const code = e.target.value;
     const selected = countries.find((c) => c.code === code);
@@ -82,67 +73,31 @@ export default function CustomerAddressPage() {
     });
   };
 
-  /**
-   * ================================
-   *  4) LƯU ĐỊA CHỈ
-   * ================================
-   */
+  /* ================================
+     SAVE ADDRESS (NO AUTH)
+  ================================= */
   const handleSave = async () => {
     if (!form.name || !form.phone || !form.address) {
       setMessage("⚠️ " + t.fill_all_fields);
       return;
     }
 
-    const handleSave = async () => {
-  if (!form.name || !form.phone || !form.address) {
-    setMessage("⚠️ " + t.fill_all_fields);
-    return;
-  }
-
-  setSaving(true);
-
-  localStorage.setItem("shipping_info", JSON.stringify(form));
-
-  setMessage("✅ " + t.address_saved);
-
-  setTimeout(() => {
-    router.push("/checkout");
-  }, 500);
-
-  setSaving(false);
-};
-
     setSaving(true);
 
-    const payload = { username: user.username, ...form };
+    localStorage.setItem("shipping_info", JSON.stringify(form));
 
-    const res = await fetch("/api/address", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    setMessage("✅ " + t.address_saved);
 
-    const data = await res.json();
-
-    if (data.success) {
-      setMessage("✅ " + t.address_saved);
-      localStorage.setItem("shipping_info", JSON.stringify(form));
-
-      setTimeout(() => {
-        router.push("/checkout");
-      }, 500);
-    } else {
-      setMessage("❌ " + t.save_failed);
-    }
+    setTimeout(() => {
+      router.push("/checkout");
+    }, 500);
 
     setSaving(false);
   };
 
-  /**
-   * ================================
-   *  6) UI CHÍNH
-   * ================================
-   */
+  /* ================================
+     UI
+  ================================= */
   return (
     <main className="min-h-screen bg-gray-100 pb-20 relative">
       <button
@@ -157,7 +112,7 @@ export default function CustomerAddressPage() {
           📍 {t.shipping_address}
         </h1>
 
-        {/* Quốc gia */}
+        {/* Country */}
         <label className="block mb-2 font-medium">🌍 {t.country}</label>
         <select
           className="border p-2 w-full rounded mb-3"
@@ -171,7 +126,7 @@ export default function CustomerAddressPage() {
           ))}
         </select>
 
-        {/* Họ và tên */}
+        {/* Name */}
         <label className="block mb-2 font-medium">👤 {t.full_name}</label>
         <input
           className="border p-2 w-full rounded mb-3"
@@ -179,7 +134,7 @@ export default function CustomerAddressPage() {
           onChange={(e) => setForm({ ...form, name: e.target.value })}
         />
 
-        {/* Số điện thoại */}
+        {/* Phone */}
         <label className="block mb-2 font-medium">📞 {t.phone_number}</label>
         <div className="flex mb-3">
           <span className="px-3 py-2 bg-gray-100 border rounded-l">
@@ -194,7 +149,7 @@ export default function CustomerAddressPage() {
           />
         </div>
 
-        {/* Địa chỉ */}
+        {/* Address */}
         <label className="block mb-2 font-medium">🏠 {t.address}</label>
         <textarea
           className="border p-2 w-full rounded mb-4"
@@ -203,7 +158,7 @@ export default function CustomerAddressPage() {
           onChange={(e) => setForm({ ...form, address: e.target.value })}
         />
 
-        {/* Nút lưu */}
+        {/* Save */}
         <button
           onClick={handleSave}
           disabled={saving}
