@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
-import { cookies, headers } from "next/headers"; // ⭐ thêm headers
+import { cookies, headers } from "next/headers";
 import { toISO } from "@/lib/formatDate";
 
-// ⭐ THÊM 2 DÒNG NÀY
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -13,6 +12,7 @@ const COOKIE_NAME = "pi_user";
    TYPES
 ========================= */
 type Session = { uid: string };
+
 type PiUser = {
   uid: string;
   username?: string;
@@ -36,13 +36,17 @@ type Product = {
 };
 
 /* =========================
-   SESSION
+   SESSION HELPERS
 ========================= */
 function getSession(): Session | null {
   const raw = cookies().get(COOKIE_NAME)?.value;
   if (!raw) return null;
+
   try {
-    const parsed = JSON.parse(Buffer.from(raw, "base64").toString("utf8")) as unknown;
+    const parsed = JSON.parse(
+      Buffer.from(raw, "base64").toString("utf8")
+    ) as unknown;
+
     if (
       typeof parsed === "object" &&
       parsed !== null &&
@@ -56,6 +60,7 @@ function getSession(): Session | null {
     return null;
   }
 }
+
 async function getPiUserFromToken(): Promise<PiUser | null> {
   const auth = headers().get("authorization");
   if (!auth || !auth.startsWith("Bearer ")) return null;
@@ -78,9 +83,7 @@ async function getPiUserFromToken(): Promise<PiUser | null> {
 
   return { uid: data.uid, username: data.username };
 }
-/* =========================
-   CHECK SELLER ROLE
-========================= */
+
 async function isSeller(uid: string): Promise<boolean> {
   const role = await kv.get<string>(`user_role:${uid}`);
   return role === "seller";
@@ -94,12 +97,11 @@ export async function GET() {
   if (!ids.length) return NextResponse.json([]);
 
   const now = new Date();
-
   const products = await Promise.all(
-    ids.map(id => kv.get<Product>(`product:${id}`))
+    ids.map((id) => kv.get<Product>(`product:${id}`))
   );
 
-  const safe = products.filter(Boolean).map(p => {
+  const safe = products.filter(Boolean).map((p) => {
     const start = p!.saleStart ? new Date(p!.saleStart) : null;
     const end = p!.saleEnd ? new Date(p!.saleEnd) : null;
 
@@ -124,11 +126,9 @@ export async function GET() {
    CREATE PRODUCT (SELLER)
 ========================= */
 export async function POST(req: Request) {
-  // 1️⃣ ưu tiên token
   const piUser = await getPiUserFromToken();
   const uidFromToken = piUser?.uid;
 
-  // 2️⃣ fallback cookie
   const session = uidFromToken ? null : getSession();
   const uid = uidFromToken ?? session?.uid;
 
@@ -139,6 +139,7 @@ export async function POST(req: Request) {
   if (!(await isSeller(uid))) {
     return NextResponse.json({ error: "not_seller" }, { status: 403 });
   }
+
   const body = (await req.json()) as Partial<Product>;
   if (!body.name || typeof body.price !== "number") {
     return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
@@ -165,7 +166,7 @@ export async function POST(req: Request) {
 
   await kv.set(`product:${id}`, product);
   await kv.rpush("products:all", id);
-  await kv.rpush(`products:seller:${session.uid}`, id);
+  await kv.rpush(`products:seller:${uid}`, id);
 
   return NextResponse.json({ success: true, product });
 }
@@ -175,23 +176,30 @@ export async function POST(req: Request) {
 ========================= */
 export async function PUT(req: Request) {
   const piUser = await getPiUserFromToken();
-const uidFromToken = piUser?.uid;
+  const uidFromToken = piUser?.uid;
 
-const session = uidFromToken ? null : getSession();
-const uid = uidFromToken ?? session?.uid;
+  const session = uidFromToken ? null : getSession();
+  const uid = uidFromToken ?? session?.uid;
 
-if (!uid) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-if (!(await isSeller(uid))) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!uid) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  if (!(await isSeller(uid))) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
   const body = await req.json();
   const product = await kv.get<Product>(`product:${body.id}`);
-  if (!product || product.sellerId !== session.uid) {
+
+  if (!product || product.sellerId !== uid) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   const updated: Product = {
     ...product,
     ...body,
-    sellerId: session.uid,
+    sellerId: uid,
     updatedAt: new Date().toISOString(),
   };
 
@@ -201,16 +209,23 @@ if (!(await isSeller(uid))) return NextResponse.json({ error: "forbidden" }, { s
 
 export async function DELETE(req: Request) {
   const piUser = await getPiUserFromToken();
-const uidFromToken = piUser?.uid;
+  const uidFromToken = piUser?.uid;
 
-const session = uidFromToken ? null : getSession();
-const uid = uidFromToken ?? session?.uid;
+  const session = uidFromToken ? null : getSession();
+  const uid = uidFromToken ?? session?.uid;
 
-if (!uid) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-if (!(await isSeller(uid))) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!uid) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  if (!(await isSeller(uid))) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
 
   const id = new URL(req.url).searchParams.get("id");
-  if (!id) return NextResponse.json({ error: "missing_id" }, { status: 400 });
+  if (!id) {
+    return NextResponse.json({ error: "missing_id" }, { status: 400 });
+  }
 
   const product = await kv.get<Product>(`product:${id}`);
   if (!product || product.sellerId !== uid) {
@@ -218,7 +233,7 @@ if (!(await isSeller(uid))) return NextResponse.json({ error: "forbidden" }, { s
   }
 
   await kv.del(`product:${id}`);
-  await kv.lrem(`products:seller:${session.uid}`, 0, id);
+  await kv.lrem(`products:seller:${uid}`, 0, id);
   await kv.lrem("products:all", 0, id);
 
   return NextResponse.json({ success: true });
