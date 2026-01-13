@@ -61,7 +61,7 @@ export default function EditProductPage() {
    AUTH GUARD (SELLER ONLY)
    ========================= */
 useEffect(() => {
-  fetch("/api/auth/me", { cache: "no-store" })
+  fetch("/api/users/me", { cache: "no-store" })
     .then((r) => r.json())
     .then((me) => {
       if (!me?.authenticated || me.role !== "seller") {
