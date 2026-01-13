@@ -9,11 +9,6 @@ export default function SellerPage() {
   const { user, loading, piReady } = useAuth();
   const { t } = useTranslation();
 
- // 🔐 DANH SÁCH TÀI KHOẢN ĐƯỢC PHÉP DÙNG SELLER
-const SELLER_USERS = ["nguyenminhduc1991111","TranYenNhi1611",];
-
-const canOperate = SELLER_USERS.includes(user?.username ?? "");
-
   if (loading || !piReady) {
     return (
       <p className="text-center mt-10 text-gray-500">
