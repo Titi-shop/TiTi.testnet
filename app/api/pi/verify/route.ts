@@ -34,7 +34,6 @@ function buildCookie(value: string, age = MAX_AGE) {
     "Secure" // 🔥 ALWAYS secure for Pi Browser + Safari
   ].join("; ");
 }
-
 /* ============================================================
    🔹 GET — FETCH SESSION
 ============================================================ */
@@ -42,10 +41,17 @@ export function GET(req: NextRequest) {
   const raw = req.cookies.get(COOKIE_NAME)?.value;
   const user = raw ? decodeUser(raw) : null;
 
-  return NextResponse.json({
-    success: !!user,
-    user: user || null,
-  });
+  return NextResponse.json(
+    {
+      success: !!user,
+      user: user || null,
+    },
+    {
+      headers: {
+        "Cache-Control": "no-store",
+      },
+    }
+  );
 }
 
 /* ============================================================
