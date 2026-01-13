@@ -37,9 +37,9 @@ export default function SellerStockPage() {
   ============================================ */
   async function loadProducts() {
     try {
-      const res = await fetch("/api/products", {
-        cache: "no-store",
-      });
+      const res = await fetch("/api/products/seller/me", {
+  cache: "no-store",
+});
 
       if (!res.ok) {
         const err = await res.json();
