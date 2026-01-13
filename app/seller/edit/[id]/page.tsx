@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, ChangeEvent, FormEvent } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
+import { useAuth } from "@/context/AuthContext";
 
 function formatDateToInput(dateString: string | null) {
   if (!dateString) return "";
