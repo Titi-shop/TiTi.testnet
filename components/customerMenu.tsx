@@ -9,12 +9,15 @@ import {
   MessageCircle,
   Globe,
   MapPin,
+  Store,
 } from "lucide-react";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
+import { useAuth } from "@/context/AuthContext";
 
 export default function CustomerMenu() {
   const router = useRouter();
   const { t } = useTranslation();
+  const { user } = useAuth();
 
   const customerMenuItems = [
     { label: t.profile, icon: <User size={22} />, path: "/customer/profile" },
@@ -43,6 +46,38 @@ export default function CustomerMenu() {
           </button>
         ))}
       </div>
+
+      {/* ===== REGISTER SELLER ===== */}
+      {user?.role !== "seller" && (
+        <div className="mt-6 border-t pt-4">
+          <button
+            onClick={async () => {
+              const res = await fetch("/api/seller/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  shopName: user?.username || "",
+                }),
+              });
+
+              const data = await res.json();
+
+              if (res.ok) {
+                alert(
+                  t.register_seller_pending ||
+                    "Đã gửi yêu cầu đăng ký bán hàng. Vui lòng chờ duyệt."
+                );
+              } else {
+                alert(data.error || t.error);
+              }
+            }}
+            className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl shadow"
+          >
+            <Store size={20} />
+            {t.register_seller || "Đăng ký bán hàng"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
