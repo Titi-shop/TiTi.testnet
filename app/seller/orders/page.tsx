@@ -1,32 +1,44 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 import { useAuth } from "@/context/AuthContext";
 
+/* =========================
+   TYPES
+========================= */
 interface Order {
-  id: string;
+  orderId: string;
   total: number;
   status: string;
 }
 
+/* =========================
+   PAGE
+========================= */
 export default function OrdersTabs() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { piToken } = useAuth();
+  const { piToken, loading: authLoading } = useAuth();
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
-  // ✅ LOAD ORDERS (API tự check quyền)
+  /* =========================
+     LOAD ORDERS (AUTH-CENTRIC)
+  ========================= */
   const fetchOrders = async () => {
     try {
       const res = await fetch("/api/seller/orders", {
-  cache: "no-store",
-  credentials: "include",
-  headers: piToken
-    ? { Authorization: `Bearer ${piToken}` }
-    : undefined,
-});
+        cache: "no-store",
+        credentials: "include", // fallback cookie
+        headers: piToken
+          ? {
+              Authorization: `Bearer ${piToken}`, // ⭐ BẮT BUỘC
+            }
+          : undefined,
+      });
 
       if (!res.ok) {
         throw new Error("forbidden");
@@ -41,18 +53,26 @@ export default function OrdersTabs() {
     }
   };
 
-  // ✅ GỌI API KHI LOAD PAGE
+  /* =========================
+     EFFECT
+  ========================= */
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    // ⛔ chờ AuthContext load xong
+    if (authLoading) return;
 
+    fetchOrders();
+  }, [authLoading]);
+
+  /* =========================
+     STATS
+  ========================= */
   const calcStats = (status?: string) => {
     const filtered = status
       ? orders.filter((o) => o.status === status)
       : orders;
 
     const totalPi = filtered.reduce(
-      (sum, o) => sum + (parseFloat(String(o.total)) || 0),
+      (sum, o) => sum + (Number(o.total) || 0),
       0
     );
 
@@ -62,8 +82,10 @@ export default function OrdersTabs() {
     };
   };
 
-  // ✅ LOADING ĐÚNG CHỖ
-  if (loadingOrders) {
+  /* =========================
+     LOADING
+  ========================= */
+  if (loadingOrders || authLoading) {
     return (
       <p className="text-center mt-10 text-gray-500">
         ⏳ {t.loading}
@@ -71,9 +93,12 @@ export default function OrdersTabs() {
     );
   }
 
+  /* =========================
+     UI
+  ========================= */
   return (
     <main className="max-w-md mx-auto p-4 pb-24 bg-gray-50 min-h-screen">
-      {/* ===== Nút quay lại ===== */}
+      {/* ===== HEADER ===== */}
       <div className="flex items-center mb-4">
         <button
           onClick={() => router.back()}
@@ -82,79 +107,75 @@ export default function OrdersTabs() {
           ←
         </button>
         <h1 className="text-xl font-semibold text-gray-800">
-          {t.orders_list || "📋 Danh mục đơn hàng"}
+          {t.orders_list || "📋 Danh sách đơn hàng"}
         </h1>
       </div>
 
-      {/* ===== Buttons ===== */}
+      {/* ===== BUTTONS ===== */}
       <div className="flex flex-col gap-3 mt-4">
-        <button
+        <OrderButton
+          label={t.all_orders || "📦 Tất cả"}
           onClick={() => router.push("/seller/orders/summary")}
-          className="btn-gray flex justify-between items-center"
-        >
-          <span>{t.all_orders || "📦 Tất cả"}</span>
-          <span className="text-sm text-gray-200">
-            {calcStats().count} {t.orders} · {calcStats().totalPi} Pi
-          </span>
-        </button>
+          stats={calcStats()}
+        />
 
-        <button
+        <OrderButton
+          label={t.pending_orders || "⏳ Chờ xác nhận"}
           onClick={() => router.push("/seller/orders/pending")}
-          className="btn-gray flex justify-between items-center"
-        >
-          <span>{t.pending_orders || "⏳ Chờ xác nhận"}</span>
-          <span className="text-sm text-gray-200">
-            {calcStats("Chờ xác nhận").count} {t.orders} ·{" "}
-            {calcStats("Chờ xác nhận").totalPi} Pi
-          </span>
-        </button>
+          stats={calcStats("Chờ xác nhận")}
+        />
 
-        <button
+        <OrderButton
+          label={t.shipping_orders || "🚚 Đang giao"}
           onClick={() => router.push("/seller/orders/shipping")}
-          className="btn-gray flex justify-between items-center"
-        >
-          <span>{t.shipping_orders || "🚚 Đang giao"}</span>
-          <span className="text-sm text-gray-200">
-            {calcStats("Đang giao").count} {t.orders} ·{" "}
-            {calcStats("Đang giao").totalPi} Pi
-          </span>
-        </button>
+          stats={calcStats("Đang giao")}
+        />
 
-        <button
+        <OrderButton
+          label={t.completed_orders || "✅ Hoàn tất"}
           onClick={() => router.push("/seller/orders/completed")}
-          className="btn-gray flex justify-between items-center"
-        >
-          <span>{t.completed_orders || "✅ Hoàn tất"}</span>
-          <span className="text-sm text-gray-200">
-            {calcStats("Hoàn tất").count} {t.orders} ·{" "}
-            {calcStats("Hoàn tất").totalPi} Pi
-          </span>
-        </button>
+          stats={calcStats("Hoàn tất")}
+        />
 
-        <button
+        <OrderButton
+          label={t.cancelled_orders || "❌ Đã hủy"}
           onClick={() => router.push("/seller/orders/cancelled")}
-          className="btn-gray flex justify-between items-center"
-        >
-          <span>{t.cancelled_orders || "❌ Đã hủy"}</span>
-          <span className="text-sm text-gray-200">
-            {calcStats("Đã hủy").count} {t.orders} ·{" "}
-            {calcStats("Đã hủy").totalPi} Pi
-          </span>
-        </button>
+          stats={calcStats("Đã hủy")}
+        />
 
-        <button
+        <OrderButton
+          label={t.returned_orders || "↩️ Hoàn lại"}
           onClick={() => router.push("/seller/orders/returned")}
-          className="btn-gray flex justify-between items-center"
-        >
-          <span>{t.returned_orders || "↩️ Hoàn lại"}</span>
-          <span className="text-sm text-gray-200">
-            {calcStats("Hoàn lại").count} {t.orders} ·{" "}
-            {calcStats("Hoàn lại").totalPi} Pi
-          </span>
-        </button>
+          stats={calcStats("Hoàn lại")}
+        />
       </div>
 
-      <div className="h-20"></div>
+      <div className="h-20" />
     </main>
+  );
+}
+
+/* =========================
+   COMPONENT
+========================= */
+function OrderButton({
+  label,
+  onClick,
+  stats,
+}: {
+  label: string;
+  onClick: () => void;
+  stats: { count: number; totalPi: string };
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="btn-gray flex justify-between items-center"
+    >
+      <span>{label}</span>
+      <span className="text-sm text-gray-200">
+        {stats.count} đơn · {stats.totalPi} Pi
+      </span>
+    </button>
   );
 }
