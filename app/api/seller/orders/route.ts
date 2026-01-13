@@ -23,7 +23,8 @@ type PiUser = {
 type OrderItem = {
   productId: string;
   quantity: number;
-  seller: string;
+  seller: string;      // giữ lại để hiển thị
+  sellerUid: string;   // ⭐ THÊM – dùng để phân quyền
   price?: number;
 };
 
@@ -149,8 +150,8 @@ export async function GET(req: Request) {
       if (statusFilter && order.status !== statusFilter) continue;
 
       const sellerItems = order.items.filter(
-        (item) => item.seller?.toLowerCase().trim() === username
-      );
+  (item) => item.sellerUid === uid
+);
 
       if (sellerItems.length === 0) continue;
 
