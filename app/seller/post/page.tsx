@@ -9,7 +9,6 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
-import { useAuth } from "@/context/AuthContext"; // ⭐ BẮT BUỘC
 
 /* =========================
    TYPES
@@ -27,9 +26,14 @@ interface MessageState {
 /* =========================
    HELPERS
 ========================= */
-function toISO(dateString: string | null) {
-  if (!dateString) return null;
-  return new Date(dateString + "T00:00:00Z").toISOString();
+function formatDateToInput(dateString: string | null) {
+  if (!dateString) return "";
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 /* =========================
@@ -38,7 +42,6 @@ function toISO(dateString: string | null) {
 export default function SellerPostPage() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { piToken } = useAuth(); // ⭐ LẤY TOKEN
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
@@ -52,13 +55,12 @@ export default function SellerPostPage() {
   const [previews, setPreviews] = useState<string[]>([]);
 
   /* =========================
-     LOAD CATEGORIES (PUBLIC)
+     LOAD CATEGORIES
   ========================= */
   useEffect(() => {
     fetch("/api/categories", { cache: "no-store" })
       .then((r) => r.json())
-      .then(setCategories)
-      .catch(() => {});
+      .then((data) => setCategories(data || []));
   }, []);
 
   /* =========================
@@ -66,17 +68,17 @@ export default function SellerPostPage() {
   ========================= */
   async function handleFileUpload(file: File): Promise<string | null> {
     try {
-      const res = await fetch("/api/upload", {
+      const arr = await file.arrayBuffer();
+      const upload = await fetch("/api/upload", {
         method: "POST",
         headers: {
           "x-filename": encodeURIComponent(file.name),
-          "Content-Type": file.type || "application/octet-stream",
+          "Content-Type": file.type,
         },
-        body: await file.arrayBuffer(),
+        body: arr,
       });
-
-      const data = await res.json();
-      return data?.url || null;
+      const data = await upload.json();
+      return data.url;
     } catch {
       return null;
     }
@@ -95,38 +97,44 @@ export default function SellerPostPage() {
   };
 
   const removeImage = (i: number) => {
-    setImages((prev) => prev.filter((_, x) => x !== i));
-    setPreviews((prev) => prev.filter((_, x) => x !== i));
+    setImages((prev) => prev.filter((_, idx) => idx !== i));
+    setPreviews((prev) => prev.filter((_, idx) => idx !== i));
   };
 
   /* =========================
-     SUBMIT PRODUCT
+     SUBMIT
   ========================= */
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
     setMessage({ text: "", type: "" });
 
-    const form = e.currentTarget as typeof e.currentTarget & {
-      name: { value: string };
-      description: { value: string };
-      price: { value: string };
-      category: { value: string };
-      salePrice: { value: string };
-      saleStart: { value: string };
-      saleEnd: { value: string };
+    const form = e.currentTarget as HTMLFormElement;
+
+    const payload = {
+      name: (form.elements.namedItem("name") as HTMLInputElement).value.trim(),
+      price: Number(
+        (form.elements.namedItem("price") as HTMLInputElement).value
+      ),
+      description: (
+        form.elements.namedItem("description") as HTMLTextAreaElement
+      ).value,
+      categoryId: Number(
+        (form.elements.namedItem("categoryId") as HTMLSelectElement).value
+      ),
+      salePrice:
+        Number(
+          (form.elements.namedItem("salePrice") as HTMLInputElement).value
+        ) || null,
+      saleStart:
+        (form.elements.namedItem("saleStart") as HTMLInputElement).value ||
+        null,
+      saleEnd:
+        (form.elements.namedItem("saleEnd") as HTMLInputElement).value || null,
+      images: [] as string[],
     };
 
-    const name = form.name.value.trim();
-    const desc = form.description?.value.trim() ?? "";
-    const price = parseFloat(form.price.value);
-    const categoryId = Number(form.category.value) || null;
-
-    const salePrice = Number(form.salePrice?.value) || null;
-    const saleStart = toISO(form.saleStart?.value || null);
-    const saleEnd = toISO(form.saleEnd?.value || null);
-
-    if (!name || !price) {
+    if (!payload.name || !payload.price) {
       setMessage({
         text: t.enter_valid_name_price || "⚠️ Nhập tên & giá hợp lệ!",
         type: "error",
@@ -135,75 +143,53 @@ export default function SellerPostPage() {
       return;
     }
 
-    /* ---------- upload images ---------- */
     const urls: string[] = [];
     for (const img of images) {
       const url = await handleFileUpload(img);
       if (url) urls.push(url);
     }
 
-    /* ---------- CALL API (AUTH-CENTRIC) ---------- */
-    try {
-      const res = await fetch("/api/products", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(piToken ? { Authorization: `Bearer ${piToken}` } : {}),
-        },
-        credentials: "include", // ⭐ BẮT BUỘC
-        body: JSON.stringify({
-          name,
-          price,
-          description: desc,
-          categoryId,
-          salePrice,
-          saleStart,
-          saleEnd,
-          images: urls,
-        }),
-      });
+    payload.images = urls;
 
-      const data = await res.json();
+    const res = await fetch("/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
 
-      if (res.ok) {
-        setMessage({
-          text: t.post_success || "🎉 Đăng thành công!",
-          type: "success",
-        });
-        setTimeout(() => router.push("/seller/stock"), 1000);
-      } else {
-        setMessage({
-          text:
-            data?.error ||
-            t.post_failed ||
-            "❌ Không có quyền đăng sản phẩm",
-          type: "error",
-        });
-      }
-    } catch {
+    const result = await res.json();
+
+    if (res.ok) {
       setMessage({
-        text: t.post_failed || "❌ Lỗi kết nối máy chủ",
+        text: t.post_success || "🎉 Đăng thành công!",
+        type: "success",
+      });
+      setTimeout(() => router.push("/seller/stock"), 1000);
+    } else {
+      setMessage({
+        text: result.error || t.post_failed || "❌ Đăng thất bại",
         type: "error",
       });
-    } finally {
-      setSaving(false);
     }
+
+    setSaving(false);
   }
 
   /* =========================
-     UI
+     UI (GIỐNG EDIT)
   ========================= */
   return (
-    <main className="p-5 max-w-lg mx-auto pb-32">
+    <main className="max-w-lg mx-auto p-6 bg-white rounded-xl shadow mt-10 pb-32">
       <button
+        className="mb-3 text-orange-600 font-bold text-lg"
         onClick={() => router.back()}
-        className="mb-4 text-orange-600 font-bold"
       >
-        ← {t.back || "Quay lại"}
+        ← {t.back}
       </button>
 
-      <h1 className="text-xl font-bold mb-3">
-        🛒 {t.post_product || "Đăng sản phẩm mới"}
+      <h1 className="text-2xl font-bold text-center text-[#ff6600] mb-3">
+        ➕ {t.post_product || "Đăng sản phẩm"}
       </h1>
 
       {message.text && (
@@ -219,44 +205,108 @@ export default function SellerPostPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          name="name"
-          placeholder={t.product_name || "Tên sản phẩm"}
-          className="w-full border p-2 rounded"
-        />
+        <div>
+          <label>{t.product_name}</label>
+          <input name="name" className="w-full border p-2 rounded" />
+        </div>
 
-        <select name="category" className="w-full border p-2 rounded">
-          <option value="">
-            {t.select_category || "-- Chọn danh mục --"}
-          </option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+        <div>
+          <label>{t.price_pi}</label>
+          <input
+            name="price"
+            type="number"
+            className="w-full border p-2 rounded"
+          />
+        </div>
 
-        <input
-          name="price"
-          type="number"
-          placeholder={t.price || "Giá"}
-          className="w-full border p-2 rounded"
-        />
+        <div>
+          <label>{t.category}</label>
+          <select
+            name="categoryId"
+            className="w-full border p-2 rounded"
+          >
+            <option value="">{t.select_category}</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
-        <input
-          type="file"
-          multiple
-          ref={fileInputRef}
-          onChange={handleFileChange}
-        />
+        {/* SALE */}
+        <div className="p-3 bg-orange-50 border rounded">
+          <h3 className="font-bold text-orange-600 mb-2">
+            🔥 {t.sale}
+          </h3>
+
+          <label>{t.sale_price}</label>
+          <input
+            name="salePrice"
+            type="number"
+            className="w-full border p-2 rounded mb-2"
+          />
+
+          <label>{t.start_date}</label>
+          <input
+            name="saleStart"
+            type="date"
+            className="w-full border p-2 rounded mb-2"
+          />
+
+          <label>{t.end_date}</label>
+          <input
+            name="saleEnd"
+            type="date"
+            className="w-full border p-2 rounded"
+          />
+        </div>
+
+        <div>
+          <label>{t.description}</label>
+          <textarea
+            name="description"
+            className="w-full border p-2 rounded"
+          />
+        </div>
+
+        {/* IMAGES */}
+        <div>
+          <label>{t.product_images}</label>
+          <input
+            type="file"
+            multiple
+            ref={fileInputRef}
+            onChange={handleFileChange}
+          />
+
+          <div className="mt-3 space-y-2">
+            {previews.map((url, idx) => (
+              <div
+                key={idx}
+                className="flex items-center justify-between bg-gray-50 p-2 border rounded"
+              >
+                <img
+                  src={url}
+                  className="w-16 h-16 object-cover rounded"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeImage(idx)}
+                  className="text-red-600 font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
 
         <button
           disabled={saving}
-          className="w-full bg-orange-600 text-white p-3 rounded"
+          className="w-full bg-[#ff6600] text-white p-3 rounded-lg mt-3"
         >
-          {saving
-            ? t.posting || "Đang đăng..."
-            : t.post_product || "Đăng sản phẩm"}
+          {saving ? t.posting : "💾 " + t.post_product}
         </button>
       </form>
     </main>
