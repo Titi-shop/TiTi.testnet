@@ -4,9 +4,14 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
+import { useAuth } from "@/context/AuthContext";
+import { apiFetch } from "@/lib/apiFetch";
 
+/* =========================
+   TYPES
+========================= */
 interface Product {
-  id: number;
+  id: string;
   name: string;
   price: number;
   salePrice?: number | null;
@@ -21,9 +26,13 @@ interface Message {
   type: "success" | "error" | "";
 }
 
+/* =========================
+   PAGE
+========================= */
 export default function SellerStockPage() {
   const router = useRouter();
   const { t } = useTranslation();
+  const { piToken, loading: authLoading } = useAuth();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
@@ -33,14 +42,14 @@ export default function SellerStockPage() {
   });
 
   /* ============================================
-     📦 LOAD PRODUCTS (API tự check quyền)
+     📦 LOAD PRODUCTS (TOKEN FIRST)
   ============================================ */
   async function loadProducts() {
     try {
-    const res = await fetch("/api/products/seller/me", {
-  cache: "no-store",
-  credentials: "include",
-});
+      const res = await apiFetch(
+        "/api/products/seller/me",
+        piToken
+      );
 
       if (!res.ok) {
         const err = await res.json();
@@ -54,29 +63,40 @@ export default function SellerStockPage() {
       const data: Product[] = await res.json();
       setProducts(data);
     } catch {
-      setMessage({ text: t.load_products_error, type: "error" });
+      setMessage({
+        text: t.load_products_error,
+        type: "error",
+      });
     } finally {
       setPageLoading(false);
     }
   }
 
+  /* ============================================
+     LOAD WHEN AUTH READY
+  ============================================ */
   useEffect(() => {
-    loadProducts();
-  }, []);
+    if (!authLoading) {
+      loadProducts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, piToken]);
 
   /* ============================================
-     ❌ DELETE PRODUCT (API check seller)
+     ❌ DELETE PRODUCT (TOKEN FIRST)
   ============================================ */
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     const product = products.find((p) => p.id === id);
     if (!product) return;
 
     if (!confirm(`${t.confirm_delete} "${product.name}"?`)) return;
 
     try {
-      const res = await fetch(`/api/products?id=${id}`, {
-        method: "DELETE",
-      });
+      const res = await apiFetch(
+        `/api/products?id=${id}`,
+        piToken,
+        { method: "DELETE" }
+      );
 
       const data = await res.json();
 
@@ -90,19 +110,26 @@ export default function SellerStockPage() {
         });
       }
     } catch {
-      setMessage({ text: t.delete_failed, type: "error" });
+      setMessage({
+        text: t.delete_failed,
+        type: "error",
+      });
     }
   };
 
   /* ============================================
      ⏳ LOADING
   ============================================ */
-  if (pageLoading) {
-    return <main className="text-center p-8">⏳ {t.loading}</main>;
+  if (pageLoading || authLoading) {
+    return (
+      <main className="text-center p-8">
+        ⏳ {t.loading}
+      </main>
+    );
   }
 
   /* ============================================
-     🎨 UI (GIỮ NGUYÊN)
+     🎨 UI
   ============================================ */
   return (
     <main className="p-4 max-w-2xl mx-auto pb-28">
@@ -130,25 +157,33 @@ export default function SellerStockPage() {
       )}
 
       {products.length === 0 ? (
-        <p className="text-center text-gray-400">{t.no_products}</p>
+        <p className="text-center text-gray-400">
+          {t.no_products}
+        </p>
       ) : (
         <div className="space-y-4">
           {products.map((product) => {
             const now = new Date();
-            const start = product.saleStart ? new Date(product.saleStart) : null;
-            const end = product.saleEnd ? new Date(product.saleEnd) : null;
+            const start = product.saleStart
+              ? new Date(product.saleStart)
+              : null;
+            const end = product.saleEnd
+              ? new Date(product.saleEnd)
+              : null;
 
             const isSale =
-              product.salePrice &&
-              start &&
-              end &&
+              !!product.salePrice &&
+              !!start &&
+              !!end &&
               now >= start &&
               now <= end;
 
             const salePercent =
-              isSale && product.price && product.salePrice
+              isSale && product.salePrice
                 ? Math.round(
-                    ((product.price - product.salePrice) / product.price) * 100
+                    ((product.price - product.salePrice) /
+                      product.price) *
+                      100
                   )
                 : 0;
 
@@ -167,7 +202,9 @@ export default function SellerStockPage() {
                 {/* IMAGE */}
                 <div
                   className="w-24 h-24 relative rounded overflow-hidden cursor-pointer"
-                  onClick={() => router.push(`/product/${product.id}`)}
+                  onClick={() =>
+                    router.push(`/product/${product.id}`)
+                  }
                 >
                   {product.images?.[0] ? (
                     <Image
@@ -185,7 +222,9 @@ export default function SellerStockPage() {
 
                 {/* INFO */}
                 <div className="flex-1">
-                  <h3 className="font-semibold truncate">{product.name}</h3>
+                  <h3 className="font-semibold truncate">
+                    {product.name}
+                  </h3>
 
                   {isSale ? (
                     <>
@@ -213,7 +252,9 @@ export default function SellerStockPage() {
                     </button>
 
                     <button
-                      onClick={() => handleDelete(product.id)}
+                      onClick={() =>
+                        handleDelete(product.id)
+                      }
                       className="text-red-600 underline"
                     >
                       {t.delete}
