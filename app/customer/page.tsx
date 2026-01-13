@@ -61,21 +61,6 @@ export default function CustomerPage({ embedded = false }: { embedded?: boolean 
           @{user.username} ✔
         </p>
       </div>
-       /* =========================
-   AUTH GUARD (SELLER ONLY)
-   ========================= */
-useEffect(() => {
-  fetch("/api/auth/me", { cache: "no-store" })
-    .then((r) => r.json())
-    .then((me) => {
-      if (!me?.authenticated || me.role !== "seller") {
-        router.replace("/account"); // hoặc /login
-      }
-    })
-    .catch(() => {
-      router.replace("/account");
-    });
-}, [router]);
 
       {/* ================= MY ORDERS ================= */}
       <section className="bg-white mx-4 mt-4 rounded-lg shadow">
