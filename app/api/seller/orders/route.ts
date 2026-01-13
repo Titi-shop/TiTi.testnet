@@ -109,6 +109,10 @@ async function getPiUserFromToken(): Promise<PiUser | null> {
 export async function GET(req: Request) {
   // 1️⃣ ưu tiên token (Pi Browser iOS)
 const piUser = await getPiUserFromToken();
+ async function isSeller(uid: string): Promise<boolean> {
+  const role = await kv.get<string>(`user_role:${uid}`);
+  return role === "seller";
+}  
 const uidFromToken = piUser?.uid;
 const usernameFromToken = piUser?.username;
 
@@ -120,7 +124,9 @@ const username = usernameFromToken ?? session?.username;
 if (!uid || !username) {
   return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 }
-
+if (!(await isSeller(uid))) {
+  return NextResponse.json({ error: "forbidden" }, { status: 403 });
+}
   const { searchParams } = new URL(req.url);
   const statusFilter = searchParams.get("status");
 
