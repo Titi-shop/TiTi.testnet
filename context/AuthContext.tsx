@@ -91,24 +91,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
      LOAD SESSION (COOKIE)
   ------------------------- */
   useEffect(() => {
-    const loadSession = async () => {
-      try {
-        const res = await fetch("/api/pi/verify", {
-          credentials: "include",
-        });
-        const data: { success: boolean; user?: PiUser } =
-          await res.json();
+  // ✅ Nếu đã có user → KHÔNG gọi lại verify
+  if (user) {
+    setLoading(false);
+    return;
+  }
 
-        setUser(data.success ? data.user ?? null : null);
-      } catch {
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const loadSession = async () => {
+    try {
+      const res = await fetch("/api/pi/verify", {
+        credentials: "include",
+        cache: "no-store",
+      });
 
-    loadSession();
-  }, []);
+      const data: { success: boolean; user?: PiUser } =
+        await res.json();
+
+      setUser(data.success ? data.user ?? null : null);
+    } catch {
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadSession();
+}, [user]);
 
   /* -------------------------
      LOGIN
