@@ -1,5 +1,5 @@
-export const runtime = "nodejs"; // ⭐ BẮT BUỘC (Pi API, Buffer)
-export const dynamic = "force-dynamic"; // ⭐ RẤT QUAN TRỌNG
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
@@ -14,6 +14,7 @@ type Session = {
   uid: string;
   username: string;
 };
+
 type PiUser = {
   uid: string;
   username: string;
@@ -42,7 +43,7 @@ type SellerOrder = {
 };
 
 /* =========================
-   SESSION HELPER
+   SESSION HELPERS
 ========================= */
 function getSession(): Session | null {
   const raw = cookies().get(COOKIE_NAME)?.value;
@@ -58,20 +59,22 @@ function getSession(): Session | null {
       parsed !== null &&
       "uid" in parsed &&
       "username" in parsed &&
-      typeof (parsed as any).uid === "string" &&
-      typeof (parsed as any).username === "string"
+      typeof (parsed as { uid: unknown }).uid === "string" &&
+      typeof (parsed as { username: unknown }).username === "string"
     ) {
       return {
-        uid: (parsed as any).uid,
-        username: (parsed as any).username.toLowerCase().trim(), // ⭐ normalize
+        uid: (parsed as { uid: string }).uid,
+        username: (parsed as { username: string }).username
+          .toLowerCase()
+          .trim(),
       };
     }
-
     return null;
   } catch {
     return null;
   }
 }
+
 async function getPiUserFromToken(): Promise<PiUser | null> {
   const auth = headers().get("authorization");
   if (!auth || !auth.startsWith("Bearer ")) return null;
@@ -103,36 +106,38 @@ async function getPiUserFromToken(): Promise<PiUser | null> {
     username: data.username.toLowerCase().trim(),
   };
 }
+
+async function isSeller(uid: string): Promise<boolean> {
+  const role = await kv.get<string>(`user_role:${uid}`);
+  return role === "seller";
+}
+
 /* =========================
    GET — SELLER ORDERS
 ========================= */
 export async function GET(req: Request) {
-  // 1️⃣ ưu tiên token (Pi Browser iOS)
-const piUser = await getPiUserFromToken();
- async function isSeller(uid: string): Promise<boolean> {
-  const role = await kv.get<string>(`user_role:${uid}`);
-  return role === "seller";
-}  
-const uidFromToken = piUser?.uid;
-const usernameFromToken = piUser?.username;
+  // 1️⃣ ưu tiên token
+  const piUser = await getPiUserFromToken();
+  const uidFromToken = piUser?.uid;
+  const usernameFromToken = piUser?.username;
 
-// 2️⃣ fallback cookie (Android / web)
-const session = uidFromToken ? null : getSession();
-const uid = uidFromToken ?? session?.uid;
-const username = usernameFromToken ?? session?.username;
+  // 2️⃣ fallback cookie
+  const session = uidFromToken ? null : getSession();
+  const uid = uidFromToken ?? session?.uid;
+  const username = usernameFromToken ?? session?.username;
 
-if (!uid || !username) {
-  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-}
-if (!(await isSeller(uid))) {
-  return NextResponse.json({ error: "forbidden" }, { status: 403 });
-}
+  if (!uid || !username) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  if (!(await isSeller(uid))) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
   const { searchParams } = new URL(req.url);
   const statusFilter = searchParams.get("status");
 
-  // ⚠️ tạm thời duyệt toàn bộ buyer orders
   const buyerOrderKeys = await kv.keys("orders:user:*");
-
   const sellerOrders: SellerOrder[] = [];
 
   for (const key of buyerOrderKeys) {
@@ -145,6 +150,7 @@ if (!(await isSeller(uid))) {
 
       const sellerItems = order.items.filter(
         (item) => item.seller?.toLowerCase().trim() === username
+      );
 
       if (sellerItems.length === 0) continue;
 
