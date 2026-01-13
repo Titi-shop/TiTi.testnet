@@ -3,42 +3,53 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
+import { useAuth } from "@/context/AuthContext";
 import { Clock, Package, Truck, Star, RotateCcw } from "lucide-react";
 
-type PublicUser = {
-  username: string;
-  wallet_address?: string;
-};
-
-export default function CustomerPage({ embedded = false }) {
+/* ===============================
+   CUSTOMER ACCOUNT PAGE
+=============================== */
+export default function CustomerPage({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
   const { t } = useTranslation();
-
-  // 🔓 PUBLIC USER (KHÔNG AUTH)
-  const [user] = useState<PublicUser>({
-    username: "guest_user",
-    wallet_address: "",
-  });
+  const { user, loading } = useAuth();
 
   const [avatar, setAvatar] = useState<string | null>(null);
 
   /* ===============================
-     LOAD AVATAR (NẾU CÓ)
+     🔐 REQUIRE LOGIN
   =============================== */
   useEffect(() => {
-    if (!user.username || user.username === "guest_user") return;
+    if (!loading && !user) {
+      router.push("/pilogin");
+    }
+  }, [loading, user, router]);
+
+  /* ===============================
+     LOAD AVATAR (OPTIONAL)
+  =============================== */
+  useEffect(() => {
+    if (!user?.username) return;
 
     fetch(`/api/getAvatar?username=${user.username}`)
       .then((res) => res.json())
       .then((data) => data?.avatar && setAvatar(data.avatar))
       .catch(() => {});
-  }, [user.username]);
+  }, [user?.username]);
+
+  if (loading || !user) {
+    return (
+      <main className="flex items-center justify-center min-h-screen text-gray-500">
+        ⏳ {t.loading}
+      </main>
+    );
+  }
 
   return (
     <div className="pb-6 bg-gray-100">
-      {/* HEADER */}
+      {/* ================= HEADER ================= */}
       <div className="bg-orange-500 text-white p-6 text-center shadow">
-        <div className="w-24 h-24 bg-white rounded-full mx-auto text-orange-600 text-4xl overflow-hidden shadow">
+        <div className="w-24 h-24 bg-white rounded-full mx-auto text-orange-600 text-4xl overflow-hidden shadow flex items-center justify-center">
           {avatar ? (
             <img src={avatar} className="w-full h-full object-cover" />
           ) : (
@@ -46,10 +57,12 @@ export default function CustomerPage({ embedded = false }) {
           )}
         </div>
 
-        <p className="mt-3 text-lg font-semibold">@{user.username} ✔</p>
+        <p className="mt-3 text-lg font-semibold">
+          @{user.username} ✔
+        </p>
       </div>
 
-      {/* MY ORDERS */}
+      {/* ================= MY ORDERS ================= */}
       <section className="bg-white mx-4 mt-4 rounded-lg shadow">
         <div className="p-4 border-b">
           <h2 className="text-lg font-semibold">{t.my_orders}</h2>
@@ -64,7 +77,7 @@ export default function CustomerPage({ embedded = false }) {
         </div>
       </section>
 
-      {/* WALLET */}
+      {/* ================= WALLET ================= */}
       <section className="mx-4 mt-4 p-4 rounded-lg bg-orange-100 border border-orange-300 text-center">
         <p className="text-orange-700 font-medium">
           {t.wallet}:{" "}
@@ -90,6 +103,7 @@ function OrderItem({
   path: string;
 }) {
   const router = useRouter();
+
   return (
     <button
       onClick={() => router.push(path)}
