@@ -19,6 +19,7 @@ export type PiUser = {
 
 type AuthContextType = {
   user: PiUser | null;
+  piToken: string | null; // ⭐ THÊM DÒNG NÀY
   loading: boolean;
   piReady: boolean;
   pilogin: () => Promise<void>;
@@ -44,6 +45,7 @@ declare global {
 ========================= */
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  piToken: null, // ⭐ THÊM
   loading: true,
   piReady: false,
   pilogin: async () => {},
@@ -55,6 +57,7 @@ const AuthContext = createContext<AuthContextType>({
 ========================= */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<PiUser | null>(null);
+  const [piToken, setPiToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [piReady, setPiReady] = useState(false);
 
@@ -129,9 +132,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (!token) {
-        alert("❌ Không lấy được accessToken từ Pi");
-        return;
-      }
+  alert("❌ Không lấy được accessToken từ Pi");
+  return;
+}
+setPiToken(token);
 
       const verify = await fetch("/api/pi/verify", {
         method: "POST",
@@ -167,17 +171,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
     }
   };
+ return (
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        piReady,
-        pilogin,
-        logout,
-      }}
-    >
+   <AuthContext.Provider
+  value={{
+    user,
+    piToken, // ⭐ THÊM
+    loading,
+    piReady,
+    pilogin,
+    logout,
+  }}
+>
       {children}
     </AuthContext.Provider>
   );
