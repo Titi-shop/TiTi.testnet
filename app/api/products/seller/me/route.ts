@@ -85,27 +85,30 @@ async function getPiUserFromToken(): Promise<PiUser | null> {
    GET — PRODUCTS CỦA SELLER HIỆN TẠI
 ========================= */
 export async function GET() {
-  const session = getSession();
-  if (!session) {
+  // 1) Ưu tiên token trước (bền cho Pi Browser iOS)
+  const piUser = await getPiUserFromToken();
+  const uidFromToken = piUser?.uid;
+
+  // 2) Nếu không có token thì fallback cookie (giữ tương thích Android / web)
+  const session = uidFromToken ? null : getSession();
+  const uid = uidFromToken ?? session?.uid;
+
+  if (!uid) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // 🔐 Lấy danh sách product ID của seller hiện tại
-  const ids = await kv.lrange<string>(
-    `products:seller:${session.uid}`,
-    0,
-    -1
-  );
-
+  // 3) Lấy danh sách product ID theo seller uid
+  const ids = await kv.lrange<string>(`products:seller:${uid}`, 0, -1);
   if (!ids.length) return NextResponse.json([]);
 
+  // 4) Lấy từng product
   const products = await Promise.all(
-    ids.map(id => kv.get<Product>(`product:${id}`))
+    ids.map((id) => kv.get<Product>(`product:${id}`))
   );
 
-  // 🔐 Ép ownership lần cuối
+  // 5) Ép ownership lần cuối
   const safe = products.filter(
-    (p): p is Product => !!p && p.sellerId === session.uid
+    (p): p is Product => !!p && p.sellerId === uid
   );
 
   return NextResponse.json(safe);
