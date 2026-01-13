@@ -57,6 +57,21 @@ export default function EditProductPage() {
       .then((r) => r.json())
       .then((data) => setCategories(data || []));
   }, []);
+  /* =========================
+   AUTH GUARD (SELLER ONLY)
+   ========================= */
+useEffect(() => {
+  fetch("/api/auth/me", { cache: "no-store" })
+    .then((r) => r.json())
+    .then((me) => {
+      if (!me?.authenticated || me.role !== "seller") {
+        router.replace("/account"); // hoặc /login
+      }
+    })
+    .catch(() => {
+      router.replace("/account");
+    });
+}, [router]);
 
   /* LOAD PRODUCT */
   useEffect(() => {
