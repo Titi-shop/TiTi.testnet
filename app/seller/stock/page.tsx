@@ -47,9 +47,9 @@ export default function SellerStockPage() {
   async function loadProducts() {
     try {
       const res = await apiFetch(
-        "/api/products/seller/me",
-        piToken
-      );
+  "/api/seller/products",
+  piToken
+);
 
       if (!res.ok) {
         const err = await res.json();
