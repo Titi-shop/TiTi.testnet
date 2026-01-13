@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
 import { cookies, headers } from "next/headers";
 
+// ⭐ THÊM ĐÚNG 2 DÒNG NÀY
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 const COOKIE_NAME = "pi_user";
 
 /* =========================
@@ -81,6 +84,11 @@ async function getPiUserFromToken(): Promise<PiUser | null> {
 
   return { uid: data.uid, username: data.username };
 }
+
+async function isSeller(uid: string): Promise<boolean> {
+  const role = await kv.get<string>(`user_role:${uid}`);
+  return role === "seller";
+}
 /* =========================
    GET — PRODUCTS CỦA SELLER HIỆN TẠI
 ========================= */
@@ -94,8 +102,13 @@ export async function GET() {
   const uid = uidFromToken ?? session?.uid;
 
   if (!uid) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+}
+
+// ⭐ THÊM KHỐI NÀY NGAY SAU
+if (!(await isSeller(uid))) {
+  return NextResponse.json({ error: "forbidden" }, { status: 403 });
+}
 
   // 3) Lấy danh sách product ID theo seller uid
   const ids = await kv.lrange<string>(`products:seller:${uid}`, 0, -1);
