@@ -15,6 +15,7 @@ export type PiUser = {
   uid: string;
   username: string;
   wallet_address?: string | null;
+  role: "buyer" | "customer" | "seller" | "admin";
 };
 
 type AuthContextType = {
@@ -51,7 +52,23 @@ const AuthContext = createContext<AuthContextType>({
   pilogin: async () => {},
   logout: async () => {},
 });
+/* -------------------------
+   LOAD ME (AUTH-CENTRIC)
+------------------------- */
+async function loadMe(piToken?: string) {
+  const res = await fetch("/api/users/me", {
+    headers: piToken
+      ? { Authorization: `Bearer ${piToken}` }
+      : {},
+    credentials: "include",
+    cache: "no-store",
+  });
 
+  if (!res.ok) return null;
+
+  const data = await res.json();
+  return data.user as PiUser;
+}
 /* =========================
    PROVIDER
 ========================= */
@@ -99,15 +116,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadSession = async () => {
     try {
-      const res = await fetch("/api/pi/verify", {
-        credentials: "include",
-        cache: "no-store",
-      });
-
-      const data: { success: boolean; user?: PiUser } =
-        await res.json();
-
-      setUser(data.success ? data.user ?? null : null);
+      const me = await loadMe();
+setUser(me);
     } catch {
       setUser(null);
     } finally {
@@ -155,8 +165,10 @@ setPiToken(token);
       const data: { success: boolean; user?: PiUser } =
         await verify.json();
 
-      if (data.success && data.user) {
-        setUser(data.user);
+      if (data.success) {
+  const me = await loadMe(token);
+  if (me) setUser(me);
+}
       } else {
         alert("❌ Đăng nhập thất bại");
       }
