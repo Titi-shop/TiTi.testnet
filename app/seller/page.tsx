@@ -7,6 +7,7 @@ import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 
 export default function SellerPage() {
   const { user, loading, piReady } = useAuth();
+const canOperate = user?.role === "seller";
   const { t } = useTranslation();
 
   if (loading || !piReady) {
