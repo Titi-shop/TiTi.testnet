@@ -1,8 +1,9 @@
+export const runtime = "nodejs"; // ⭐ BẮT BUỘC (Pi API, Buffer)
 export const dynamic = "force-dynamic"; // ⭐ RẤT QUAN TRỌNG
 
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 const COOKIE_NAME = "pi_user";
 
@@ -10,6 +11,10 @@ const COOKIE_NAME = "pi_user";
    TYPES
 ========================= */
 type Session = {
+  uid: string;
+  username: string;
+};
+type PiUser = {
   uid: string;
   username: string;
 };
@@ -67,15 +72,54 @@ function getSession(): Session | null {
     return null;
   }
 }
+async function getPiUserFromToken(): Promise<PiUser | null> {
+  const auth = headers().get("authorization");
+  if (!auth || !auth.startsWith("Bearer ")) return null;
 
+  const token = auth.slice("Bearer ".length).trim();
+  if (!token) return null;
+
+  const piRes = await fetch("https://api.minepi.com/v2/me", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  });
+
+  if (!piRes.ok) return null;
+
+  const data = await piRes.json();
+  if (
+    !data?.uid ||
+    typeof data.uid !== "string" ||
+    typeof data.username !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    uid: data.uid,
+    username: data.username.toLowerCase().trim(),
+  };
+}
 /* =========================
    GET — SELLER ORDERS
 ========================= */
 export async function GET(req: Request) {
-  const session = getSession();
-  if (!session) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  // 1️⃣ ưu tiên token (Pi Browser iOS)
+const piUser = await getPiUserFromToken();
+const uidFromToken = piUser?.uid;
+const usernameFromToken = piUser?.username;
+
+// 2️⃣ fallback cookie (Android / web)
+const session = uidFromToken ? null : getSession();
+const uid = uidFromToken ?? session?.uid;
+const username = usernameFromToken ?? session?.username;
+
+if (!uid || !username) {
+  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+}
 
   const { searchParams } = new URL(req.url);
   const statusFilter = searchParams.get("status");
@@ -94,8 +138,7 @@ export async function GET(req: Request) {
       if (statusFilter && order.status !== statusFilter) continue;
 
       const sellerItems = order.items.filter(
-        (item) => item.seller?.toLowerCase().trim() === session.username
-      );
+        (item) => item.seller?.toLowerCase().trim() === username
 
       if (sellerItems.length === 0) continue;
 
