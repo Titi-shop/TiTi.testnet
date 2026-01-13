@@ -13,6 +13,7 @@ interface Order {
 export default function OrdersTabs() {
   const router = useRouter();
   const { t } = useTranslation();
+  const { piToken } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
@@ -20,9 +21,12 @@ export default function OrdersTabs() {
   const fetchOrders = async () => {
     try {
       const res = await fetch("/api/seller/orders", {
-        cache: "no-store",
-        credentials: "include",
-      });
+  cache: "no-store",
+  credentials: "include",
+  headers: piToken
+    ? { Authorization: `Bearer ${piToken}` }
+    : undefined,
+});
 
       if (!res.ok) {
         throw new Error("forbidden");
