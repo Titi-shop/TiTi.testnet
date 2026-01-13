@@ -1,6 +1,6 @@
 import { SessionUser } from "./session";
 import { Role } from "./role";
-import { isSellerByEnv } from "./utils/roles";
+import { isSellerByEnv } from "@/utils/roles";
 
 export async function resolveRole(
   user: SessionUser | null
