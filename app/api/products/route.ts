@@ -1,23 +1,14 @@
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
-import { cookies, headers } from "next/headers";
+import { requireSeller } from "@/lib/auth/guard";
 import { toISO } from "@/lib/formatDate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const COOKIE_NAME = "pi_user";
-
 /* =========================
    TYPES
 ========================= */
-type Session = { uid: string };
-
-type PiUser = {
-  uid: string;
-  username?: string;
-};
-
 type Product = {
   id: string;
   name: string;
@@ -36,61 +27,7 @@ type Product = {
 };
 
 /* =========================
-   SESSION HELPERS
-========================= */
-function getSession(): Session | null {
-  const raw = cookies().get(COOKIE_NAME)?.value;
-  if (!raw) return null;
-
-  try {
-    const parsed = JSON.parse(
-      Buffer.from(raw, "base64").toString("utf8")
-    ) as unknown;
-
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      "uid" in parsed &&
-      typeof (parsed as { uid: unknown }).uid === "string"
-    ) {
-      return { uid: (parsed as { uid: string }).uid };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-async function getPiUserFromToken(): Promise<PiUser | null> {
-  const auth = headers().get("authorization");
-  if (!auth || !auth.startsWith("Bearer ")) return null;
-
-  const token = auth.slice("Bearer ".length).trim();
-  if (!token) return null;
-
-  const piRes = await fetch("https://api.minepi.com/v2/me", {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
-    },
-    cache: "no-store",
-  });
-
-  if (!piRes.ok) return null;
-
-  const data = await piRes.json();
-  if (!data?.uid || typeof data.uid !== "string") return null;
-
-  return { uid: data.uid, username: data.username };
-}
-
-async function isSeller(uid: string): Promise<boolean> {
-  const role = await kv.get<string>(`user_role:${uid}`);
-  return role === "seller";
-}
-
-/* =========================
-   GET ALL PRODUCTS (PUBLIC)
+   GET — ALL PRODUCTS (PUBLIC)
 ========================= */
 export async function GET() {
   const ids = await kv.lrange<string>("products:all", 0, -1);
@@ -106,9 +43,9 @@ export async function GET() {
     const end = p!.saleEnd ? new Date(p!.saleEnd) : null;
 
     const isSale =
-      p!.salePrice &&
-      start &&
-      end &&
+      !!p!.salePrice &&
+      !!start &&
+      !!end &&
       now >= start &&
       now <= end;
 
@@ -123,30 +60,25 @@ export async function GET() {
 }
 
 /* =========================
-   CREATE PRODUCT (SELLER)
+   POST — CREATE PRODUCT (SELLER)
 ========================= */
 export async function POST(req: Request) {
-  const piUser = await getPiUserFromToken();
-  const uidFromToken = piUser?.uid;
+  const auth = await requireSeller();
+  if (!auth.ok) return auth.response;
 
-  const session = uidFromToken ? null : getSession();
-  const uid = uidFromToken ?? session?.uid;
-
-  if (!uid) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-
-  if (!(await isSeller(uid))) {
-    return NextResponse.json({ error: "not_seller" }, { status: 403 });
-  }
-
+  const uid = auth.user.uid;
   const body = (await req.json()) as Partial<Product>;
+
   if (!body.name || typeof body.price !== "number") {
-    return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
+    return NextResponse.json(
+      { error: "invalid_payload" },
+      { status: 400 }
+    );
   }
 
-  const id = `PRD-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const now = new Date().toISOString();
+  const id = `PRD-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
 
   const product: Product = {
     id,
@@ -156,7 +88,7 @@ export async function POST(req: Request) {
     images: body.images ?? [],
     sellerId: uid,
     categoryId: body.categoryId ?? null,
-    createdAt: now,
+    createdAt: new Date().toISOString(),
     views: 0,
     sold: 0,
     salePrice: body.salePrice ?? null,
@@ -172,26 +104,16 @@ export async function POST(req: Request) {
 }
 
 /* =========================
-   UPDATE / DELETE
+   PUT — UPDATE PRODUCT (OWNER)
 ========================= */
 export async function PUT(req: Request) {
-  const piUser = await getPiUserFromToken();
-  const uidFromToken = piUser?.uid;
+  const auth = await requireSeller();
+  if (!auth.ok) return auth.response;
 
-  const session = uidFromToken ? null : getSession();
-  const uid = uidFromToken ?? session?.uid;
-
-  if (!uid) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-
-  if (!(await isSeller(uid))) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
-
+  const uid = auth.user.uid;
   const body = await req.json();
-  const product = await kv.get<Product>(`product:${body.id}`);
 
+  const product = await kv.get<Product>(`product:${body.id}`);
   if (!product || product.sellerId !== uid) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
@@ -207,22 +129,16 @@ export async function PUT(req: Request) {
   return NextResponse.json({ success: true, product: updated });
 }
 
+/* =========================
+   DELETE — REMOVE PRODUCT (OWNER)
+========================= */
 export async function DELETE(req: Request) {
-  const piUser = await getPiUserFromToken();
-  const uidFromToken = piUser?.uid;
+  const auth = await requireSeller();
+  if (!auth.ok) return auth.response;
 
-  const session = uidFromToken ? null : getSession();
-  const uid = uidFromToken ?? session?.uid;
-
-  if (!uid) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-
-  if (!(await isSeller(uid))) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
-
+  const uid = auth.user.uid;
   const id = new URL(req.url).searchParams.get("id");
+
   if (!id) {
     return NextResponse.json({ error: "missing_id" }, { status: 400 });
   }
