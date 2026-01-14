@@ -2,10 +2,11 @@ import { SessionUser } from "./session";
 import { Role } from "./role";
 
 /**
- * GIAI ĐOẠN 1:
+ * GIAI ĐOẠN 1 (Bootstrap):
  * - Seller cố định qua ENV
  * - Không DB
  * - Không đăng ký
+ * - Pi Browser only
  */
 export async function resolveRole(
   user: SessionUser | null
@@ -18,15 +19,19 @@ export async function resolveRole(
   const allowWallets =
     process.env.NEXT_PUBLIC_SELLER_PI_WALLETS?.split(",") ?? [];
 
-  const isSellerByUsername =
+  const isSellerByUsername = Boolean(
     user.username &&
-    allowUsers.map(u => u.trim().toLowerCase())
-      .includes(user.username.toLowerCase());
+      allowUsers
+        .map(u => u.trim().toLowerCase())
+        .includes(user.username.toLowerCase())
+  );
 
-  const isSellerByWallet =
+  const isSellerByWallet = Boolean(
     user.wallet_address &&
-    allowWallets.map(w => w.trim().toUpperCase())
-      .includes(user.wallet_address.toUpperCase());
+      allowWallets
+        .map(w => w.trim().toUpperCase())
+        .includes(user.wallet_address.toUpperCase())
+  );
 
   if (isSellerByUsername || isSellerByWallet) {
     return "seller";
