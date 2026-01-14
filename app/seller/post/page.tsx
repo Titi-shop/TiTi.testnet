@@ -4,6 +4,7 @@ import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
 import { useAuth } from "@/context/AuthContext";
+import { apiFetch } from "@/lib/apiFetch";
 
 /* =========================
    TYPES
@@ -24,7 +25,7 @@ interface MessageState {
 export default function SellerPostPage() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { user, loading } = useAuth();
+  const { user, piToken, loading } = useAuth();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
@@ -34,21 +35,22 @@ export default function SellerPostPage() {
   });
 
   /* =========================
-     🔒 GUARD (CLIENT UX)
+     🔒 CLIENT GUARD
   ========================= */
   useEffect(() => {
-    if (!loading && user?.role !== "seller") {
+    if (!loading && user && user.role !== "seller") {
       router.replace("/account");
     }
   }, [loading, user, router]);
 
   /* =========================
-     LOAD CATEGORIES
+     LOAD CATEGORIES (PUBLIC)
   ========================= */
   useEffect(() => {
     fetch("/api/categories", { cache: "no-store" })
       .then((r) => r.json())
-      .then((data) => setCategories(data || []));
+      .then((data) => setCategories(data || []))
+      .catch(() => setCategories([]));
   }, []);
 
   /* =========================
@@ -56,6 +58,15 @@ export default function SellerPostPage() {
   ========================= */
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    if (!piToken) {
+      setMessage({
+        text: "⚠️ Chưa xác thực Pi Network",
+        type: "error",
+      });
+      return;
+    }
+
     setSaving(true);
     setMessage({ text: "", type: "" });
 
@@ -69,12 +80,17 @@ export default function SellerPostPage() {
       description: (
         form.elements.namedItem("description") as HTMLTextAreaElement
       ).value,
-      categoryId: Number(
-        (form.elements.namedItem("categoryId") as HTMLSelectElement).value
-      ) || null,
-      imageUrl: (
-        form.elements.namedItem("imageUrl") as HTMLInputElement
-      ).value.trim(),
+      categoryId:
+        Number(
+          (form.elements.namedItem("categoryId") as HTMLSelectElement).value
+        ) || null,
+      images: (
+        (form.elements.namedItem("imageUrl") as HTMLInputElement).value.trim()
+          ? [
+              (form.elements.namedItem("imageUrl") as HTMLInputElement).value.trim(),
+            ]
+          : []
+      ),
       salePrice:
         Number(
           (form.elements.namedItem("salePrice") as HTMLInputElement).value
@@ -94,27 +110,36 @@ export default function SellerPostPage() {
       return;
     }
 
-    const res = await fetch("/api/products", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        ...payload,
-        images: payload.imageUrl ? [payload.imageUrl] : [],
-      }),
-    });
+    try {
+      const res = await apiFetch(
+        "/api/products",
+        piToken,
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        }
+      );
 
-    const result = await res.json();
+      const result = await res.json();
 
-    if (res.ok) {
+      if (res.ok) {
+        setMessage({
+          text: t.post_success || "🎉 Đăng sản phẩm thành công!",
+          type: "success",
+        });
+
+        setTimeout(() => {
+          router.push("/seller/stock");
+        }, 800);
+      } else {
+        setMessage({
+          text: result.error || t.post_failed || "❌ Đăng thất bại",
+          type: "error",
+        });
+      }
+    } catch {
       setMessage({
-        text: t.post_success || "🎉 Đăng thành công!",
-        type: "success",
-      });
-      setTimeout(() => router.push("/seller/stock"), 800);
-    } else {
-      setMessage({
-        text: result.error || t.post_failed || "❌ Đăng thất bại",
+        text: t.post_failed || "❌ Đăng thất bại",
         type: "error",
       });
     }
@@ -122,8 +147,15 @@ export default function SellerPostPage() {
     setSaving(false);
   }
 
-  if (loading || user?.role !== "seller") {
-    return <main className="p-6 text-center">⏳ {t.loading}</main>;
+  /* =========================
+     LOADING STATE
+  ========================= */
+  if (loading || !user || user.role !== "seller") {
+    return (
+      <main className="p-6 text-center text-gray-500">
+        ⏳ {t.loading}
+      </main>
+    );
   }
 
   /* =========================
@@ -155,10 +187,23 @@ export default function SellerPostPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <input name="name" placeholder={t.product_name} className="w-full border p-2 rounded" />
-        <input name="price" type="number" placeholder={t.price_pi} className="w-full border p-2 rounded" />
+        <input
+          name="name"
+          placeholder={t.product_name}
+          className="w-full border p-2 rounded"
+        />
 
-        <select name="categoryId" className="w-full border p-2 rounded">
+        <input
+          name="price"
+          type="number"
+          placeholder={t.price_pi}
+          className="w-full border p-2 rounded"
+        />
+
+        <select
+          name="categoryId"
+          className="w-full border p-2 rounded"
+        >
           <option value="">{t.select_category}</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
@@ -179,15 +224,29 @@ export default function SellerPostPage() {
           className="w-full border p-2 rounded"
         />
 
+        {/* SALE */}
         <div className="p-3 bg-orange-50 border rounded">
-          <input name="salePrice" type="number" placeholder={t.sale_price} className="w-full border p-2 rounded mb-2" />
-          <input name="saleStart" type="date" className="w-full border p-2 rounded mb-2" />
-          <input name="saleEnd" type="date" className="w-full border p-2 rounded" />
+          <input
+            name="salePrice"
+            type="number"
+            placeholder={t.sale_price}
+            className="w-full border p-2 rounded mb-2"
+          />
+          <input
+            name="saleStart"
+            type="date"
+            className="w-full border p-2 rounded mb-2"
+          />
+          <input
+            name="saleEnd"
+            type="date"
+            className="w-full border p-2 rounded"
+          />
         </div>
 
         <button
           disabled={saving}
-          className="w-full bg-[#ff6600] text-white p-3 rounded-lg"
+          className="w-full bg-[#ff6600] text-white p-3 rounded-lg font-semibold"
         >
           {saving ? t.posting : "💾 " + t.post_product}
         </button>
