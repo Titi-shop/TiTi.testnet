@@ -19,6 +19,8 @@ export default function CustomerMenu() {
   const { t } = useTranslation();
   const { user } = useAuth();
 
+  const isSeller = user?.role === "seller";
+
   const customerMenuItems = [
     { label: t.profile, icon: <User size={22} />, path: "/customer/profile" },
     { label: t.my_orders, icon: <Package size={22} />, path: "/customer/orders" },
@@ -27,6 +29,19 @@ export default function CustomerMenu() {
     { label: t.language, icon: <Globe size={22} />, path: "/language" },
     { label: t.shipping_address, icon: <MapPin size={22} />, path: "/customer/address" },
     { label: t.support, icon: <HelpCircle size={22} />, path: "/support" },
+
+    // 🔑 SELLER ENTRY (kế bên Customer Support)
+    isSeller
+      ? {
+          label: t.seller_center || "Quản lý bán hàng",
+          icon: <Store size={22} />,
+          path: "/seller",
+        }
+      : {
+          label: t.register_seller || "Đăng ký bán hàng",
+          icon: <Store size={22} />,
+          path: "/seller/register-info",
+        },
   ];
 
   return (
@@ -37,45 +52,30 @@ export default function CustomerMenu() {
           <button
             key={i}
             onClick={() => router.push(item.path)}
-            className="flex flex-col items-center text-gray-700 hover:text-orange-500"
+            className="flex flex-col items-center text-gray-700 hover:text-orange-500 transition"
           >
-            <div className="p-3 bg-gray-100 rounded-full shadow-sm mb-1">
+            <div
+              className={`p-3 rounded-full shadow-sm mb-1
+                ${
+                  item.path === "/seller"
+                    ? "bg-orange-100 text-orange-600"
+                    : "bg-gray-100"
+                }`}
+            >
               {item.icon}
             </div>
-            <span className="text-xs font-medium">{item.label}</span>
+            <span className="text-xs font-medium leading-tight">
+              {item.label}
+            </span>
           </button>
         ))}
       </div>
 
-      {/* ===== REGISTER SELLER ===== */}
-      {user?.role !== "seller" && (
-        <div className="mt-6 border-t pt-4">
-          <button
-            onClick={async () => {
-              const res = await fetch("/api/seller/register", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  shopName: user?.username || "",
-                }),
-              });
-
-              const data = await res.json();
-
-              if (res.ok) {
-                alert(
-                  t.register_seller_pending ||
-                    "Đã gửi yêu cầu đăng ký bán hàng. Vui lòng chờ duyệt."
-                );
-              } else {
-                alert(data.error || t.error);
-              }
-            }}
-            className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl shadow"
-          >
-            <Store size={20} />
-            {t.register_seller || "Đăng ký bán hàng"}
-          </button>
+      {/* ===== SELLER NOTE (GĐ1) ===== */}
+      {!isSeller && (
+        <div className="mt-4 text-center text-xs text-gray-500">
+          {t.seller_note ||
+            "Chức năng đăng ký bán hàng sẽ được mở ở giai đoạn tiếp theo."}
         </div>
       )}
     </div>
