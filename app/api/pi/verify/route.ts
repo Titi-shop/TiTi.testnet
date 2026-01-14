@@ -30,8 +30,7 @@ function buildCookie(value: string, age = MAX_AGE) {
     "Path=/",
     `Max-Age=${age}`,
     "HttpOnly",
-    "SameSite=None",
-    "Secure" // 🔥 ALWAYS secure for Pi Browser + Safari
+    "SameSite=Lax" // ⭐ QUAN TRỌNG
   ].join("; ");
 }
 /* ============================================================
