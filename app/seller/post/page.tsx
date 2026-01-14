@@ -1,14 +1,9 @@
 "use client";
 
-import {
-  useState,
-  useRef,
-  useEffect,
-  ChangeEvent,
-  FormEvent,
-} from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslationClient as useTranslation } from "@/app/lib/i18n/client";
+import { useAuth } from "@/context/AuthContext";
 
 /* =========================
    TYPES
@@ -24,24 +19,12 @@ interface MessageState {
 }
 
 /* =========================
-   HELPERS
-========================= */
-function formatDateToInput(dateString: string | null) {
-  if (!dateString) return "";
-  const d = new Date(dateString);
-  if (isNaN(d.getTime())) return "";
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
-    2,
-    "0"
-  )}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-/* =========================
    PAGE
 ========================= */
 export default function SellerPostPage() {
   const router = useRouter();
   const { t } = useTranslation();
+  const { user, loading } = useAuth();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
@@ -50,9 +33,14 @@ export default function SellerPostPage() {
     type: "",
   });
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [images, setImages] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
+  /* =========================
+     🔒 GUARD (CLIENT UX)
+  ========================= */
+  useEffect(() => {
+    if (!loading && user?.role !== "seller") {
+      router.replace("/account");
+    }
+  }, [loading, user, router]);
 
   /* =========================
      LOAD CATEGORIES
@@ -64,44 +52,6 @@ export default function SellerPostPage() {
   }, []);
 
   /* =========================
-     UPLOAD FILE
-  ========================= */
-  async function handleFileUpload(file: File): Promise<string | null> {
-    try {
-      const arr = await file.arrayBuffer();
-      const upload = await fetch("/api/upload", {
-        method: "POST",
-        headers: {
-          "x-filename": encodeURIComponent(file.name),
-          "Content-Type": file.type,
-        },
-        body: arr,
-      });
-      const data = await upload.json();
-      return data.url;
-    } catch {
-      return null;
-    }
-  }
-
-  /* =========================
-     IMAGE HANDLERS
-  ========================= */
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setImages((prev) => [...prev, ...files]);
-    setPreviews((prev) => [
-      ...prev,
-      ...files.map((f) => URL.createObjectURL(f)),
-    ]);
-  };
-
-  const removeImage = (i: number) => {
-    setImages((prev) => prev.filter((_, idx) => idx !== i));
-    setPreviews((prev) => prev.filter((_, idx) => idx !== i));
-  };
-
-  /* =========================
      SUBMIT
   ========================= */
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -109,7 +59,7 @@ export default function SellerPostPage() {
     setSaving(true);
     setMessage({ text: "", type: "" });
 
-    const form = e.currentTarget as HTMLFormElement;
+    const form = e.currentTarget;
 
     const payload = {
       name: (form.elements.namedItem("name") as HTMLInputElement).value.trim(),
@@ -121,17 +71,18 @@ export default function SellerPostPage() {
       ).value,
       categoryId: Number(
         (form.elements.namedItem("categoryId") as HTMLSelectElement).value
-      ),
+      ) || null,
+      imageUrl: (
+        form.elements.namedItem("imageUrl") as HTMLInputElement
+      ).value.trim(),
       salePrice:
         Number(
           (form.elements.namedItem("salePrice") as HTMLInputElement).value
         ) || null,
       saleStart:
-        (form.elements.namedItem("saleStart") as HTMLInputElement).value ||
-        null,
+        (form.elements.namedItem("saleStart") as HTMLInputElement).value || null,
       saleEnd:
         (form.elements.namedItem("saleEnd") as HTMLInputElement).value || null,
-      images: [] as string[],
     };
 
     if (!payload.name || !payload.price) {
@@ -143,19 +94,14 @@ export default function SellerPostPage() {
       return;
     }
 
-    const urls: string[] = [];
-    for (const img of images) {
-      const url = await handleFileUpload(img);
-      if (url) urls.push(url);
-    }
-
-    payload.images = urls;
-
     const res = await fetch("/api/products", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        ...payload,
+        images: payload.imageUrl ? [payload.imageUrl] : [],
+      }),
     });
 
     const result = await res.json();
@@ -165,7 +111,7 @@ export default function SellerPostPage() {
         text: t.post_success || "🎉 Đăng thành công!",
         type: "success",
       });
-      setTimeout(() => router.push("/seller/stock"), 1000);
+      setTimeout(() => router.push("/seller/stock"), 800);
     } else {
       setMessage({
         text: result.error || t.post_failed || "❌ Đăng thất bại",
@@ -176,8 +122,12 @@ export default function SellerPostPage() {
     setSaving(false);
   }
 
+  if (loading || user?.role !== "seller") {
+    return <main className="p-6 text-center">⏳ {t.loading}</main>;
+  }
+
   /* =========================
-     UI (GIỐNG EDIT)
+     UI
   ========================= */
   return (
     <main className="max-w-lg mx-auto p-6 bg-white rounded-xl shadow mt-10 pb-32">
@@ -205,106 +155,39 @@ export default function SellerPostPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label>{t.product_name}</label>
-          <input name="name" className="w-full border p-2 rounded" />
-        </div>
+        <input name="name" placeholder={t.product_name} className="w-full border p-2 rounded" />
+        <input name="price" type="number" placeholder={t.price_pi} className="w-full border p-2 rounded" />
 
-        <div>
-          <label>{t.price_pi}</label>
-          <input
-            name="price"
-            type="number"
-            className="w-full border p-2 rounded"
-          />
-        </div>
+        <select name="categoryId" className="w-full border p-2 rounded">
+          <option value="">{t.select_category}</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
 
-        <div>
-          <label>{t.category}</label>
-          <select
-            name="categoryId"
-            className="w-full border p-2 rounded"
-          >
-            <option value="">{t.select_category}</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <input
+          name="imageUrl"
+          placeholder="Image URL (https://...)"
+          className="w-full border p-2 rounded"
+        />
 
-        {/* SALE */}
+        <textarea
+          name="description"
+          placeholder={t.description}
+          className="w-full border p-2 rounded"
+        />
+
         <div className="p-3 bg-orange-50 border rounded">
-          <h3 className="font-bold text-orange-600 mb-2">
-            🔥 {t.sale}
-          </h3>
-
-          <label>{t.sale_price}</label>
-          <input
-            name="salePrice"
-            type="number"
-            className="w-full border p-2 rounded mb-2"
-          />
-
-          <label>{t.start_date}</label>
-          <input
-            name="saleStart"
-            type="date"
-            className="w-full border p-2 rounded mb-2"
-          />
-
-          <label>{t.end_date}</label>
-          <input
-            name="saleEnd"
-            type="date"
-            className="w-full border p-2 rounded"
-          />
-        </div>
-
-        <div>
-          <label>{t.description}</label>
-          <textarea
-            name="description"
-            className="w-full border p-2 rounded"
-          />
-        </div>
-
-        {/* IMAGES */}
-        <div>
-          <label>{t.product_images}</label>
-          <input
-            type="file"
-            multiple
-            ref={fileInputRef}
-            onChange={handleFileChange}
-          />
-
-          <div className="mt-3 space-y-2">
-            {previews.map((url, idx) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between bg-gray-50 p-2 border rounded"
-              >
-                <img
-                  src={url}
-                  className="w-16 h-16 object-cover rounded"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeImage(idx)}
-                  className="text-red-600 font-bold"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
+          <input name="salePrice" type="number" placeholder={t.sale_price} className="w-full border p-2 rounded mb-2" />
+          <input name="saleStart" type="date" className="w-full border p-2 rounded mb-2" />
+          <input name="saleEnd" type="date" className="w-full border p-2 rounded" />
         </div>
 
         <button
           disabled={saving}
-          className="w-full bg-[#ff6600] text-white p-3 rounded-lg mt-3"
+          className="w-full bg-[#ff6600] text-white p-3 rounded-lg"
         >
           {saving ? t.posting : "💾 " + t.post_product}
         </button>
