@@ -119,14 +119,10 @@ if (user.role !== "seller") {
     }
 
     try {
-      const res = await apiFetch(
-        "/api/products",
-        piToken,
-        {
-          method: "POST",
-          body: JSON.stringify(payload),
-        }
-      );
+      const res = await apiFetch("/api/products", {
+  method: "POST",
+  body: JSON.stringify(payload),
+});
 
       const result = await res.json();
 
