@@ -59,13 +59,21 @@ export default function SellerPostPage() {
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    if (!piToken) {
-      setMessage({
-        text: "⚠️ Chưa xác thực Pi Network",
-        type: "error",
-      });
-      return;
-    }
+    if (!user) {
+  setMessage({
+    text: "⚠️ Bạn chưa đăng nhập Pi Network",
+    type: "error",
+  });
+  return;
+}
+
+if (user.role !== "seller") {
+  setMessage({
+    text: "⛔ Chỉ seller mới được đăng sản phẩm",
+    type: "error",
+  });
+  return;
+}
 
     setSaving(true);
     setMessage({ text: "", type: "" });
