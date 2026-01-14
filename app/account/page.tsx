@@ -11,9 +11,6 @@ import CustomerPage from "../customer/page";
 // 🔽 MENU
 import CustomerMenu from "@/components/customerMenu";
 
-// 🔻 SELLER
-import SellerPage from "../seller/page";
-
 export default function AccountPage() {
   const router = useRouter();
   const { user, piReady, logout } = useAuth();
@@ -34,23 +31,18 @@ export default function AccountPage() {
 
   return (
     <main className="bg-gray-100 pb-32 space-y-6">
-      {/* CUSTOMER INFO */}
+      {/* ===== CUSTOMER INFO ===== */}
       <CustomerPage embedded />
 
-      {/* CUSTOMER MENU */}
+      {/* ===== CUSTOMER MENU (có nút seller) ===== */}
       <CustomerMenu />
-
-      {/* SELLER PLATFORM */}
-      <section className="bg-white rounded-2xl shadow mx-4 p-4">
-        <SellerPage />
-      </section>
 
       {/* ===== LOGOUT – CUỐI TRANG ===== */}
       <section className="mx-4">
         <button
           onClick={logout}
-          className="w-full py-4 bg-red-500 hover:bg-red-600 
-            text-white rounded-2xl flex items-center justify-center 
+          className="w-full py-4 bg-red-500 hover:bg-red-600
+            text-white rounded-2xl flex items-center justify-center
             gap-3 font-semibold text-lg shadow-lg"
         >
           <LogOut size={22} />
