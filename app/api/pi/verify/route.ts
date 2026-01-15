@@ -7,22 +7,43 @@ const COOKIE_NAME = "pi_user";
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 /* ============================================================
+   TYPES
+============================================================ */
+type Role = "seller" | "customer";
+
+type PiUser = {
+  username: string;
+  uid: string;
+  wallet_address: string | null;
+  created_at: string;
+  roles: Role[];
+};
+
+/* ============================================================
+   SELLER LIST (FROM VERCEL ENV)
+============================================================ */
+const SELLER_USERNAMES = (process.env.NEXT_PUBLIC_SELLER_PI_USERNAMES || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+/* ============================================================
    ENCODE / DECODE USER
 ============================================================ */
-function encodeUser(user: object) {
+function encodeUser(user: PiUser) {
   return Buffer.from(JSON.stringify(user), "utf8").toString("base64");
 }
 
-function decodeUser(raw: string) {
+function decodeUser(raw: string): PiUser | null {
   try {
-    return JSON.parse(Buffer.from(raw, "base64").toString("utf8"));
+    return JSON.parse(Buffer.from(raw, "base64").toString("utf8")) as PiUser;
   } catch {
     return null;
   }
 }
 
 /* ============================================================
-   COOKIE BUILDER — FULLY COMPATIBLE WITH SAFARI + PI BROWSER
+   COOKIE BUILDER — SAFARI + PI BROWSER SAFE
 ============================================================ */
 function buildCookie(value: string, age = MAX_AGE) {
   return [
@@ -30,9 +51,10 @@ function buildCookie(value: string, age = MAX_AGE) {
     "Path=/",
     `Max-Age=${age}`,
     "HttpOnly",
-    "SameSite=Lax" // ⭐ QUAN TRỌNG
+    "SameSite=Lax",
   ].join("; ");
 }
+
 /* ============================================================
    🔹 GET — FETCH SESSION
 ============================================================ */
@@ -43,7 +65,7 @@ export function GET(req: NextRequest) {
   return NextResponse.json(
     {
       success: !!user,
-      user: user || null,
+      user,
     },
     {
       headers: {
@@ -58,21 +80,22 @@ export function GET(req: NextRequest) {
 ============================================================ */
 export async function POST(req: NextRequest) {
   try {
-    const { accessToken } = await req.json();
+    const body = (await req.json()) as { accessToken?: string };
 
-    if (!accessToken) {
+    if (!body.accessToken) {
       return NextResponse.json(
         { success: false, error: "missing_access_token" },
         { status: 400 }
       );
     }
 
-    // 🔥 Fetch login info from Pi Network
+    /* 🔐 Verify token with Pi Network */
     const piRes = await fetch("https://api.minepi.com/v2/me", {
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${body.accessToken}`,
         Accept: "application/json",
       },
+      cache: "no-store",
     });
 
     if (!piRes.ok) {
@@ -82,20 +105,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const data = await piRes.json();
+    const data = (await piRes.json()) as {
+      username?: string;
+      uid?: string;
+      wallet_address?: string;
+      created_at?: string;
+    };
 
-    // 🔥 FIX: some Pi accounts DO NOT HAVE uid → fallback required
-    const user = {
+    if (!data.username) {
+      return NextResponse.json(
+        { success: false, error: "missing_username" },
+        { status: 500 }
+      );
+    }
+
+    /* 🔑 ASSIGN ROLE (RBAC) */
+    const roles: Role[] = SELLER_USERNAMES.includes(data.username)
+      ? ["seller"]
+      : ["customer"];
+
+    const user: PiUser = {
       username: data.username,
-      uid: data.uid || `user_${data.username}`,
+      uid: data.uid ?? `user_${data.username}`,
       wallet_address: data.wallet_address ?? null,
       created_at: data.created_at ?? new Date().toISOString(),
-      roles: data.roles ?? [],
+      roles,
     };
 
     const cookieValue = encodeUser(user);
 
-    // 🔥 MUST return Set-Cookie so Safari accepts
     const res = NextResponse.json({ success: true, user });
     res.headers.set("Set-Cookie", buildCookie(cookieValue));
 
