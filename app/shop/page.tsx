@@ -42,7 +42,7 @@ export default function ShopPage() {
   return (
     <main className="pb-20 bg-white min-h-screen">
       <img
-        src="/banners/default.jpg"
+        src="banners/30FD1BCC-E31C-4702-9E63-8BF08C5E311C.png"
         className="w-full h-40 object-cover"
       />
 
