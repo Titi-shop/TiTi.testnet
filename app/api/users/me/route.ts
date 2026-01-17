@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { kv } from "@vercel/kv";
 
 import { getSessionUser } from "@/lib/auth/session";
 import { resolveRole } from "@/lib/auth/resolveRole";
@@ -24,9 +23,8 @@ type MeUserResponse = {
 ========================= */
 
 /**
- * Fallback cho Pi Browser iOS:
- * nếu có Authorization Bearer token
- * thì lấy user trực tiếp từ Pi API
+ * Ưu tiên Pi Browser (Bearer token)
+ * → xử lý iOS WebView không gửi cookie ổn định
  */
 async function getUserFromToken(): Promise<{
   uid: string;
@@ -39,7 +37,7 @@ async function getUserFromToken(): Promise<{
   const token = auth.slice("Bearer ".length).trim();
   if (!token) return null;
 
-  const piRes = await fetch("https://api.minepi.com/v2/me", {
+  const res = await fetch("https://api.minepi.com/v2/me", {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: "application/json",
@@ -47,9 +45,9 @@ async function getUserFromToken(): Promise<{
     cache: "no-store",
   });
 
-  if (!piRes.ok) return null;
+  if (!res.ok) return null;
 
-  const data = await piRes.json();
+  const data = await res.json();
   if (!data?.uid || !data?.username) return null;
 
   return {
@@ -64,11 +62,12 @@ async function getUserFromToken(): Promise<{
 ========================= */
 export async function GET() {
   /**
-   * 1️⃣ Ưu tiên Pi token (Pi Browser iOS)
+   * 1️⃣ Bearer-first (Pi Browser)
+   * 2️⃣ Cookie fallback (desktop / ổn định)
    */
-  let baseUser =
+  const baseUser =
     (await getUserFromToken()) ??
-    getSessionUser(); // 2️⃣ fallback cookie chuẩn hoá
+    getSessionUser();
 
   if (!baseUser) {
     return NextResponse.json(
@@ -78,9 +77,9 @@ export async function GET() {
   }
 
   /**
-   * 3️⃣ Resolve role TẬP TRUNG (AUTH-CENTRIC)
-   * - Không tin cookie
+   * 3️⃣ Resolve role tập trung (RBAC)
    * - Không hardcode
+   * - Không tin cookie
    */
   const role = await resolveRole(baseUser);
 
