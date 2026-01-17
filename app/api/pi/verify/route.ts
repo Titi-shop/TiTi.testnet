@@ -47,11 +47,12 @@ function decodeUser(raw: string): PiUser | null {
 ============================================================ */
 function buildCookie(value: string, age = MAX_AGE) {
   return [
-    `${COOKIE_NAME}=${value}`,
+    `pi_user=${value}`,
     "Path=/",
     `Max-Age=${age}`,
     "HttpOnly",
-    "SameSite=Lax",
+    "Secure",
+    "SameSite=None",
   ].join("; ");
 }
 
